@@ -1,0 +1,38 @@
+*ntf.txt*
+
+==============================================================================
+USAGE                                                              *ntf-USAGE*
+
+>
+  Usage: ntf [options] <spec-file-or-dir>...
+
+  Options:
+    --isolate=LEVEL  process split granularity: file|describe|it (default: file)
+    --jobs=N         max parallel nvim workers (default: cpu count)
+    --shuffle        randomize test order
+    --seed=N         seed used with --shuffle (default: time based)
+    --json           emit machine-readable JSON instead of the text report
+    --no-color       disable ANSI colors
+    --slow=MS        report tests slower than MS milliseconds
+    -h, --help       show this help
+<
+
+==============================================================================
+ISOLATION                                                      *ntf-ISOLATION*
+
+ntf can run describe/it units in separate Neovim processes.
+
+- `--isolate=file` (default): one process per spec file
+- `--isolate=describe`: one process per top-level describe
+- `--isolate=it`: one process per it
+
+describe/it take an optional opts table; opt a single block into its own process
+with `opts.isolate`:
+>lua
+  describe("a whole block in its own process", function() end, { isolate = true })
+
+  it("a single test in a fresh process", function() end, { isolate = true })
+<
+
+==============================================================================
+vim:tw=78:ts=8:ft=help
