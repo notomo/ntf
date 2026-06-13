@@ -54,6 +54,24 @@ with `opts.isolate`:
 <]]
       end,
     },
+    {
+      name = "OUTPUT",
+      body = function()
+        return [[
+`print` and `io.write` output emitted while a test runs is captured and shown in
+the report, attributed to the test case it came from (under the failure block for
+a failing test, or its own `OUTPUT <name>` block otherwise).
+
+Opt a single test out of having its output shown with `opts.output = "never"`:
+>lua
+  it("noisy but uninteresting", function()
+    print("ignored")
+  end, { output = "never" })
+<
+Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) are
+not captured.]]
+      end,
+    },
   },
 })
 

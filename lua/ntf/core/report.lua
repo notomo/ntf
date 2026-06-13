@@ -138,7 +138,21 @@ function M.build(results, load_errors, opts)
     if traceback then
       table.insert(lines, paint("dim", indent(traceback:gsub("^\n", ""), "    ")))
     end
+    if result.output then
+      table.insert(lines, paint("dim", "    output:"))
+      table.insert(lines, indent(result.output:gsub("\n$", ""), "      "))
+    end
     table.insert(lines, "")
+  end
+
+  -- Captured output from non-failing tests, attributed to each test case.
+  for _, result in ipairs(results) do
+    local is_problem = result.status == "failed" or result.status == "error"
+    if result.output and not is_problem then
+      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", full_name(result)))
+      table.insert(lines, indent(result.output:gsub("\n$", ""), "    "))
+      table.insert(lines, "")
+    end
   end
 
   if #slows > 0 then

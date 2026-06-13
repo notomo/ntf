@@ -55,6 +55,33 @@ local function run_hooks(hooks)
   return nil
 end
 
+-- Capture stdout-ish output (`print`, `io.write`) emitted while a single test
+-- runs, so the report can attribute it to that test instead of letting it vanish
+-- into the worker's stdout. Other channels (`io.stdout:write`, `vim.api.nvim_echo`,
+-- native writes) are intentionally not intercepted. Returns a restore function.
+local function install_capture(buffer)
+  local real_print = _G.print
+  local real_write = io.write
+  _G.print = function(...)
+    local parts = {}
+    for i = 1, select("#", ...) do
+      parts[i] = tostring((select(i, ...)))
+    end
+    table.insert(buffer, table.concat(parts, "\t") .. "\n")
+  end
+  ---@diagnostic disable-next-line: duplicate-set-field
+  io.write = function(...)
+    for i = 1, select("#", ...) do
+      table.insert(buffer, tostring((select(i, ...))))
+    end
+    return io.stdout
+  end
+  return function()
+    _G.print = real_print
+    io.write = real_write
+  end
+end
+
 --- @param root table tree root from ntf.core.tree
 --- @param selected table<string,boolean>|nil set of leaf ids to run, nil = all
 --- @param opts table|nil { shuffle = bool, seed = number }
@@ -98,6 +125,11 @@ function M.execute(root, selected, opts)
     tree.set_finally_collector(finallies)
     tree.set_executing(true)
 
+    -- Capture spans the per-test hooks and body so their output is charged to
+    -- this test; block-level setup/teardown run outside it and stay uncaptured.
+    local captured = {}
+    local restore_capture = install_capture(captured)
+
     local status, message, traceback = "passed", nil, nil
 
     local before_err = run_hooks(before_chain)
@@ -123,6 +155,12 @@ function M.execute(root, selected, opts)
     local after_err = run_hooks(after_chain)
     if after_err and status == "passed" then
       status, message, traceback = "error", after_err.message, after_err.traceback
+    end
+
+    restore_capture()
+    local output = table.concat(captured)
+    if output ~= "" and node.output ~= "never" then
+      result.output = output
     end
 
     result.status = status

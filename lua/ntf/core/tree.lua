@@ -72,7 +72,7 @@ end
 
 --- @param name string
 --- @param fn fun()
---- @param opts table? { isolate = boolean }
+--- @param opts table? { isolate = boolean, output = "always"|"never" }
 --- @return table node
 local function new_it(name, fn, opts)
   -- `it` always requires a body; declaration-pending uses the explicit `pending`.
@@ -82,6 +82,8 @@ local function new_it(name, fn, opts)
     fn = fn,
     trace = trace_of(fn),
     isolate = opts and opts.isolate or false,
+    -- "always" (default) surfaces captured output in the report; "never" drops it.
+    output = opts and opts.output or "always",
   }
   return add_child(node)
 end
