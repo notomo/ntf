@@ -1,42 +1,16 @@
--- Builds the assert object: the `assert.equal(...)` / `assert.no.X(...)` DSL with
--- modifier chains and `:register`. It reimplements only the luassert behavior the
--- existing specs rely on, with no luarocks dependency. Custom assertions are
--- registered through `:register` (used by `ntf.assert` / assertlib); built-in
+-- Builds the assert object: the `assert.equal(...)` / `assert.no.X(...)` DSL and
+-- `:register`. It reimplements only the luassert behavior the existing specs rely
+-- on, with no luarocks dependency. Each assertion has a single spelling and the
+-- one negation word `no` (no luassert-style modifier chains). Custom assertions
+-- are registered through `:register` (used by `ntf.assert` / assertlib); built-in
 -- assertions are pre-registered below.
 local message = require("ntf.assert.message")
 
 local M = {}
 
--- modifier words that only make assertions read nicely (no behavior change)
-local modifiers = {
-  is = true,
-  are = true,
-  was = true,
-  be = true,
-  been = true,
-  has = true,
-  does = true,
-  did = true,
-  also = true,
-  still = true,
-  the = true,
-  a = true,
-  an = true,
-  to = true,
-}
-
--- words that flip the expectation (positive <-> negative)
+-- the single negation word: `assert.no.X(...)` flips the expectation
 local negations = {
   ["no"] = true,
-  ["not"] = true,
-  is_not = true,
-  are_not = true,
-  was_not = true,
-  were_not = true,
-  does_not = true,
-  did_not = true,
-  has_no = true,
-  to_not = true,
 }
 
 --- @param registry table<string,table> shared assertion registry
@@ -75,9 +49,6 @@ local function new_state(registry, positive)
           }
         end
       end
-      if modifiers[key] then
-        return new_state(registry, positive)
-      end
       if negations[key] then
         return new_state(registry, not positive)
       end
@@ -115,7 +86,6 @@ local function register_builtins(registry)
     )
     return a == b
   end)
-  registry.equals = registry.equal
 
   builtin(registry, "same", function(_, args)
     local a, b = args[1], args[2]
@@ -180,7 +150,6 @@ local function register_builtins(registry)
     )
     return type(s) == "string" and s:find(pattern) ~= nil
   end)
-  registry.matches = registry.match
 end
 
 --- Create a fresh assert object with its own registry.
