@@ -1,3 +1,5 @@
+local ntf = require("ntf")
+local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local builder = require("ntf.assert.builder")
 
 describe("ntf.assert.builder", function()

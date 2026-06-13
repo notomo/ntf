@@ -17,6 +17,25 @@ require("genvdoc").generate(plugin_name, {
       end,
     },
     {
+      name = "WRITING SPECS",
+      body = function()
+        return [[
+The test API is pulled from `require("ntf")` explicitly (no global injection):
+>lua
+  local ntf = require("ntf")
+  local describe, it = ntf.describe, ntf.it
+  local before_each, after_each = ntf.before_each, ntf.after_each
+  local assert = ntf.assert
+
+  describe("group", function()
+    it("does something", function()
+      assert.equal(1, 1)
+    end)
+  end)
+<]]
+      end,
+    },
+    {
       name = "ISOLATION",
       body = function()
         return [[
@@ -53,6 +72,22 @@ separate Neovim processes.
 
 ```
 %s
+```
+
+## Writing specs
+
+The test API is pulled from `require("ntf")` explicitly (no global injection):
+
+```lua
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+local assert = ntf.assert
+
+describe("group", function()
+  it("does something", function()
+    assert.equal(1, 1)
+  end)
+end)
 ```
 ]]):format(plugin_name, usage)
 

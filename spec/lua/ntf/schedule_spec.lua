@@ -1,3 +1,5 @@
+local ntf = require("ntf")
+local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local schedule = require("ntf.core.schedule")
 
 local function leaf(id, name, isolate)

@@ -43,6 +43,10 @@ local function trace_of(fn, level)
   return { source = info.source, line = info.currentline }
 end
 
+--- @param name string
+--- @param fn fun()
+--- @param opts table? { isolate = boolean }
+--- @return table node
 local function new_describe(name, fn, opts)
   local node = {
     type = "describe",
@@ -66,6 +70,10 @@ local function new_describe(name, fn, opts)
   return node
 end
 
+--- @param name string
+--- @param fn fun()
+--- @param opts table? { isolate = boolean }
+--- @return table node
 local function new_it(name, fn, opts)
   -- `it` always requires a body; declaration-pending uses the explicit `pending`.
   local node = {
@@ -78,6 +86,9 @@ local function new_it(name, fn, opts)
   return add_child(node)
 end
 
+--- @param name string
+--- @param fn fun()? optional body (ignored; pending is never executed)
+--- @return table node
 local function new_pending(name, fn)
   -- declaration form when building; runtime-abort form while a test runs.
   if executing then
@@ -98,29 +109,29 @@ local function add_hook(field)
   end
 end
 
---- Install the busted-compatible globals and the ntf assert object.
-function M.install_globals()
-  -- describe / it take an optional opts table: `describe(name, fn, { isolate = true })`
-  _G.describe = new_describe
-  _G.context = new_describe
-  _G.it = new_it
-  _G.specify = new_it
-  _G.pending = new_pending
-  _G.before_each = add_hook("before_each")
-  _G.after_each = add_hook("after_each")
-  _G.setup = add_hook("setups")
-  _G.teardown = add_hook("teardowns")
-  _G.lazy_setup = _G.setup
-  _G.lazy_teardown = _G.teardown
-  _G.strict_setup = _G.setup
-  _G.strict_teardown = _G.teardown
-  _G.finally = function(fn)
-    if finally_collector then
-      table.insert(finally_collector, fn)
-    end
+-- The busted-style test API. Exposed through `require("ntf")`; specs pull what
+-- they need explicitly (`local describe, it = ntf.describe, ntf.it`) instead of
+-- relying on injected globals.
+-- describe / it take an optional opts table: `describe(name, fn, { isolate = true })`
+M.describe = new_describe
+M.context = new_describe
+M.it = new_it
+M.specify = new_it
+M.pending = new_pending
+M.before_each = add_hook("before_each")
+M.after_each = add_hook("after_each")
+M.setup = add_hook("setups")
+M.teardown = add_hook("teardowns")
+M.lazy_setup = M.setup
+M.lazy_teardown = M.teardown
+M.strict_setup = M.setup
+M.strict_teardown = M.teardown
+M.finally = function(fn)
+  if finally_collector then
+    table.insert(finally_collector, fn)
   end
-  _G.assert = builder.assert
 end
+M.assert = builder.assert
 
 --- @param collector table[]|nil list to receive finally callbacks, or nil to disable
 function M.set_finally_collector(collector)
@@ -147,7 +158,6 @@ function M.build(file_path)
     teardowns = {},
   }
   stack = { root }
-  M.install_globals()
 
   -- A spec may itself build a tree while a test is running (ntf's own specs do).
   -- Force `executing` off during the build so declaration-form `pending(...)` is

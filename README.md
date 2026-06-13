@@ -22,3 +22,19 @@ Options:
   --slow=MS        report tests slower than MS milliseconds
   -h, --help       show this help
 ```
+
+## Writing specs
+
+The test API is pulled from `require("ntf")` explicitly (no global injection):
+
+```lua
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+local assert = ntf.assert
+
+describe("group", function()
+  it("does something", function()
+    assert.equal(1, 1)
+  end)
+end)
+```

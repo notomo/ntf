@@ -1,8 +1,15 @@
+local ntf = require("ntf")
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local tree = require("ntf.core.tree")
 local run = require("ntf.core.run")
 local helper = require("ntf.test.helper")
 
 local source = [[
+local ntf = require("ntf")
+local describe, it, pending = ntf.describe, ntf.it, ntf.pending
+local before_each, after_each = ntf.before_each, ntf.after_each
+local setup, teardown, finally = ntf.setup, ntf.teardown, ntf.finally
+
 _G.__NTF_LOG = {}
 local log = function(entry)
   table.insert(_G.__NTF_LOG, entry)
