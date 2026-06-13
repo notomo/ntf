@@ -8,6 +8,7 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @type { name: string, description: string }[]
 M.flags = {
   { name = "--isolate=LEVEL", description = "process split granularity: file|describe|it (default: file)" },
+  { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
   { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
@@ -37,6 +38,7 @@ function M.parse(argv)
   local opts = {
     paths = {},
     isolate = vim.env.NTF_ISOLATE or "file",
+    filter = nil,
     jobs = nil,
     shuffle = false,
     seed = nil,
@@ -62,6 +64,8 @@ function M.parse(argv)
       opts.color = false
     elseif value(arg, "%-%-isolate") then
       opts.isolate = value(arg, "%-%-isolate")
+    elseif value(arg, "%-%-filter") then
+      opts.filter = value(arg, "%-%-filter")
     elseif value(arg, "%-%-jobs") then
       opts.jobs = tonumber(value(arg, "%-%-jobs"))
     elseif value(arg, "%-%-seed") then
@@ -83,6 +87,9 @@ function M.parse(argv)
   end
   if not ISOLATE_LEVELS[opts.isolate] then
     return "invalid --isolate level: " .. tostring(opts.isolate)
+  end
+  if opts.filter and not pcall(string.find, "", opts.filter) then
+    return "invalid --filter pattern: " .. opts.filter
   end
 
   return opts

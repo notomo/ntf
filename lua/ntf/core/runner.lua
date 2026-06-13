@@ -8,6 +8,17 @@ local M = {}
 local BEGIN = "<<<NTF_JSON>>>"
 local END = "<<<END_NTF_JSON>>>"
 
+-- Full display name of a leaf: the describe/it name chain joined with spaces,
+-- matching how the report renders it (so --filter matches what users see).
+local function full_name(names)
+  return table.concat(
+    vim.tbl_filter(function(s)
+      return s ~= nil and s ~= ""
+    end, names or {}),
+    " "
+  )
+end
+
 local function leaf_map(root)
   local map = {}
   local function walk(node, names)
@@ -27,8 +38,9 @@ end
 --- Build the flat list of work items across all files.
 --- @param files string[]
 --- @param granularity string
+--- @param filter string|nil Lua pattern; keep only leaves whose full name matches
 --- @return table[] items, table[] load_errors
-function M.plan(files, granularity)
+function M.plan(files, granularity, filter)
   local items = {}
   local load_errors = {}
 
@@ -39,7 +51,15 @@ function M.plan(files, granularity)
     else
       local map = leaf_map(root)
       for _, item in ipairs(schedule.split(root, granularity)) do
-        table.insert(items, { file = file, node_ids = item.node_ids, map = map })
+        local node_ids = item.node_ids
+        if filter then
+          node_ids = vim.tbl_filter(function(id)
+            return full_name(map[id] and map[id].names):find(filter) ~= nil
+          end, node_ids)
+        end
+        if #node_ids > 0 then
+          table.insert(items, { file = file, node_ids = node_ids, map = map })
+        end
       end
     end
   end

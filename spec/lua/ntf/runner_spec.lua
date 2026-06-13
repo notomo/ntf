@@ -1,0 +1,69 @@
+local ntf = require("ntf")
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local runner = require("ntf.core.runner")
+local helper = require("ntf.test.helper")
+
+local source = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("math", function()
+  it("adds", function() end)
+  it("subtracts", function() end)
+end)
+
+describe("string", function()
+  it("adds", function() end)
+end)
+]]
+
+-- Flatten every planned item back into the leaf ids it would run.
+local function planned_ids(items)
+  local ids = {}
+  for _, item in ipairs(items) do
+    vim.list_extend(ids, item.node_ids)
+  end
+  return ids
+end
+
+describe("ntf.core.runner.plan", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("keeps every leaf when no filter is given", function()
+    local file = helper.write_spec(source)
+    local items = runner.plan({ file }, "file")
+
+    assert.same({ "1.1", "1.2", "2.1" }, planned_ids(items))
+  end)
+
+  it("keeps only leaves whose full name matches the filter", function()
+    local file = helper.write_spec(source)
+    local items = runner.plan({ file }, "file", "adds")
+
+    -- "math adds" and "string adds" match; "math subtracts" is dropped
+    assert.same({ "1.1", "2.1" }, planned_ids(items))
+  end)
+
+  it("matches the filter as a Lua pattern against the full name", function()
+    local file = helper.write_spec(source)
+    local items = runner.plan({ file }, "it", "^math")
+
+    assert.same({ "1.1", "1.2" }, planned_ids(items))
+  end)
+
+  it("drops work items that have no matching leaf", function()
+    local file = helper.write_spec(source)
+    local items = runner.plan({ file }, "it", "subtracts")
+
+    assert.equal(1, #items)
+    assert.same({ "1.2" }, items[1].node_ids)
+  end)
+
+  it("yields no items when the filter matches nothing", function()
+    local file = helper.write_spec(source)
+    local items = runner.plan({ file }, "file", "nope")
+
+    assert.equal(0, #items)
+  end)
+end)

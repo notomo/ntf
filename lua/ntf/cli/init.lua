@@ -35,7 +35,7 @@ function M.run(root)
   opts.root = root
 
   local runner = require("ntf.core.runner")
-  local items, load_errors = runner.plan(files, opts.isolate)
+  local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
   local results = runner.run(items, opts)
 
   local text, code = require("ntf.core.report").build(results, load_errors, opts)

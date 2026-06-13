@@ -13,14 +13,15 @@ separate Neovim processes.
 Usage: ntf [options] <spec-file-or-dir>...
 
 Options:
-  --isolate=LEVEL  process split granularity: file|describe|it (default: file)
-  --jobs=N         max parallel nvim workers (default: cpu count)
-  --shuffle        randomize test order
-  --seed=N         seed used with --shuffle (default: time based)
-  --json           emit machine-readable JSON instead of the text report
-  --no-color       disable ANSI colors
-  --slow=MS        report tests slower than MS milliseconds
-  -h, --help       show this help
+  --isolate=LEVEL   process split granularity: file|describe|it (default: file)
+  --filter=PATTERN  run only tests whose full name matches the Lua pattern
+  --jobs=N          max parallel nvim workers (default: cpu count)
+  --shuffle         randomize test order
+  --seed=N          seed used with --shuffle (default: time based)
+  --json            emit machine-readable JSON instead of the text report
+  --no-color        disable ANSI colors
+  --slow=MS         report tests slower than MS milliseconds
+  -h, --help        show this help
 ```
 
 ## Writing specs
