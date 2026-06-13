@@ -114,18 +114,12 @@ end
 -- relying on injected globals.
 -- describe / it take an optional opts table: `describe(name, fn, { isolate = true })`
 M.describe = new_describe
-M.context = new_describe
 M.it = new_it
-M.specify = new_it
 M.pending = new_pending
 M.before_each = add_hook("before_each")
 M.after_each = add_hook("after_each")
 M.setup = add_hook("setups")
 M.teardown = add_hook("teardowns")
-M.lazy_setup = M.setup
-M.lazy_teardown = M.teardown
-M.strict_setup = M.setup
-M.strict_teardown = M.teardown
 M.finally = function(fn)
   if finally_collector then
     table.insert(finally_collector, fn)
