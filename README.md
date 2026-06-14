@@ -20,6 +20,7 @@ Options:
   --seed=N          seed used with --shuffle (default: time based)
   --json            emit machine-readable JSON instead of the text report
   --no-color        disable ANSI colors
+  --no-progress     disable the streaming progress dots on stderr
   --slow=MS         report tests slower than MS milliseconds
   -h, --help        show this help
 ```

@@ -14,6 +14,7 @@ M.flags = {
   { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
   { name = "--json", description = "emit machine-readable JSON instead of the text report" },
   { name = "--no-color", description = "disable ANSI colors" },
+  { name = "--no-progress", description = "disable the streaming progress dots on stderr" },
   { name = "--slow=MS", description = "report tests slower than MS milliseconds" },
   { name = "-h, --help", description = "show this help" },
 }
@@ -44,6 +45,7 @@ function M.parse(argv)
     seed = nil,
     json = false,
     color = nil,
+    no_progress = false,
     slow = nil,
     help = false,
   }
@@ -62,6 +64,8 @@ function M.parse(argv)
       opts.json = true
     elseif arg == "--no-color" then
       opts.color = false
+    elseif arg == "--no-progress" then
+      opts.no_progress = true
     elseif value(arg, "%-%-isolate") then
       opts.isolate = value(arg, "%-%-isolate")
     elseif value(arg, "%-%-filter") then

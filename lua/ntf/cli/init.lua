@@ -36,7 +36,29 @@ function M.run(root)
 
   local runner = require("ntf.core.runner")
   local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
+
+  local prog
+  if not opts.json and not opts.no_progress then
+    local total = 0
+    for _, item in ipairs(items) do
+      total = total + #item.node_ids
+    end
+    local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR and opts.color ~= false
+    prog = require("ntf.cli.progress").new({
+      write = function(s)
+        io.stderr:write(s)
+        io.stderr:flush()
+      end,
+      color = color,
+      total = total,
+    })
+    opts.on_item = prog.on_item
+  end
+
   local results = runner.run(items, opts)
+  if prog then
+    prog.finish()
+  end
 
   local text, code = require("ntf.core.report").build(results, load_errors, opts)
   io.stdout:write(text)
