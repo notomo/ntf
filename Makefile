@@ -7,6 +7,3 @@ spec/.shared/neovim-plugin.mk:
 REQUIREALL_IGNORE_MODULES=ntf.cli.worker
 test: requireall FORCE
 	./bin/ntf --shuffle ${SPEC_DIR}
-
-test_isolate: FORCE
-	./bin/ntf --isolate=it ${SPEC_DIR}
