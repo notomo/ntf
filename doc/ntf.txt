@@ -70,6 +70,64 @@ Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) ar
 not captured.
 
 ==============================================================================
+Lua module: ntf                                                      *ntf-ntf*
+
+describe({name}, {fn}, {opts})                                *ntf.describe()*
+  Define a test group. Its body runs at build time to discover nested
+  `describe`/`it`; the body itself is never reported as a test.
+
+  Parameters: ~
+    {name} (string) group name
+    {fn} (fun()) body that declares nested `describe`/`it`
+    {opts} (table?) { isolate = boolean } run this block in its own process
+
+it({name}, {fn}, {opts})                                            *ntf.it()*
+  Define a test case. The body runs at execution time.
+
+  Parameters: ~
+    {name} (string) test name
+    {fn} (fun()) test body
+    {opts} (table?) { isolate = boolean, output = "always"|"never" }
+
+pending({name}, {fn})                                          *ntf.pending()*
+  Mark a test as pending. As a declaration it records a skipped node; called
+  inside a running test body it aborts the test as pending.
+
+  Parameters: ~
+    {name} (string) pending reason
+    {fn} (fun()?) optional body (ignored; pending is never executed)
+
+before_each({fn})                                          *ntf.before_each()*
+  Register a hook run before each test in the current group.
+
+  Parameters: ~
+    {fn} (fun()) hook body
+
+after_each({fn})                                            *ntf.after_each()*
+  Register a hook run after each test in the current group.
+
+  Parameters: ~
+    {fn} (fun()) hook body
+
+setup({fn})                                                      *ntf.setup()*
+  Register a hook run once before the current group's tests.
+
+  Parameters: ~
+    {fn} (fun()) hook body
+
+teardown({fn})                                                *ntf.teardown()*
+  Register a hook run once after the current group's tests.
+
+  Parameters: ~
+    {fn} (fun()) hook body
+
+finally({fn})                                                  *ntf.finally()*
+  Register a callback run when the current test finishes (pass or fail).
+
+  Parameters: ~
+    {fn} (fun()) callback body
+
+==============================================================================
 Lua module: ntf.helper                                        *ntf-ntf.helper*
 
 find_plugin_root({plugin_name})                *ntf.helper.find_plugin_root()*
