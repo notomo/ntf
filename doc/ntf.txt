@@ -128,6 +128,31 @@ finally({fn})                                                  *ntf.finally()*
     {fn} (fun()) callback body
 
 ==============================================================================
+Lua module: ntf.assert                                        *ntf-ntf.assert*
+
+register({name}, {fn})                                 *ntf.assert.register()*
+  Register a custom assertion onto ntf's assert object.
+  Available afterwards as `assert.{name}(...)` and `assert.is_not.{name}(...)`.
+
+  Parameters: ~
+    {name} (string) assertion name
+    {fn} (function) factory `function(self) return function(_, args) ... end end` returning the predicate
+
+register_eq({name}, {get_actual})                   *ntf.assert.register_eq()*
+  Register an assertion that compares the actual value with `==`.
+
+  Parameters: ~
+    {name} (string) assertion name
+    {get_actual} (function) maps the leading args to the actual value (last arg is the expected)
+
+register_same({name}, {get_actual})               *ntf.assert.register_same()*
+  Register an assertion that compares the actual value with deep equality.
+
+  Parameters: ~
+    {name} (string) assertion name
+    {get_actual} (function) maps the leading args to the actual value (last arg is the expected)
+
+==============================================================================
 Lua module: ntf.helper                                        *ntf-ntf.helper*
 
 find_plugin_root({plugin_name})                *ntf.helper.find_plugin_root()*

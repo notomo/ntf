@@ -31,10 +31,17 @@ function Assert.register(self, fn)
   assert:register("assertion", self.name, fn(self), self.positive, self.negative)
 end
 
+--- Register a custom assertion onto ntf's assert object.
+--- Available afterwards as `assert.{name}(...)` and `assert.is_not.{name}(...)`.
+--- @param name string: assertion name
+--- @param fn function: factory `function(self) return function(_, args) ... end end` returning the predicate
 function M.register(name, fn)
   Assert.create(name):register(fn)
 end
 
+--- Register an assertion that compares the actual value with `==`.
+--- @param name string: assertion name
+--- @param get_actual function: maps the leading args to the actual value (last arg is the expected)
 function M.register_eq(name, get_actual)
   local self = Assert.create(name)
   self:register(function(_)
@@ -52,6 +59,9 @@ function M.register_eq(name, get_actual)
   end)
 end
 
+--- Register an assertion that compares the actual value with deep equality.
+--- @param name string: assertion name
+--- @param get_actual function: maps the leading args to the actual value (last arg is the expected)
 function M.register_same(name, get_actual)
   local self = Assert.create(name)
   self:register(function(_)

@@ -12,6 +12,7 @@ require("genvdoc").generate(plugin_name, {
     patterns = {
       ("lua/%s/init.lua"):format(plugin_name),
       ("lua/%s/helper.lua"):format(plugin_name),
+      ("lua/%s/assert/init.lua"):format(plugin_name),
     },
   },
   chapters = {
