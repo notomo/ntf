@@ -1,6 +1,3 @@
--- Public test API. Specs pull what they need explicitly:
---   local ntf = require("ntf")
---   local describe, it = ntf.describe, ntf.it
 local tree = require("ntf.core.tree")
 
 local M = {}

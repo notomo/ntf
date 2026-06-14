@@ -1,5 +1,3 @@
--- `ntf.helper` is the replacement for `vusted.helper` (pure vim, no luarocks):
--- small utilities used by per-plugin test helpers.
 local M = {}
 
 local _adjust_sep

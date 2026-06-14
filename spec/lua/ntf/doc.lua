@@ -8,7 +8,12 @@ local plugin_name = vim.env.PLUGIN_NAME
 local usage = args.usage()
 
 require("genvdoc").generate(plugin_name, {
-  source = { patterns = { ("lua/%s/init.lua"):format(plugin_name) } },
+  source = {
+    patterns = {
+      ("lua/%s/init.lua"):format(plugin_name),
+      ("lua/%s/helper.lua"):format(plugin_name),
+    },
+  },
   chapters = {
     {
       name = "USAGE",
@@ -70,6 +75,17 @@ Opt a single test out of having its output shown with `opts.output = "never"`:
 <
 Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) are
 not captured.]]
+      end,
+    },
+    {
+      name = function(group)
+        return "Lua module: " .. group
+      end,
+      group = function(node)
+        if node.declaration == nil or node.declaration.type ~= "function" then
+          return nil
+        end
+        return node.declaration.module
       end,
     },
   },

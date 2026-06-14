@@ -70,4 +70,26 @@ Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) ar
 not captured.
 
 ==============================================================================
+Lua module: ntf.helper                                        *ntf-ntf.helper*
+
+find_plugin_root({plugin_name})                *ntf.helper.find_plugin_root()*
+  Returns plugin root directory full path.
+
+  Parameters: ~
+    {plugin_name} (string) lua module name (`lua/{plugin_name}/*.lua`)
+
+  Return: ~
+    (string) plugin root directory full path
+
+get_module_root({module_name})                  *ntf.helper.get_module_root()*
+  Returns root module name.
+  For example, `get_module_root("plugin_name.module1")` returns `plugin_name`.
+
+  Parameters: ~
+    {module_name} (string) lua module name
+
+  Return: ~
+    (string) root module name
+
+==============================================================================
 vim:tw=78:ts=8:ft=help
