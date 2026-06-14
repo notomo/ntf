@@ -41,9 +41,9 @@ The test API is pulled from `require("ntf")` explicitly (no global injection):
         return [[
 ntf can run describe/it units in separate Neovim processes.
 
-- `--isolate=file` (default): one process per spec file
+- `--isolate=file`: one process per spec file
 - `--isolate=describe`: one process per top-level describe
-- `--isolate=it`: one process per it
+- `--isolate=it` (default): one process per it
 
 describe/it take an optional opts table; opt a single block into its own process
 with `opts.isolate`:

@@ -7,7 +7,7 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] <spec-file-or-dir>...
 
   Options:
-    --isolate=LEVEL   process split granularity: file|describe|it (default: file)
+    --isolate=LEVEL   process split granularity: file|describe|it (default: it)
     --filter=PATTERN  run only tests whose full name matches the Lua pattern
     --jobs=N          max parallel nvim workers (default: cpu count)
     --shuffle         randomize test order
@@ -40,9 +40,9 @@ ISOLATION                                                      *ntf-ISOLATION*
 
 ntf can run describe/it units in separate Neovim processes.
 
-- `--isolate=file` (default): one process per spec file
+- `--isolate=file`: one process per spec file
 - `--isolate=describe`: one process per top-level describe
-- `--isolate=it`: one process per it
+- `--isolate=it` (default): one process per it
 
 describe/it take an optional opts table; opt a single block into its own process
 with `opts.isolate`:

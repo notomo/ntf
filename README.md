@@ -13,7 +13,7 @@ separate Neovim processes.
 Usage: ntf [options] <spec-file-or-dir>...
 
 Options:
-  --isolate=LEVEL   process split granularity: file|describe|it (default: file)
+  --isolate=LEVEL   process split granularity: file|describe|it (default: it)
   --filter=PATTERN  run only tests whose full name matches the Lua pattern
   --jobs=N          max parallel nvim workers (default: cpu count)
   --shuffle         randomize test order

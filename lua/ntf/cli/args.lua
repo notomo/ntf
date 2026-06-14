@@ -7,7 +7,7 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- and the doc generation, so the flag list is never duplicated.
 --- @type { name: string, description: string }[]
 M.flags = {
-  { name = "--isolate=LEVEL", description = "process split granularity: file|describe|it (default: file)" },
+  { name = "--isolate=LEVEL", description = "process split granularity: file|describe|it (default: it)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
@@ -37,7 +37,7 @@ end
 function M.parse(argv)
   local opts = {
     paths = {},
-    isolate = vim.env.NTF_ISOLATE or "file",
+    isolate = vim.env.NTF_ISOLATE or "it",
     filter = nil,
     jobs = nil,
     shuffle = false,
