@@ -66,8 +66,8 @@ describe("ntf.assert.builder", function()
   end)
 
   it("registers custom asserts through ntf.assert (assertlib path)", function()
-    -- the surface per-plugin helpers use: asserts.create(name):register_eq(fn)
-    require("ntf.assert").asserts.create("spec_double"):register_eq(function(n)
+    -- the surface per-plugin helpers use: register_eq(name, fn)
+    require("ntf.assert").register_eq("spec_double", function(n)
       return n * 2
     end)
     assert.spec_double(3, 6)
