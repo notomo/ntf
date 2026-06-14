@@ -142,6 +142,11 @@ function M.run(items, opts)
       vim.v.progpath,
       "--clean",
       "--headless",
+      -- Workers run in parallel in the same cwd, where the swap file name for an
+      -- unnamed buffer is shared, so concurrent workers collide on it (E303).
+      -- Tests do not need swap files; disable before the first buffer is created.
+      "--cmd",
+      "set noswapfile",
       "-c",
       "luafile " .. worker,
     }
