@@ -15,6 +15,26 @@ describe("ntf.cli.args.parse", function()
     assert.equal(nil, opts.filter)
   end)
 
+  it("accepts the space-separated --filter VALUE form", function()
+    local opts = args.parse({ "--filter", "adds", "spec" })
+
+    assert.equal("adds", opts.filter)
+    assert.equal("spec", opts.paths[1])
+  end)
+
+  it("does not swallow a path that looks like a value-flag name", function()
+    local opts = args.parse({ "--jobs", "2", "spec" })
+
+    assert.equal(2, opts.jobs)
+    assert.equal("spec", opts.paths[1])
+  end)
+
+  it("errors when a value-taking flag has no value", function()
+    local err = args.parse({ "spec", "--filter" })
+
+    assert.match("missing value for %-%-filter", err)
+  end)
+
   it("rejects a malformed --filter Lua pattern", function()
     local err = args.parse({ "--filter=%", "spec" })
 

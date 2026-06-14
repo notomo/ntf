@@ -50,12 +50,31 @@ function M.parse(argv)
     help = false,
   }
 
-  local function value(arg, prefix)
-    local eq = arg:match("^" .. prefix .. "=(.*)$")
-    return eq
-  end
+  -- Value-taking flags, each storing its value into `opts`. Both the
+  -- `--name=VALUE` and the `--name VALUE` (space-separated) forms are accepted.
+  local value_flags = {
+    ["--isolate"] = function(v)
+      opts.isolate = v
+    end,
+    ["--filter"] = function(v)
+      opts.filter = v
+    end,
+    ["--jobs"] = function(v)
+      opts.jobs = tonumber(v)
+    end,
+    ["--seed"] = function(v)
+      opts.seed = tonumber(v)
+    end,
+    ["--slow"] = function(v)
+      opts.slow = tonumber(v)
+    end,
+  }
 
-  for _, arg in ipairs(argv) do
+  local i = 1
+  while i <= #argv do
+    local arg = argv[i]
+    local name, inline = arg:match("^(%-%-[%w-]+)=(.*)$")
+    name = name or arg
     if arg == "-h" or arg == "--help" then
       opts.help = true
     elseif arg == "--shuffle" then
@@ -66,21 +85,22 @@ function M.parse(argv)
       opts.color = false
     elseif arg == "--no-progress" then
       opts.no_progress = true
-    elseif value(arg, "%-%-isolate") then
-      opts.isolate = value(arg, "%-%-isolate")
-    elseif value(arg, "%-%-filter") then
-      opts.filter = value(arg, "%-%-filter")
-    elseif value(arg, "%-%-jobs") then
-      opts.jobs = tonumber(value(arg, "%-%-jobs"))
-    elseif value(arg, "%-%-seed") then
-      opts.seed = tonumber(value(arg, "%-%-seed"))
-    elseif value(arg, "%-%-slow") then
-      opts.slow = tonumber(value(arg, "%-%-slow"))
+    elseif value_flags[name] then
+      local v = inline
+      if v == nil then
+        i = i + 1
+        v = argv[i]
+      end
+      if v == nil then
+        return "missing value for " .. name .. "\n\n" .. usage()
+      end
+      value_flags[name](v)
     elseif arg:sub(1, 1) == "-" then
       return "unknown option: " .. arg .. "\n\n" .. usage()
     else
       table.insert(opts.paths, arg)
     end
+    i = i + 1
   end
 
   if opts.help then
