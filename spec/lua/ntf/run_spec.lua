@@ -68,6 +68,7 @@ describe("ntf.core.run.execute", function()
 
     -- the third test calls pending() inside its body, so its before/after_each
     -- hooks still run (runtime pending != declaration pending)
+    local log = rawget(_G, "__NTF_LOG")
     assert.same({
       "setup",
       "before",
@@ -80,7 +81,7 @@ describe("ntf.core.run.execute", function()
       "before",
       "after",
       "teardown",
-    }, _G.__NTF_LOG)
+    }, log)
   end)
 
   it("runs only the selected leaf ids", function()
