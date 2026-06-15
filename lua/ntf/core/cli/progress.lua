@@ -19,8 +19,8 @@ local MARKS = {
   pending = { "*", "yellow" },
 }
 
---- @param opts table { write: fun(string), color: boolean, total: integer, width: integer|nil }
---- @return table { on_item: fun(item, results), finish: fun() }
+--- @param opts { write: fun(text: string), color: boolean, total: integer, width?: integer }
+--- @return { on_item: fun(item: NtfWorkItem, results: NtfResult[]), finish: fun() }
 function M.new(opts)
   local write = opts.write
   local color = opts.color

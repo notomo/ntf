@@ -71,9 +71,9 @@ local function indent(text, prefix)
   )
 end
 
---- @param results table[]
---- @param load_errors table[]
---- @param opts table { color, json, slow, shuffle, seed }
+--- @param results NtfResult[]
+--- @param load_errors NtfLoadError[]
+--- @param opts { color?: boolean, json?: boolean, slow?: integer, shuffle?: boolean, seed?: integer }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)
   load_errors = load_errors or {}

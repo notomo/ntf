@@ -3,6 +3,19 @@ local M = {}
 
 local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 
+--- @class NtfOptions
+--- @field paths string[] spec files or directories
+--- @field isolate string process split granularity: "file"|"describe"|"it"
+--- @field filter string? Lua pattern; keep only matching leaves
+--- @field jobs integer? max parallel workers
+--- @field shuffle boolean randomize test order
+--- @field seed integer? seed used with shuffle
+--- @field json boolean emit JSON instead of the text report
+--- @field color boolean? force colors on/off (nil = auto)
+--- @field no_progress boolean disable streaming progress dots
+--- @field slow integer? report tests slower than N ms
+--- @field help boolean show usage and exit
+
 --- Supported flags in display order. Single source of truth shared by `usage()`
 --- and the doc generation, so the flag list is never duplicated.
 --- @type { name: string, description: string }[]
@@ -34,7 +47,7 @@ local function usage()
 end
 
 --- @param argv string[]
---- @return table|string # parsed options table, or an error message string
+--- @return NtfOptions|string # parsed options table, or an error message string
 function M.parse(argv)
   local opts = {
     paths = {},

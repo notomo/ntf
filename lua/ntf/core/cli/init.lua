@@ -32,7 +32,6 @@ function M.run(root)
   if opts.shuffle and not opts.seed then
     opts.seed = os.time()
   end
-  opts.root = root
 
   local runner = require("ntf.core.runner")
   local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
@@ -52,10 +51,15 @@ function M.run(root)
       color = color,
       total = total,
     })
-    opts.on_item = prog.on_item
   end
 
-  local results = runner.run(items, opts)
+  local results = runner.run(items, {
+    root = root,
+    jobs = opts.jobs,
+    shuffle = opts.shuffle,
+    seed = opts.seed,
+    on_item = prog and prog.on_item or nil,
+  })
   if prog then
     prog.finish()
   end

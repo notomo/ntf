@@ -19,9 +19,9 @@ local function each_leaf(root, visit)
   walk(root, {})
 end
 
---- @param root table tree root
+--- @param root NtfNode tree root
 --- @param granularity string "file" | "describe" | "it"
---- @return table[] items # each item is `{ node_ids = string[] }`
+--- @return { node_ids: string[] }[] items
 function M.split(root, granularity)
   local order = {}
   local groups = {}

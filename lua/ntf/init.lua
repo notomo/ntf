@@ -2,11 +2,18 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
+--- @class NtfDescribeOption
+--- @field isolate boolean? run this block in its own process
+
+--- @class NtfItOption
+--- @field isolate boolean? run this test in its own process
+--- @field output ("always"|"never")? "never" drops captured output from the report (default: "always")
+
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
 --- @param name string: group name
 --- @param fn fun() body that declares nested `describe`/`it`
---- @param opts table?: { isolate = boolean } run this block in its own process
+--- @param opts NtfDescribeOption?: |NtfDescribeOption|
 function M.describe(name, fn, opts)
   return tree.describe(name, fn, opts)
 end
@@ -14,7 +21,7 @@ end
 --- Define a test case. The body runs at execution time.
 --- @param name string: test name
 --- @param fn fun() test body
---- @param opts table?: { isolate = boolean, output = "always"|"never" }
+--- @param opts NtfItOption?: |NtfItOption|
 function M.it(name, fn, opts)
   return tree.it(name, fn, opts)
 end

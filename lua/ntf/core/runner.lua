@@ -5,6 +5,20 @@ local schedule = require("ntf.core.schedule")
 
 local M = {}
 
+--- @class NtfLoadError
+--- @field file string spec file path
+--- @field message string error message
+
+--- @class NtfLeafInfo
+--- @field names string[] describe/it name chain
+--- @field trace NtfTrace? declaration site
+--- @field type "it"|"pending"
+
+--- @class NtfWorkItem
+--- @field file string spec file path
+--- @field node_ids string[] leaf ids to run in one worker
+--- @field map table<string, NtfLeafInfo> leaf id -> leaf info (whole file)
+
 local BEGIN = "<<<NTF_JSON>>>"
 local END = "<<<END_NTF_JSON>>>"
 
@@ -19,6 +33,7 @@ local function full_name(names)
   )
 end
 
+--- @return table<string, NtfLeafInfo>
 local function leaf_map(root)
   local map = {}
   local function walk(node, names)
@@ -39,7 +54,7 @@ end
 --- @param files string[]
 --- @param granularity string
 --- @param filter string|nil Lua pattern; keep only leaves whose full name matches
---- @return table[] items, table[] load_errors
+--- @return NtfWorkItem[] items, NtfLoadError[] load_errors
 function M.plan(files, granularity, filter)
   local items = {}
   local load_errors = {}
@@ -116,9 +131,9 @@ local function results_of(item, obj)
 end
 
 --- Run all work items in parallel worker processes and aggregate results.
---- @param items table[]
---- @param opts table { root, jobs, shuffle, seed, on_item }
---- @return table[] results
+--- @param items NtfWorkItem[]
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
+--- @return NtfResult[] results
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/cli/worker.lua")
   local cwd = vim.fn.getcwd()

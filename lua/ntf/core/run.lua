@@ -8,6 +8,18 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
+--- @class NtfResult
+--- @field id string leaf node id
+--- @field name string? leaf node name
+--- @field names string[] describe/it name chain
+--- @field trace NtfTrace? declaration site
+--- @field status "passed"|"failed"|"error"|"pending"
+--- @field message string? failure/error message
+--- @field traceback string? captured traceback (failed/error)
+--- @field duration number? wall time in seconds
+--- @field output string? captured print/io.write output
+--- @field file string? spec file path (set by the controller)
+
 local function extend(a, b)
   local out = {}
   vim.list_extend(out, a)
@@ -82,10 +94,10 @@ local function install_capture(buffer)
   end
 end
 
---- @param root table tree root from ntf.core.tree
+--- @param root NtfNode tree root from ntf.core.tree
 --- @param selected table<string,boolean>|nil set of leaf ids to run, nil = all
---- @param opts table|nil { shuffle = bool, seed = number }
---- @return table[] results
+--- @param opts { shuffle?: boolean, seed?: integer }?
+--- @return NtfResult[] results
 function M.execute(root, selected, opts)
   opts = opts or {}
   local results = {}

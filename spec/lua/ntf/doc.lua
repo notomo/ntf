@@ -89,6 +89,15 @@ not captured.]]
         return node.declaration.module
       end,
     },
+    {
+      name = "STRUCTURE",
+      group = function(node)
+        if node.declaration == nil or not vim.tbl_contains({ "class", "alias" }, node.declaration.type) then
+          return nil
+        end
+        return "STRUCTURE"
+      end,
+    },
   },
 })
 

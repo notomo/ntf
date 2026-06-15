@@ -8,11 +8,30 @@ local builder = require("ntf.assert.builder")
 
 local M = {}
 
+--- @class NtfTrace
+--- @field source string chunk source (e.g. "@/path/to/spec.lua")
+--- @field line integer? 1-based line the node was declared on
+
+--- @class NtfNode
+--- @field type "root"|"describe"|"it"|"pending"
+--- @field name string
+--- @field id string node id ("" for root; dotted path otherwise)
+--- @field children NtfNode[]? child nodes (root/describe only)
+--- @field before_each (fun())[]? before_each hooks (root/describe only)
+--- @field after_each (fun())[]? after_each hooks (root/describe only)
+--- @field setups (fun())[]? setup hooks (root/describe only)
+--- @field teardowns (fun())[]? teardown hooks (root/describe only)
+--- @field isolate boolean? run this subtree in its own process (describe/it)
+--- @field trace NtfTrace? declaration site
+--- @field fn fun()? test body (it only)
+--- @field output "always"|"never"? captured-output handling (it only)
+--- @field load_error any? load/build error captured on this node (root/describe)
+
 -- Sentinel carried by errors thrown to abort a running test as "pending".
 M.PENDING = "__ntf_pending__"
 
 -- build state: the stack of describe nodes, top = current (set during build)
-local stack = {} ---@type table[]
+local stack = {} ---@type NtfNode[]
 
 -- execution hooks (set by ntf.core.run while a test body is running)
 local finally_collector = nil
@@ -30,6 +49,7 @@ local function add_child(node)
   return node
 end
 
+--- @return NtfTrace?
 local function trace_of(fn, level)
   local info
   if type(fn) == "function" then
@@ -45,8 +65,8 @@ end
 
 --- @param name string
 --- @param fn fun()
---- @param opts table? { isolate = boolean }
---- @return table node
+--- @param opts NtfDescribeOption?
+--- @return NtfNode node
 local function new_describe(name, fn, opts)
   local node = {
     type = "describe",
@@ -72,8 +92,8 @@ end
 
 --- @param name string
 --- @param fn fun()
---- @param opts table? { isolate = boolean, output = "always"|"never" }
---- @return table node
+--- @param opts NtfItOption?
+--- @return NtfNode node
 local function new_it(name, fn, opts)
   -- `it` always requires a body; declaration-pending uses the explicit `pending`.
   local node = {
@@ -90,7 +110,7 @@ end
 
 --- @param name string
 --- @param fn fun()? optional body (ignored; pending is never executed)
---- @return table node
+--- @return NtfNode node
 local function new_pending(name, fn)
   -- declaration form when building; runtime-abort form while a test runs.
   if executing then
@@ -129,7 +149,7 @@ M.finally = function(fn)
 end
 M.assert = builder.assert
 
---- @param collector table[]|nil list to receive finally callbacks, or nil to disable
+--- @param collector (fun())[]|nil list to receive finally callbacks, or nil to disable
 function M.set_finally_collector(collector)
   finally_collector = collector
 end
@@ -141,7 +161,7 @@ end
 
 --- Build the test tree for a single spec file.
 --- @param file_path string
---- @return table root node (with .children, .load_error)
+--- @return NtfNode root node (with .children, .load_error)
 function M.build(file_path)
   local root = {
     type = "root",
@@ -178,8 +198,8 @@ function M.build(file_path)
 end
 
 --- Iterate the tree depth-first, yielding every `it`/`pending` leaf in order.
---- @param root table
---- @return fun():table|nil
+--- @param root NtfNode
+--- @return fun():NtfNode|nil
 function M.iter_leaves(root)
   local result = {}
   local function walk(node)

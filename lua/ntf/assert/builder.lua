@@ -8,12 +8,17 @@ local message = require("ntf.assert.message")
 
 local M = {}
 
+--- @class NtfAssertionEntry
+--- @field callback fun(state: table, args: any[]): any returns truthy when the assertion holds
+--- @field positive string? message key used when expected positive
+--- @field negative string? message key used when negated
+
 -- the single negation word: `assert.no.X(...)` flips the expectation
 local negations = {
   ["no"] = true,
 }
 
---- @param registry table<string,table> shared assertion registry
+--- @param registry table<string, NtfAssertionEntry> shared assertion registry
 --- @param positive boolean current expectation (false = negated)
 local function new_state(registry, positive)
   local state = { mod = positive }
@@ -153,6 +158,8 @@ local function register_builtins(registry)
 end
 
 --- Create a fresh assert object with its own registry.
+--- The returned object is a metatable-driven DSL (`assert.equal`, `assert.no.X`,
+--- `:register`), so it is intentionally typed as a plain `table`.
 --- @return table
 function M.new()
   local registry = {}

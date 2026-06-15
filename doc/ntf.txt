@@ -79,7 +79,7 @@ describe({name}, {fn}, {opts})                                *ntf.describe()*
   Parameters: ~
     {name} (string) group name
     {fn} (fun()) body that declares nested `describe`/`it`
-    {opts} (table?) { isolate = boolean } run this block in its own process
+    {opts} (NtfDescribeOption?) |NtfDescribeOption|
 
 it({name}, {fn}, {opts})                                            *ntf.it()*
   Define a test case. The body runs at execution time.
@@ -87,7 +87,7 @@ it({name}, {fn}, {opts})                                            *ntf.it()*
   Parameters: ~
     {name} (string) test name
     {fn} (fun()) test body
-    {opts} (table?) { isolate = boolean, output = "always"|"never" }
+    {opts} (NtfItOption?) |NtfItOption|
 
 pending({name}, {fn})                                          *ntf.pending()*
   Mark a test as pending. As a declaration it records a skipped node; called
@@ -173,6 +173,18 @@ get_module_root({module_name})                  *ntf.helper.get_module_root()*
 
   Return: ~
     (string) root module name
+
+==============================================================================
+STRUCTURE                                                      *ntf-STRUCTURE*
+
+NtfDescribeOption                                          *NtfDescribeOption*
+
+- {isolate} (boolean?) run this block in its own process
+
+NtfItOption                                                      *NtfItOption*
+
+- {isolate} (boolean?) run this test in its own process
+- {output} (("always"|"never")?) "never" drops captured output from the report (default: "always")
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help
