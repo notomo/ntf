@@ -1,8 +1,8 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
-local args = require("ntf.cli.args")
+local args = require("ntf.core.cli.args")
 
-describe("ntf.cli.args.parse", function()
+describe("ntf.core.cli.args.parse", function()
   it("parses --filter into opts.filter", function()
     local opts = args.parse({ "--filter=adds", "spec" })
 

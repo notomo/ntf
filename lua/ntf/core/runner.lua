@@ -120,7 +120,7 @@ end
 --- @param opts table { root, jobs, shuffle, seed, on_item }
 --- @return table[] results
 function M.run(items, opts)
-  local worker = vim.fs.joinpath(opts.root, "lua/ntf/cli/worker.lua")
+  local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/cli/worker.lua")
   local cwd = vim.fn.getcwd()
   local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4
   local total = #items

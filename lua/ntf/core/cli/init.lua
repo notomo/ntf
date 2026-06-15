@@ -5,7 +5,7 @@ local M = {}
 
 --- @param root string ntf repository root (used to locate the worker script)
 function M.run(root)
-  local args = require("ntf.cli.args")
+  local args = require("ntf.core.cli.args")
 
   local opts = args.parse(arg)
   if type(opts) == "string" then
@@ -44,7 +44,7 @@ function M.run(root)
       total = total + #item.node_ids
     end
     local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR and opts.color ~= false
-    prog = require("ntf.cli.progress").new({
+    prog = require("ntf.core.cli.progress").new({
       write = function(s)
         io.stderr:write(s)
         io.stderr:flush()

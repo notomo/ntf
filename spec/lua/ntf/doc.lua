@@ -1,10 +1,10 @@
 vim.opt.runtimepath:prepend(vim.fn.getcwd())
 
 local util = require("genvdoc.util")
-local args = require("ntf.cli.args")
+local args = require("ntf.core.cli.args")
 local plugin_name = vim.env.PLUGIN_NAME
 
--- flags / usage come from cli.args so they are never duplicated here
+-- flags / usage come from core.cli.args so they are never duplicated here
 local usage = args.usage()
 
 require("genvdoc").generate(plugin_name, {
