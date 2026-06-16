@@ -66,4 +66,20 @@ describe("ntf.core.runner.plan", function()
 
     assert.equal(0, #items)
   end)
+
+  it("reports an error thrown inside a describe body as a load error", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("broken", function()
+  error("describe body blew up")
+end)
+]])
+    local items, load_errors = runner.plan({ file }, "file")
+
+    assert.equal(0, #items)
+    assert.equal(1, #load_errors)
+    assert.match("describe body blew up", load_errors[1].message)
+  end)
 end)

@@ -60,4 +60,17 @@ describe("ntf.core.tree.build", function()
     local root = tree.build(helper.write_spec([[error("intentionally broken")]]))
     assert.truthy(root.load_error)
   end)
+
+  it("surfaces an error thrown inside a describe body as the load error", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("outer", function()
+  it("one", function() end)
+  error("broken describe body")
+end)
+]]))
+    assert.match("broken describe body", tostring(root.load_error))
+  end)
 end)

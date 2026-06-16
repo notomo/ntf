@@ -159,6 +159,22 @@ function M.set_executing(value)
   executing = value
 end
 
+--- Depth-first search for the first describe node carrying a load error.
+--- @param node NtfNode
+--- @return any? load_error
+local function first_describe_error(node)
+  for _, child in ipairs(node.children or {}) do
+    if child.load_error then
+      return child.load_error
+    end
+    local nested = first_describe_error(child)
+    if nested then
+      return nested
+    end
+  end
+  return nil
+end
+
 --- Build the test tree for a single spec file.
 --- @param file_path string
 --- @return NtfNode root node (with .children, .load_error)
@@ -194,6 +210,14 @@ function M.build(file_path)
   end
   stack = {}
   executing = was_executing
+
+  -- A describe body that errors is caught by `new_describe` and stashed on the
+  -- describe node, so the chunk-level pcall above sees no error. Surface the
+  -- first such error as the file's load error so it is reported instead of lost.
+  if not root.load_error then
+    root.load_error = first_describe_error(root)
+  end
+
   return root
 end
 
