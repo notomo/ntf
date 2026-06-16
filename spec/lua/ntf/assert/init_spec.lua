@@ -1,8 +1,7 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
-local builder = require("ntf.assert.builder")
 
-describe("ntf.assert.builder", function()
+describe("ntf.assert", function()
   local function fails(fn)
     local ok = pcall(fn)
     return not ok
@@ -52,16 +51,18 @@ describe("ntf.assert.builder", function()
     end))
   end)
 
-  it("can register a custom assertion via :register", function()
-    local a = builder.new()
-    require("ntf.assert.message"):set("custom.positive", "should be even")
-    require("ntf.assert.message"):set("custom.negative", "should not be even")
-    a:register("assertion", "even", function(_, args)
-      return args[1] % 2 == 0
-    end, "custom.positive", "custom.negative")
-    a.even(2)
-    assert.is_true(not pcall(function()
-      a.even(3)
+  it("can register a custom assertion via ntf.assert.register", function()
+    require("ntf.assert").register("even", function(self)
+      self:set_positive("should be even")
+      self:set_negative("should not be even")
+      return function(_, args)
+        return args[1] % 2 == 0
+      end
+    end)
+    assert.even(2)
+    assert.no.even(3)
+    assert.is_true(fails(function()
+      assert.even(3)
     end))
   end)
 
