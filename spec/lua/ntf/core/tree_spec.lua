@@ -61,7 +61,7 @@ describe("ntf.core.tree.build", function()
     assert.truthy(root.load_error)
   end)
 
-  it("surfaces an error thrown inside a describe body as the load error", function()
+  it("captures an error thrown inside a describe body on that describe node", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")
 local describe, it = ntf.describe, ntf.it
@@ -71,6 +71,25 @@ describe("outer", function()
   error("broken describe body")
 end)
 ]]))
-    assert.match("broken describe body", tostring(root.load_error))
+
+    -- The file itself loaded fine; only the describe body blew up.
+    assert.is_nil(root.load_error)
+    local outer = root.children[1]
+    assert.match("broken describe body", tostring(outer.load_error))
+  end)
+end)
+
+describe("ntf.core.tree.is_leaf", function()
+  it("treats it and pending as leaves", function()
+    assert.is_true(tree.is_leaf({ type = "it" }))
+    assert.is_true(tree.is_leaf({ type = "pending" }))
+  end)
+
+  it("treats a healthy describe as a non-leaf", function()
+    assert.is_false(tree.is_leaf({ type = "describe" }))
+  end)
+
+  it("treats a describe whose body errored as a leaf", function()
+    assert.is_true(tree.is_leaf({ type = "describe", load_error = "boom" }))
   end)
 end)

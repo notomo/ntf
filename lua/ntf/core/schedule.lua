@@ -3,12 +3,14 @@
 -- Granularity ("file" | "describe" | "it") sets the default split; any node
 -- marked via `describe.isolate` / `it.isolate` forces its subtree into its own
 -- item regardless of granularity (the outermost isolate ancestor wins).
+local tree = require("ntf.core.tree")
+
 local M = {}
 
 local function each_leaf(root, visit)
   local function walk(node, ancestors)
     for _, child in ipairs(node.children or {}) do
-      if child.type == "it" or child.type == "pending" then
+      if tree.is_leaf(child) then
         visit(child, ancestors)
       else
         local next_ancestors = vim.list_extend(vim.list_extend({}, ancestors), { child })

@@ -12,7 +12,7 @@ local M = {}
 --- @class NtfLeafInfo
 --- @field names string[] describe/it name chain
 --- @field trace NtfTrace? declaration site
---- @field type "it"|"pending"
+--- @field type "it"|"pending"|"describe"
 
 --- @class NtfWorkItem
 --- @field file string spec file path
@@ -39,7 +39,7 @@ local function leaf_map(root)
   local function walk(node, names)
     for _, child in ipairs(node.children or {}) do
       local child_names = vim.list_extend(vim.list_extend({}, names), { child.name })
-      if child.type == "it" or child.type == "pending" then
+      if tree.is_leaf(child) then
         map[child.id] = { names = child_names, trace = child.trace, type = child.type }
       else
         walk(child, child_names)

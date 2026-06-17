@@ -159,20 +159,13 @@ function M.set_executing(value)
   executing = value
 end
 
---- Depth-first search for the first describe node carrying a load error.
+--- A terminal unit of work: a test leaf (`it`/`pending`) or a `describe` whose
+--- body errored during build. Such a describe is reported as an error in its own
+--- right and is never descended into, since its children are unreliable.
 --- @param node NtfNode
---- @return any? load_error
-local function first_describe_error(node)
-  for _, child in ipairs(node.children or {}) do
-    if child.load_error then
-      return child.load_error
-    end
-    local nested = first_describe_error(child)
-    if nested then
-      return nested
-    end
-  end
-  return nil
+--- @return boolean
+function M.is_leaf(node)
+  return node.type == "it" or node.type == "pending" or node.load_error ~= nil
 end
 
 --- Build the test tree for a single spec file.
@@ -210,25 +203,17 @@ function M.build(file_path)
   end
   stack = {}
   executing = was_executing
-
-  -- A describe body that errors is caught by `new_describe` and stashed on the
-  -- describe node, so the chunk-level pcall above sees no error. Surface the
-  -- first such error as the file's load error so it is reported instead of lost.
-  if not root.load_error then
-    root.load_error = first_describe_error(root)
-  end
-
   return root
 end
 
---- Iterate the tree depth-first, yielding every `it`/`pending` leaf in order.
+--- Iterate the tree depth-first, yielding every terminal leaf in order.
 --- @param root NtfNode
 --- @return fun():NtfNode|nil
 function M.iter_leaves(root)
   local result = {}
   local function walk(node)
     for _, child in ipairs(node.children or {}) do
-      if child.type == "it" or child.type == "pending" then
+      if M.is_leaf(child) then
         table.insert(result, child)
       else
         walk(child)

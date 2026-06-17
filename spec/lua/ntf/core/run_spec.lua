@@ -93,6 +93,41 @@ describe("ntf.core.run.execute", function()
   end)
 end)
 
+local broken_describe_source = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("outer", function()
+  describe("broken", function()
+    it("never reached", function() end)
+    error("describe body blew up")
+  end)
+
+  it("sibling still runs", function() end)
+end)
+]]
+
+describe("ntf.core.run.execute describe-body errors", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("reports the errored describe and skips its children, but runs siblings", function()
+    local root = tree.build(helper.write_spec(broken_describe_source))
+    local results = run.execute(root, nil, {})
+
+    assert.equal(2, #results)
+
+    local broken = results[1]
+    assert.equal("error", broken.status)
+    assert.same({ "outer", "broken" }, broken.names)
+    assert.match("describe body blew up", broken.message)
+    assert.truthy(broken.trace)
+
+    assert.equal("sibling still runs", results[2].name)
+    assert.equal("passed", results[2].status)
+  end)
+end)
+
 local output_source = [[
 local ntf = require("ntf")
 local describe, it = ntf.describe, ntf.it

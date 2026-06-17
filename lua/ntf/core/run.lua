@@ -107,7 +107,7 @@ function M.execute(root, selected, opts)
   end
 
   local function has_selected(node)
-    if node.type == "it" or node.type == "pending" then
+    if tree.is_leaf(node) then
       return selected == nil or selected[node.id] == true
     end
     for _, child in ipairs(node.children or {}) do
@@ -125,6 +125,16 @@ function M.execute(root, selected, opts)
       names = names,
       trace = node.trace,
     }
+
+    -- A describe whose body errored during build: report the error in place of
+    -- running anything underneath it. The message string carries its own
+    -- location, so no traceback is captured.
+    if node.load_error then
+      result.status = "error"
+      result.message = to_text(node.load_error)
+      table.insert(results, result)
+      return
+    end
 
     if node.type == "pending" then
       result.status = "pending"
@@ -211,7 +221,7 @@ function M.execute(root, selected, opts)
 
     for _, child in ipairs(children) do
       local child_names = append(names, child.name)
-      if child.type == "describe" then
+      if child.type == "describe" and not child.load_error then
         descend(child, child_names, child_before, child_after)
       elseif selected == nil or selected[child.id] == true then
         run_leaf(child, child_names, child_before, child_after)
