@@ -9,10 +9,14 @@ local data_dir = require("ntf.vendor.misclib.test.data_dir")
 local data_root = vim.fs.joinpath(root, "spec")
 
 function helper.before_each()
+  helper._cwd = vim.fn.getcwd()
   helper.test_data = data_dir.setup(data_root, { base_dir = ("test_data_%d/"):format(vim.fn.getpid()) })
 end
 
 function helper.after_each()
+  -- A spec may `cd` into the data dir; on Windows a directory cannot be deleted
+  -- while it is the cwd, so restore the original cwd before teardown.
+  vim.api.nvim_set_current_dir(helper._cwd)
   helper.test_data:teardown()
 end
 
