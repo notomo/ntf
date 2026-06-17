@@ -39,10 +39,12 @@ local function usage()
     width = math.max(width, #flag.name)
   end
 
-  local lines = { "Usage: ntf [options] <spec-file-or-dir>...", "", "Options:" }
+  local lines = { "Usage: ntf [options] [spec-file-or-dir...]", "", "Options:" }
   for _, flag in ipairs(M.flags) do
     table.insert(lines, ("  %-" .. (width + 2) .. "s%s"):format(flag.name, flag.description))
   end
+  table.insert(lines, "")
+  table.insert(lines, "With no paths, runs the *_spec.lua files under ./spec.")
   return table.concat(lines, "\n")
 end
 
@@ -120,7 +122,11 @@ function M.parse(argv)
     return opts
   end
   if #opts.paths == 0 then
-    return "no spec paths given\n\n" .. usage()
+    if vim.fn.isdirectory("spec") == 1 then
+      opts.paths = { "spec" }
+    else
+      return "no spec paths given\n\n" .. usage()
+    end
   end
   if not ISOLATE_LEVELS[opts.isolate] then
     return "invalid --isolate level: " .. tostring(opts.isolate)

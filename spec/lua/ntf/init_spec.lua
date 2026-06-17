@@ -124,8 +124,16 @@ describe("bin/ntf end-to-end", function()
     assert.match("Usage: ntf", obj.stdout)
   end)
 
-  it("exits 2 when no spec path is given", function()
-    local obj = helper.run_cli(BASE_FLAGS)
+  it("defaults to ./spec when no path is given", function()
+    helper.test_data:create_file("spec/pass_spec.lua", PASSING)
+    local obj = helper.run_cli(BASE_FLAGS, helper.test_data.full_path)
+
+    assert.equal(0, obj.code)
+    assert.match("2 passed", obj.stdout)
+  end)
+
+  it("exits 2 when no spec path is given and there is no ./spec", function()
+    local obj = helper.run_cli(BASE_FLAGS, helper.test_data.full_path)
 
     assert.equal(2, obj.code)
     assert.match("no spec paths given", obj.stderr)

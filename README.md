@@ -10,7 +10,7 @@ separate Neovim processes.
 ## Usage
 
 ```
-Usage: ntf [options] <spec-file-or-dir>...
+Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
   --isolate=LEVEL   process split granularity: file|describe|it (default: it)
@@ -23,6 +23,8 @@ Options:
   --no-progress     disable the streaming progress dots on stderr
   --slow=MS         report tests slower than MS milliseconds
   -h, --help        show this help
+
+With no paths, runs the *_spec.lua files under ./spec.
 ```
 
 ## Writing specs

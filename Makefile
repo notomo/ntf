@@ -7,8 +7,8 @@ spec/.shared/neovim-plugin.mk:
 REQUIREALL_IGNORE_MODULES=ntf.core.cli.worker
 ifeq ($(OS),Windows_NT)
 test: requireall FORCE
-	bin\ntf.bat --shuffle ${SPEC_DIR}
+	bin\ntf.bat --shuffle
 else
 test: requireall FORCE
-	./bin/ntf --shuffle ${SPEC_DIR}
+	./bin/ntf --shuffle
 endif

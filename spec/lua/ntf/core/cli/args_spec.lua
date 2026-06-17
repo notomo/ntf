@@ -1,6 +1,7 @@
 local ntf = require("ntf")
-local describe, it, assert = ntf.describe, ntf.it, ntf.assert
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local args = require("ntf.core.cli.args")
+local helper = require("ntf.test.helper")
 
 describe("ntf.core.cli.args.parse", function()
   it("parses --filter into opts.filter", function()
@@ -39,5 +40,27 @@ describe("ntf.core.cli.args.parse", function()
     local err = args.parse({ "--filter=%", "spec" })
 
     assert.match("invalid %-%-filter pattern", err)
+  end)
+
+  describe("with no paths", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("defaults to spec when a ./spec directory exists", function()
+      helper.test_data:create_dir("spec")
+      helper.test_data:cd("")
+
+      local opts = args.parse({})
+
+      assert.equal("spec", opts.paths[1])
+    end)
+
+    it("errors when there is no ./spec directory", function()
+      helper.test_data:cd("")
+
+      local err = args.parse({})
+
+      assert.match("no spec paths given", err)
+    end)
   end)
 end)

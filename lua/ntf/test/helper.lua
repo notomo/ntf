@@ -30,12 +30,13 @@ local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 --- for it. This is the end-to-end entry point: it spawns a controller nvim which
 --- in turn spawns worker nvims, just like a user running the CLI.
 --- @param args string[] CLI arguments (paths and flags)
+--- @param cwd string? working directory for the subprocess (default: plugin root)
 --- @return { code: integer, stdout: string, stderr: string }
-function helper.run_cli(args)
+function helper.run_cli(args, cwd)
   -- A .bat cannot be spawned directly by libuv; route it through cmd.exe.
   local cmd = is_win and { "cmd.exe", "/c", script } or { script }
   cmd = vim.list_extend(cmd, args)
-  return vim.system(cmd, { text = true, cwd = root }):wait(60000)
+  return vim.system(cmd, { text = true, cwd = cwd or root }):wait(60000)
 end
 
 return helper
