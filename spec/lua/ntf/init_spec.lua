@@ -1,0 +1,174 @@
+-- End-to-end tests that launch the real `bin/ntf` (`bin/ntf.bat` on Windows) as
+-- a subprocess, exercising the whole CLI path: arg parsing, discovery, planning,
+-- parallel worker execution, the rendered report, and the process exit code.
+local ntf = require("ntf")
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local helper = require("ntf.test.helper")
+
+-- Keep output deterministic (no ANSI, no progress dots) and run the whole file in
+-- a single worker so each case spawns the fewest nested nvim processes.
+local BASE_FLAGS = { "--no-color", "--no-progress", "--isolate=file" }
+
+--- Write a spec file under the temp data dir and return its absolute path.
+local function spec(name, source)
+  return helper.test_data:create_file(name, source)
+end
+
+--- Run `bin/ntf` against the given paths plus the shared base flags.
+local function run(paths, extra_flags)
+  local args = vim.list_extend(vim.list_extend({}, BASE_FLAGS), extra_flags or {})
+  args = vim.list_extend(args, paths)
+  return helper.run_cli(args)
+end
+
+local PASSING = [[
+local ntf = require("ntf")
+local describe, it, assert = ntf.describe, ntf.it, ntf.assert
+
+describe("group", function()
+  it("adds", function()
+    assert.equal(2, 1 + 1)
+  end)
+  it("also passes", function()
+    assert.is_true(true)
+  end)
+end)
+]]
+
+local FAILING = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("explodes", function()
+    error("boom")
+  end)
+end)
+]]
+
+local PENDING = [[
+local ntf = require("ntf")
+local describe, it, pending = ntf.describe, ntf.it, ntf.pending
+
+describe("group", function()
+  it("passes", function() end)
+  pending("not yet")
+end)
+]]
+
+local FILTERABLE = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("keep me", function() end)
+  it("drop me", function() end)
+end)
+]]
+
+local LOAD_ERROR = [[
+local ntf = require("ntf")
+error("top-level boom")
+]]
+
+describe("bin/ntf end-to-end", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("exits 0 and reports the pass count when every test passes", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path })
+
+    assert.equal(0, obj.code)
+    assert.match("2 passed", obj.stdout)
+  end)
+
+  it("exits 1 and reports the failure with its message", function()
+    local path = spec("fail_spec.lua", FAILING)
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("FAIL", obj.stdout)
+    assert.match("boom", obj.stdout)
+  end)
+
+  it("exits 0 and counts pending declarations", function()
+    local path = spec("pending_spec.lua", PENDING)
+    local obj = run({ path })
+
+    assert.equal(0, obj.code)
+    assert.match("1 pending", obj.stdout)
+  end)
+
+  it("emits decodable JSON with --json", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "--json" })
+
+    assert.equal(0, obj.code)
+    local decoded = vim.json.decode(obj.stdout)
+    assert.equal(2, #decoded.results)
+  end)
+
+  it("runs only leaves matching --filter", function()
+    local path = spec("filter_spec.lua", FILTERABLE)
+    local obj = run({ path }, { "--filter=keep me" })
+
+    assert.equal(0, obj.code)
+    assert.match("1 passed", obj.stdout)
+  end)
+
+  it("prints usage and exits 0 with --help", function()
+    local obj = helper.run_cli({ "--help" })
+
+    assert.equal(0, obj.code)
+    assert.match("Usage: ntf", obj.stdout)
+  end)
+
+  it("exits 2 when no spec path is given", function()
+    local obj = helper.run_cli(BASE_FLAGS)
+
+    assert.equal(2, obj.code)
+    assert.match("no spec paths given", obj.stderr)
+  end)
+
+  it("exits 2 on an unknown option", function()
+    local obj = helper.run_cli({ "--nope" })
+
+    assert.equal(2, obj.code)
+    assert.match("unknown option", obj.stderr)
+  end)
+
+  it("exits 2 on an invalid --isolate level", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = helper.run_cli({ "--isolate=bogus", path })
+
+    assert.equal(2, obj.code)
+    assert.match("invalid %-%-isolate level", obj.stderr)
+  end)
+
+  it("exits 2 when a directory contains no spec files", function()
+    helper.test_data:create_file("notes.txt", "not a spec")
+    local obj = run({ helper.test_data.full_path })
+
+    assert.equal(2, obj.code)
+    assert.match("no %*_spec%.lua found", obj.stderr)
+  end)
+
+  it("exits 1 and reports a LOAD ERROR for a spec that throws at load time", function()
+    local path = spec("broken_spec.lua", LOAD_ERROR)
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("LOAD ERROR", obj.stdout)
+    assert.match("top%-level boom", obj.stdout)
+  end)
+
+  it("discovers and runs every spec file under a directory path", function()
+    spec("one_spec.lua", PASSING)
+    spec("nested/two_spec.lua", PASSING)
+    local obj = run({ helper.test_data.full_path })
+
+    assert.equal(0, obj.code)
+    assert.match("4 passed", obj.stdout)
+  end)
+end)
