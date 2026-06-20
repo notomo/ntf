@@ -37,7 +37,7 @@ function M.run(root)
   local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
 
   local prog
-  if not opts.json and not opts.no_progress then
+  if not opts.no_progress then
     local total = 0
     for _, item in ipairs(items) do
       total = total + #item.node_ids

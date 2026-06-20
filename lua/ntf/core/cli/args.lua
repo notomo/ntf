@@ -10,7 +10,6 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed used with shuffle
---- @field json boolean emit JSON instead of the text report
 --- @field color boolean? force colors on/off (nil = auto)
 --- @field no_progress boolean disable streaming progress dots
 --- @field slow integer? report tests slower than N ms
@@ -25,7 +24,6 @@ M.flags = {
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
   { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
-  { name = "--json", description = "emit machine-readable JSON instead of the text report" },
   { name = "--no-color", description = "disable ANSI colors" },
   { name = "--no-progress", description = "disable the streaming progress dots on stderr" },
   { name = "--slow=MS", description = "report tests slower than MS milliseconds" },
@@ -58,7 +56,6 @@ function M.parse(argv)
     jobs = nil,
     shuffle = false,
     seed = nil,
-    json = false,
     color = nil,
     no_progress = false,
     slow = nil,
@@ -94,8 +91,6 @@ function M.parse(argv)
       opts.help = true
     elseif arg == "--shuffle" then
       opts.shuffle = true
-    elseif arg == "--json" then
-      opts.json = true
     elseif arg == "--no-color" then
       opts.color = false
     elseif arg == "--no-progress" then

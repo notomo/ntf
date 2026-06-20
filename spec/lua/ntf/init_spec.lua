@@ -100,15 +100,6 @@ describe("bin/ntf end-to-end", function()
     assert.match("1 pending", obj.stdout)
   end)
 
-  it("emits decodable JSON with --json", function()
-    local path = spec("pass_spec.lua", PASSING)
-    local obj = run({ path }, { "--json" })
-
-    assert.equal(0, obj.code)
-    local decoded = vim.json.decode(obj.stdout)
-    assert.equal(2, #decoded.results)
-  end)
-
   it("runs only leaves matching --filter", function()
     local path = spec("filter_spec.lua", FILTERABLE)
     local obj = run({ path }, { "--filter=keep me" })

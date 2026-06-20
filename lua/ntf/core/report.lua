@@ -1,5 +1,5 @@
--- Renders aggregated results into a balanced human/agent-readable report (or
--- JSON with --json) and computes the process exit code.
+-- Renders aggregated results into a balanced human/agent-readable report and
+-- computes the process exit code.
 local M = {}
 
 local COLORS = {
@@ -73,25 +73,10 @@ end
 
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
---- @param opts { color?: boolean, json?: boolean, slow?: integer, shuffle?: boolean, seed?: integer }
+--- @param opts { color?: boolean, slow?: integer, shuffle?: boolean, seed?: integer }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)
   load_errors = load_errors or {}
-
-  if opts.json then
-    local payload = {
-      results = results,
-      load_errors = load_errors,
-      seed = opts.shuffle and opts.seed or nil,
-    }
-    local code = #load_errors > 0 and 1 or 0
-    for _, result in ipairs(results) do
-      if result.status == "failed" or result.status == "error" then
-        code = 1
-      end
-    end
-    return vim.json.encode(payload), code
-  end
 
   local color
   if opts.color == nil then
