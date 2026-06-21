@@ -22,6 +22,8 @@ local M = {}
 --- @field setups (fun())[]? setup hooks (root/describe only)
 --- @field teardowns (fun())[]? teardown hooks (root/describe only)
 --- @field isolate boolean? run this subtree in its own process (describe/it)
+--- @field timeout integer? kill this node's process after N ms (describe/it;
+---        enforced only when this node is its own isolation unit)
 --- @field trace NtfTrace? declaration site
 --- @field fn fun()? test body (it only)
 --- @field output "always"|"never"? captured-output handling (it only)
@@ -78,6 +80,7 @@ local function new_describe(name, fn, opts)
     setups = {},
     teardowns = {},
     isolate = opts and opts.isolate or false,
+    timeout = opts and opts.timeout or nil,
     trace = trace_of(fn),
   }
   add_child(node)
@@ -102,6 +105,7 @@ local function new_it(name, fn, opts)
     fn = fn,
     trace = trace_of(fn),
     isolate = opts and opts.isolate or false,
+    timeout = opts and opts.timeout or nil,
     -- "always" (default) surfaces captured output in the report; "never" drops it.
     output = opts and opts.output or "always",
   }

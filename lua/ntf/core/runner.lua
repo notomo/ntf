@@ -18,6 +18,7 @@ local M = {}
 --- @field file string spec file path
 --- @field node_ids string[] leaf ids to run in one worker
 --- @field map table<string, NtfLeafInfo> leaf id -> leaf info (whole file)
+--- @field timeout integer? per-item timeout in ms from the isolation-unit node
 
 local BEGIN = "<<<NTF_JSON>>>"
 local END = "<<<END_NTF_JSON>>>"
@@ -73,7 +74,7 @@ function M.plan(files, granularity, filter)
           end, node_ids)
         end
         if #node_ids > 0 then
-          table.insert(items, { file = file, node_ids = node_ids, map = map })
+          table.insert(items, { file = file, node_ids = node_ids, map = map, timeout = item.timeout })
         end
       end
     end
@@ -99,8 +100,9 @@ local function parse_output(stdout)
   return decoded
 end
 
--- Turn a finished worker process into a list of result records.
-local function results_of(item, obj)
+-- Turn a finished worker process into a list of result records. `timed_out_ms` is
+-- the timeout value when the worker was killed for exceeding it, else nil.
+local function results_of(item, obj, timed_out_ms)
   local decoded = parse_output(obj.stdout)
 
   if decoded and decoded.results then
@@ -110,11 +112,16 @@ local function results_of(item, obj)
     return decoded.results
   end
 
-  -- Worker crashed or produced no parseable output: synthesize errors so the
-  -- failure is visible instead of silently lost.
-  local detail = (obj.stderr ~= "" and obj.stderr)
-    or (decoded and decoded.load_error)
-    or ("worker exited with code " .. tostring(obj.code))
+  -- Worker crashed, timed out, or produced no parseable output: synthesize errors
+  -- so the failure is visible instead of silently lost.
+  local detail
+  if timed_out_ms then
+    detail = ("worker timed out after %dms"):format(timed_out_ms)
+  else
+    detail = (obj.stderr ~= "" and obj.stderr)
+      or (decoded and decoded.load_error)
+      or ("worker exited with code " .. tostring(obj.code))
+  end
   local results = {}
   for _, id in ipairs(item.node_ids) do
     local info = item.map[id] or { names = { "?" } }
@@ -132,7 +139,7 @@ end
 
 --- Run all work items in parallel worker processes and aggregate results.
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
 --- @return NtfResult[] results
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/cli/worker.lua")
@@ -150,6 +157,13 @@ function M.run(items, opts)
     end
     started = started + 1
     local item = items[started]
+
+    -- A per-item timeout (from the isolation-unit node) overrides the run default;
+    -- 0 disables the timeout for that item.
+    local timeout = item.timeout or opts.timeout
+    if timeout == 0 then
+      timeout = nil
+    end
 
     -- Launch via `-c "luafile"` (after startup) instead of `-l`: see worker.lua.
     -- Parameters go through the environment since `arg` is not populated for -c.
@@ -176,8 +190,19 @@ function M.run(items, opts)
       NTF_DISABLE_CLEANUP = vim.env.NTF_DISABLE_CLEANUP,
     }
 
-    vim.system(cmd, { cwd = cwd, env = env, text = true }, function(obj)
-      local item_results = results_of(item, obj)
+    -- We enforce the timeout ourselves with SIGKILL rather than vim.system's
+    -- `timeout` option, which sends SIGTERM. A worker spinning in pure Lua never
+    -- reaches Neovim's event loop to handle SIGTERM, so only SIGKILL is guaranteed
+    -- to stop a hung test.
+    local timed_out = false
+    local timer
+    local proc = vim.system(cmd, { cwd = cwd, env = env, text = true }, function(obj)
+      if timer then
+        timer:stop()
+        timer:close()
+        timer = nil
+      end
+      local item_results = results_of(item, obj, timed_out and timeout or nil)
       vim.list_extend(results, item_results)
       if opts.on_item then
         opts.on_item(item, item_results)
@@ -185,6 +210,15 @@ function M.run(items, opts)
       finished = finished + 1
       vim.schedule(spawn_next)
     end)
+    if timeout then
+      timer = vim.uv.new_timer()
+      timer:start(timeout, 0, function()
+        timed_out = true
+        pcall(function()
+          proc:kill(9)
+        end)
+      end)
+    end
   end
 
   for _ = 1, math.min(jobs, total) do

@@ -14,6 +14,7 @@ Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
   --isolate=LEVEL   process split granularity: file|describe|it (default: it)
+  --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
   --filter=PATTERN  run only tests whose full name matches the Lua pattern
   --jobs=N          max parallel nvim workers (default: cpu count)
   --shuffle         randomize test order

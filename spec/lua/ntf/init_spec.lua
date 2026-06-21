@@ -71,6 +71,17 @@ local ntf = require("ntf")
 error("top-level boom")
 ]]
 
+local HANGING = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("never returns", function()
+    while true do end
+  end)
+end)
+]]
+
 describe("bin/ntf end-to-end", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -160,6 +171,22 @@ describe("bin/ntf end-to-end", function()
     assert.equal(1, obj.code)
     assert.match("LOAD ERROR", obj.stdout)
     assert.match("top%-level boom", obj.stdout)
+  end)
+
+  it("kills a worker that exceeds --timeout and reports it as an error", function()
+    local path = spec("hang_spec.lua", HANGING)
+    local obj = run({ path }, { "--timeout=300" })
+
+    assert.equal(1, obj.code)
+    assert.match("timed out", obj.stdout)
+  end)
+
+  it("exits 2 on an invalid --timeout value", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = helper.run_cli({ "--timeout=nope", path })
+
+    assert.equal(2, obj.code)
+    assert.match("invalid %-%-timeout value", obj.stderr)
   end)
 
   it("discovers and runs every spec file under a directory path", function()

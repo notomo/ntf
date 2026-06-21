@@ -4,9 +4,11 @@ local M = {}
 
 --- @class NtfDescribeOption
 --- @field isolate boolean? run this block in its own process
+--- @field timeout integer? per-process timeout in ms (effective only when this block is its own isolation unit; see |ntf-TIMEOUT|)
 
 --- @class NtfItOption
 --- @field isolate boolean? run this test in its own process
+--- @field timeout integer? per-process timeout in ms (effective only when this test is its own isolation unit; see |ntf-TIMEOUT|)
 --- @field output ("always"|"never")? "never" drops captured output from the report (default: "always")
 
 --- Define a test group. Its body runs at build time to discover nested

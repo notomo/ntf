@@ -61,6 +61,36 @@ with `opts.isolate`:
       end,
     },
     {
+      name = "TIMEOUT",
+      body = function()
+        return [[
+Each worker process is killed if it runs longer than a timeout, so a hung test
+fails fast instead of stalling the whole run. The global default is set with
+`--timeout=MS` (default 60000; `--timeout=0` disables it).
+
+describe/it can override it per node with `opts.timeout` (milliseconds):
+>lua
+  it("must be quick", function() end, { timeout = 1000 })
+
+  describe("slow integration block", function() end, { timeout = 30000 })
+<
+The timeout is enforced at the granularity of the isolation unit (the process),
+not the individual test, because a timed-out process is killed as a whole. A
+per-node `opts.timeout` therefore only takes effect when that node is its own
+isolation unit:
+
+- with `--isolate=it` (default) every `it` is its own process, so every
+  `it`-level `opts.timeout` is enforced precisely
+- a node marked `opts.isolate = true` becomes its own process, so its
+  `opts.timeout` is enforced too
+- otherwise (e.g. several `it`s sharing one process under `--isolate=file`), only
+  the unit node's timeout applies; inner per-`it` timeouts are ignored, and the
+  process timeout bounds the unit as a whole
+
+A timed-out worker is reported as an error ("worker timed out after Nms").]]
+      end,
+    },
+    {
       name = "OUTPUT",
       body = function()
         return [[

@@ -6,6 +6,7 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @class NtfOptions
 --- @field paths string[] spec files or directories
 --- @field isolate string process split granularity: "file"|"describe"|"it"
+--- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
@@ -20,6 +21,7 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @type { name: string, description: string }[]
 M.flags = {
   { name = "--isolate=LEVEL", description = "process split granularity: file|describe|it (default: it)" },
+  { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
@@ -52,6 +54,7 @@ function M.parse(argv)
   local opts = {
     paths = {},
     isolate = vim.env.NTF_ISOLATE or "it",
+    timeout = tonumber(vim.env.NTF_TIMEOUT or "") or 60000,
     filter = nil,
     jobs = nil,
     shuffle = false,
@@ -67,6 +70,9 @@ function M.parse(argv)
   local value_flags = {
     ["--isolate"] = function(v)
       opts.isolate = v
+    end,
+    ["--timeout"] = function(v)
+      opts.timeout = tonumber(v)
     end,
     ["--filter"] = function(v)
       opts.filter = v
@@ -125,6 +131,9 @@ function M.parse(argv)
   end
   if not ISOLATE_LEVELS[opts.isolate] then
     return "invalid --isolate level: " .. tostring(opts.isolate)
+  end
+  if type(opts.timeout) ~= "number" or opts.timeout < 0 then
+    return "invalid --timeout value (expected milliseconds >= 0)"
   end
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter

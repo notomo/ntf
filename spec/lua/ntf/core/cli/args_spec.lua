@@ -42,6 +42,36 @@ describe("ntf.core.cli.args.parse", function()
     assert.match("invalid %-%-filter pattern", err)
   end)
 
+  it("defaults --timeout to 60000ms", function()
+    local opts = args.parse({ "spec" })
+
+    assert.equal(60000, opts.timeout)
+  end)
+
+  it("parses --timeout into opts.timeout", function()
+    local opts = args.parse({ "--timeout=1500", "spec" })
+
+    assert.equal(1500, opts.timeout)
+  end)
+
+  it("accepts --timeout=0 to disable the worker timeout", function()
+    local opts = args.parse({ "--timeout=0", "spec" })
+
+    assert.equal(0, opts.timeout)
+  end)
+
+  it("rejects a non-numeric --timeout", function()
+    local err = args.parse({ "--timeout=soon", "spec" })
+
+    assert.match("invalid %-%-timeout value", err)
+  end)
+
+  it("rejects a negative --timeout", function()
+    local err = args.parse({ "--timeout=-5", "spec" })
+
+    assert.match("invalid %-%-timeout value", err)
+  end)
+
   describe("with no paths", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

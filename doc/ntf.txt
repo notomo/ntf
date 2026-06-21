@@ -8,6 +8,7 @@ USAGE                                                              *ntf-USAGE*
 
   Options:
     --isolate=LEVEL   process split granularity: file|describe|it (default: it)
+    --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
     --filter=PATTERN  run only tests whose full name matches the Lua pattern
     --jobs=N          max parallel nvim workers (default: cpu count)
     --shuffle         randomize test order
@@ -53,6 +54,34 @@ with `opts.isolate`:
 
   it("a single test in a fresh process", function() end, { isolate = true })
 <
+
+==============================================================================
+TIMEOUT                                                          *ntf-TIMEOUT*
+
+Each worker process is killed if it runs longer than a timeout, so a hung test
+fails fast instead of stalling the whole run. The global default is set with
+`--timeout=MS` (default 60000; `--timeout=0` disables it).
+
+describe/it can override it per node with `opts.timeout` (milliseconds):
+>lua
+  it("must be quick", function() end, { timeout = 1000 })
+
+  describe("slow integration block", function() end, { timeout = 30000 })
+<
+The timeout is enforced at the granularity of the isolation unit (the process),
+not the individual test, because a timed-out process is killed as a whole. A
+per-node `opts.timeout` therefore only takes effect when that node is its own
+isolation unit:
+
+- with `--isolate=it` (default) every `it` is its own process, so every
+  `it`-level `opts.timeout` is enforced precisely
+- a node marked `opts.isolate = true` becomes its own process, so its
+  `opts.timeout` is enforced too
+- otherwise (e.g. several `it`s sharing one process under `--isolate=file`), only
+  the unit node's timeout applies; inner per-`it` timeouts are ignored, and the
+  process timeout bounds the unit as a whole
+
+A timed-out worker is reported as an error ("worker timed out after Nms").
 
 ==============================================================================
 OUTPUT                                                            *ntf-OUTPUT*
@@ -181,10 +210,12 @@ STRUCTURE                                                      *ntf-STRUCTURE*
 NtfDescribeOption                                          *NtfDescribeOption*
 
 - {isolate} (boolean?) run this block in its own process
+- {timeout} (integer?) per-process timeout in ms (effective only when this block is its own isolation unit; see |ntf-TIMEOUT|)
 
 NtfItOption                                                      *NtfItOption*
 
 - {isolate} (boolean?) run this test in its own process
+- {timeout} (integer?) per-process timeout in ms (effective only when this test is its own isolation unit; see |ntf-TIMEOUT|)
 - {output} (("always"|"never")?) "never" drops captured output from the report (default: "always")
 
 ==============================================================================

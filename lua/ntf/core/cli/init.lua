@@ -58,6 +58,7 @@ function M.run(root)
     jobs = opts.jobs,
     shuffle = opts.shuffle,
     seed = opts.seed,
+    timeout = opts.timeout,
     on_item = prog and prog.on_item or nil,
   })
   if prog then
