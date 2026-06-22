@@ -215,12 +215,14 @@ function M.run(items, opts)
     end)
     if timeout then
       timer = vim.uv.new_timer()
-      timer:start(timeout, 0, function()
-        timed_out = true
-        pcall(function()
-          proc:kill(9)
+      if timer then
+        timer:start(timeout, 0, function()
+          timed_out = true
+          pcall(function()
+            proc:kill(9)
+          end)
         end)
-      end)
+      end
     end
   end
 
