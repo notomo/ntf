@@ -74,6 +74,7 @@ end
 local function install_capture(buffer)
   local real_print = _G.print
   local real_write = io.write
+  ---@diagnostic disable-next-line: duplicate-set-field
   _G.print = function(...)
     local parts = {}
     for i = 1, select("#", ...) do
