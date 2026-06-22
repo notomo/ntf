@@ -1,6 +1,6 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
-local schedule = require("ntf.core.schedule")
+local schedule = require("ntf.core.controller.schedule")
 
 local function leaf(id, name, isolate, timeout)
   return { type = "it", id = id, name = name, isolate = isolate or false, timeout = timeout }
@@ -30,7 +30,7 @@ local function fake_tree()
   }
 end
 
-describe("ntf.core.schedule.split", function()
+describe("ntf.core.controller.schedule.split", function()
   it("file granularity yields one item, but .isolate forces a split", function()
     local items = schedule.split(fake_tree(), "file")
     assert.equal(2, #items)

@@ -1,9 +1,9 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
-local args = require("ntf.core.cli.args")
+local args = require("ntf.core.controller.args")
 local helper = require("ntf.test.helper")
 
-describe("ntf.core.cli.args.parse", function()
+describe("ntf.core.controller.args.parse", function()
   it("parses --filter into opts.filter", function()
     local opts = args.parse({ "--filter=adds", "spec" })
 

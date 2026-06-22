@@ -1,6 +1,6 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
-local progress = require("ntf.core.cli.progress")
+local progress = require("ntf.core.controller.progress")
 
 -- Collect everything the emitter writes so we can assert the plain stream.
 local function collector()
@@ -18,7 +18,7 @@ local function item_of(...)
   return results
 end
 
-describe("ntf.core.cli.progress", function()
+describe("ntf.core.controller.progress", function()
   it("writes one character per finished test by status", function()
     local buf, write = collector()
     local prog = progress.new({ write = write, color = false, total = 4 })

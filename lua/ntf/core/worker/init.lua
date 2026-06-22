@@ -49,7 +49,7 @@ local function main()
     end
   end
 
-  local results = require("ntf.core.run").execute(root_node, selected, {
+  local results = require("ntf.core.worker.executor").execute(root_node, selected, {
     shuffle = payload.shuffle,
     seed = payload.seed,
   })

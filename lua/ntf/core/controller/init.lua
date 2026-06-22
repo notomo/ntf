@@ -5,7 +5,7 @@ local M = {}
 
 --- @param root string ntf repository root (used to locate the worker script)
 function M.run(root)
-  local args = require("ntf.core.cli.args")
+  local args = require("ntf.core.controller.args")
 
   local opts = args.parse(arg)
   if type(opts) == "string" then
@@ -19,7 +19,7 @@ function M.run(root)
 
   require("ntf.core.runtime").setup()
 
-  local ok, files = pcall(require("ntf.core.discover").specs, opts.paths)
+  local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths)
   if not ok then
     io.stderr:write(tostring(files) .. "\n")
     os.exit(2)
@@ -33,7 +33,7 @@ function M.run(root)
     opts.seed = os.time()
   end
 
-  local runner = require("ntf.core.runner")
+  local runner = require("ntf.core.controller.dispatcher")
   local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
 
   local prog
@@ -43,7 +43,7 @@ function M.run(root)
       total = total + #item.node_ids
     end
     local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR and opts.color ~= false
-    prog = require("ntf.core.cli.progress").new({
+    prog = require("ntf.core.controller.progress").new({
       write = function(s)
         io.stderr:write(s)
         io.stderr:flush()
@@ -66,7 +66,7 @@ function M.run(root)
     prog.finish()
   end
 
-  local text, code = require("ntf.core.report").build(results, load_errors, opts)
+  local text, code = require("ntf.core.controller.report").build(results, load_errors, opts)
   io.stdout:write(text)
   os.exit(code)
 end

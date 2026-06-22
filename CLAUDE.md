@@ -15,7 +15,7 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 
 - Test API is explicit, never global:
   `local describe, it = require("ntf").describe, require("ntf").it`. Do not inject globals.
-- CLI flags are defined once in `lua/ntf/core/cli/args.lua` (`M.flags`); `usage()` and
+- CLI flags are defined once in `lua/ntf/core/controller/args.lua` (`M.flags`); `usage()` and
   the docs derive from it — do not duplicate the list.
 - `README.md` and `doc/ntf.txt` are generated from `spec/lua/ntf/doc.lua`. Edit
   that, then `make doc`; never hand-edit the outputs.

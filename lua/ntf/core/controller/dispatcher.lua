@@ -1,7 +1,7 @@
 -- Controller side: turn discovered spec files into work items and run each item
 -- in its own `nvim` worker process, with bounded parallelism, then aggregate.
 local tree = require("ntf.core.tree")
-local schedule = require("ntf.core.schedule")
+local schedule = require("ntf.core.controller.schedule")
 
 local M = {}
 
@@ -142,7 +142,7 @@ end
 --- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
 --- @return NtfResult[] results
 function M.run(items, opts)
-  local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/cli/worker.lua")
+  local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
   local cwd = vim.fn.getcwd()
   local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4
   local total = #items

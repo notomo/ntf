@@ -1,4 +1,4 @@
 #!/usr/bin/env -S nvim --clean --headless -l
 local root = vim.fn.fnamemodify(arg[0], ":p:h:h")
 vim.opt.runtimepath:prepend(root)
-require("ntf.core.cli").run(root)
+require("ntf.core.controller").run(root)

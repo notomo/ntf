@@ -3,7 +3,7 @@
 -- Building executes `describe` bodies (to discover nested `describe`/`it`) but
 -- never runs `it` bodies. The same globals are reused at execution time; the
 -- only execution-specific globals are `finally` and a runtime `pending()`, which
--- are routed through the mutable hooks installed by `ntf.core.run`.
+-- are routed through the mutable hooks installed by `ntf.core.worker.executor`.
 local builder = require("ntf.assert.builder")
 
 local M = {}
@@ -35,7 +35,7 @@ M.PENDING = "__ntf_pending__"
 -- build state: the stack of describe nodes, top = current (set during build)
 local stack = {} ---@type NtfNode[]
 
--- execution hooks (set by ntf.core.run while a test body is running)
+-- execution hooks (set by ntf.core.worker.executor while a test body is running)
 local finally_collector = nil
 local executing = false
 

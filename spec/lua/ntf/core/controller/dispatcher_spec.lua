@@ -1,6 +1,6 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
-local runner = require("ntf.core.runner")
+local runner = require("ntf.core.controller.dispatcher")
 local helper = require("ntf.test.helper")
 
 local source = [[
@@ -26,7 +26,7 @@ local function planned_ids(items)
   return ids
 end
 
-describe("ntf.core.runner.plan", function()
+describe("ntf.core.controller.dispatcher.plan", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 

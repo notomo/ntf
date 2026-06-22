@@ -1,8 +1,8 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
-local report = require("ntf.core.report")
+local report = require("ntf.core.controller.report")
 
-describe("ntf.core.report.build output", function()
+describe("ntf.core.controller.report.build output", function()
   it("renders a passing test's captured output under its full name", function()
     local results = {
       { status = "passed", names = { "block", "prints" }, output = "hello\nworld\n" },

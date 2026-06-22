@@ -1,7 +1,7 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local tree = require("ntf.core.tree")
-local run = require("ntf.core.run")
+local run = require("ntf.core.worker.executor")
 local helper = require("ntf.test.helper")
 
 local source = [[
@@ -47,7 +47,7 @@ describe("block", function()
 end)
 ]]
 
-describe("ntf.core.run.execute", function()
+describe("ntf.core.worker.executor.execute", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
@@ -107,7 +107,7 @@ describe("outer", function()
 end)
 ]]
 
-describe("ntf.core.run.execute describe-body errors", function()
+describe("ntf.core.worker.executor.execute describe-body errors", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
@@ -151,7 +151,7 @@ describe("block", function()
 end)
 ]]
 
-describe("ntf.core.run.execute output capture", function()
+describe("ntf.core.worker.executor.execute output capture", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
