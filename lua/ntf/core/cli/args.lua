@@ -14,6 +14,7 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @field color boolean? force colors on/off (nil = auto)
 --- @field no_progress boolean disable streaming progress dots
 --- @field slow integer? report tests slower than N ms
+--- @field setup string? Lua script run in each worker before any spec
 --- @field help boolean show usage and exit
 
 --- Supported flags in display order. Single source of truth shared by `usage()`
@@ -29,6 +30,7 @@ M.flags = {
   { name = "--no-color", description = "disable ANSI colors" },
   { name = "--no-progress", description = "disable the streaming progress dots on stderr" },
   { name = "--slow=MS", description = "report tests slower than MS milliseconds" },
+  { name = "--setup=PATH", description = "run a Lua script in each worker before any spec (for debugging)" },
   { name = "-h, --help", description = "show this help" },
 }
 
@@ -62,6 +64,7 @@ function M.parse(argv)
     color = nil,
     no_progress = false,
     slow = nil,
+    setup = nil,
     help = false,
   }
 
@@ -85,6 +88,9 @@ function M.parse(argv)
     end,
     ["--slow"] = function(v)
       opts.slow = tonumber(v)
+    end,
+    ["--setup"] = function(v)
+      opts.setup = v
     end,
   }
 
@@ -137,6 +143,9 @@ function M.parse(argv)
   end
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter
+  end
+  if opts.setup and vim.fn.filereadable(opts.setup) == 0 then
+    return "--setup script not found: " .. opts.setup
   end
 
   return opts

@@ -189,6 +189,42 @@ describe("bin/ntf end-to-end", function()
     assert.match("invalid %-%-timeout value", obj.stderr)
   end)
 
+  it("runs the --setup script in each worker before any spec", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local marker = vim.fs.joinpath(helper.test_data.full_path, "injected.marker")
+    local setup = spec(
+      "setup.lua",
+      ([[
+local f = assert(io.open(%q, "w"))
+f:write("ok")
+f:close()
+]]):format(marker)
+    )
+
+    local obj = run({ path }, { "--setup=" .. setup })
+
+    assert.equal(0, obj.code)
+    assert.equal(1, vim.fn.filereadable(marker))
+  end)
+
+  it("surfaces an error from the --setup script as a load error", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local setup = spec("setup.lua", [[error("setup boom")]])
+
+    local obj = run({ path }, { "--setup=" .. setup })
+
+    assert.equal(1, obj.code)
+    assert.match("setup boom", obj.stdout)
+  end)
+
+  it("exits 2 when the --setup script does not exist", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "--setup=/no/such/setup.lua" })
+
+    assert.equal(2, obj.code)
+    assert.match("%-%-setup script not found", obj.stderr)
+  end)
+
   it("discovers and runs every spec file under a directory path", function()
     spec("one_spec.lua", PASSING)
     spec("nested/two_spec.lua", PASSING)

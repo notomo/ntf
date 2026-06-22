@@ -139,7 +139,7 @@ end
 
 --- Run all work items in parallel worker processes and aggregate results.
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
 --- @return NtfResult[] results
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/cli/worker.lua")
@@ -185,9 +185,8 @@ function M.run(items, opts)
       NTF_NODES = table.concat(item.node_ids, ","),
       NTF_SHUFFLE = opts.shuffle and "1" or "0",
       NTF_SEED = opts.seed and tostring(opts.seed) or "",
-      NTF_COMPAT_VUSTED = vim.env.NTF_COMPAT_VUSTED,
       NTF_ISOLATE = vim.env.NTF_ISOLATE,
-      NTF_DISABLE_CLEANUP = vim.env.NTF_DISABLE_CLEANUP,
+      NTF_SETUP = opts.setup,
     }
 
     -- We enforce the timeout ourselves with SIGKILL rather than vim.system's

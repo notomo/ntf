@@ -109,6 +109,25 @@ not captured.]]
       end,
     },
     {
+      name = "DEBUGGING",
+      body = function()
+        return [[
+`--setup=PATH` runs the given Lua script in every worker (via `dofile`) before
+building or running any spec. ntf has no debugger dependency of its own; this is
+just an injection point, so you can drop in whatever you need:
+>sh
+  echo 'require("lldebugger").start()' > debug.lua
+  ntf --setup=./debug.lua --jobs=1 --filter='the test name'
+<
+A relative path resolves against the working directory (the plugin under test),
+and an error raised by the script is reported as a load error.
+
+Tests run in parallel worker processes whose stdout ntf captures, so to actually
+attach a debugger keep it to a single worker (`--jobs=1`, and narrow to one test
+with `--filter`). Wiring the debugger transport itself is up to your script.]]
+      end,
+    },
+    {
       name = function(group)
         return "Lua module: " .. group
       end,

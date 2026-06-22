@@ -16,6 +16,7 @@ USAGE                                                              *ntf-USAGE*
     --no-color        disable ANSI colors
     --no-progress     disable the streaming progress dots on stderr
     --slow=MS         report tests slower than MS milliseconds
+    --setup=PATH      run a Lua script in each worker before any spec (for debugging)
     -h, --help        show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
@@ -98,6 +99,23 @@ Opt a single test out of having its output shown with `opts.output = "never"`:
 <
 Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) are
 not captured.
+
+==============================================================================
+DEBUGGING                                                      *ntf-DEBUGGING*
+
+`--setup=PATH` runs the given Lua script in every worker (via `dofile`) before
+building or running any spec. ntf has no debugger dependency of its own; this is
+just an injection point, so you can drop in whatever you need:
+>sh
+  echo 'require("lldebugger").start()' > debug.lua
+  ntf --setup=./debug.lua --jobs=1 --filter='the test name'
+<
+A relative path resolves against the working directory (the plugin under test),
+and an error raised by the script is reported as a load error.
+
+Tests run in parallel worker processes whose stdout ntf captures, so to actually
+attach a debugger keep it to a single worker (`--jobs=1`, and narrow to one test
+with `--filter`). Wiring the debugger transport itself is up to your script.
 
 ==============================================================================
 Lua module: ntf                                                      *ntf-ntf*

@@ -21,6 +21,16 @@ local function main()
 
   require("ntf.core.runtime").setup()
 
+  -- The `--setup` script (forwarded by the controller via NTF_SETUP) runs before
+  -- any spec is built or executed, e.g. `require("lldebugger").start()` for
+  -- stepping through tests. ntf itself has no debugger dependency; this is just an
+  -- injection point. Errors here are caught by the xpcall around main() and
+  -- surfaced as a load error.
+  local setup = vim.env.NTF_SETUP
+  if setup and setup ~= "" then
+    dofile(setup)
+  end
+
   local file = vim.env.NTF_FILE
   local nodes = vim.env.NTF_NODES
   local shuffle = vim.env.NTF_SHUFFLE == "1"

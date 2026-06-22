@@ -22,6 +22,7 @@ Options:
   --no-color        disable ANSI colors
   --no-progress     disable the streaming progress dots on stderr
   --slow=MS         report tests slower than MS milliseconds
+  --setup=PATH      run a Lua script in each worker before any spec (for debugging)
   -h, --help        show this help
 
 With no paths, runs the *_spec.lua files under ./spec.

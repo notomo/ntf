@@ -59,6 +59,7 @@ function M.run(root)
     shuffle = opts.shuffle,
     seed = opts.seed,
     timeout = opts.timeout,
+    setup = opts.setup,
     on_item = prog and prog.on_item or nil,
   })
   if prog then
