@@ -179,14 +179,18 @@ function M.run(items, opts)
       "-c",
       "luafile " .. worker,
     }
+    -- Everything the worker needs is bundled into one JSON env var. The leading
+    -- underscore and the name mark it as an internal controller->worker channel,
+    -- not a user-facing knob like the NTF_* env vars that args.lua reads.
     local env = {
-      NTF_ROOT = opts.root,
-      NTF_FILE = item.file,
-      NTF_NODES = table.concat(item.node_ids, ","),
-      NTF_SHUFFLE = opts.shuffle and "1" or "0",
-      NTF_SEED = opts.seed and tostring(opts.seed) or "",
-      NTF_ISOLATE = vim.env.NTF_ISOLATE,
-      NTF_SETUP = opts.setup,
+      _NTF_WORKER_PAYLOAD = vim.json.encode({
+        root = opts.root,
+        file = item.file,
+        node_ids = item.node_ids,
+        shuffle = opts.shuffle or false,
+        seed = opts.seed,
+        setup = opts.setup,
+      }),
     }
 
     -- We enforce the timeout ourselves with SIGKILL rather than vim.system's

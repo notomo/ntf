@@ -1,6 +1,6 @@
 -- Worker entry point. Launched by the controller as:
 --   nvim --clean --headless -c "luafile <this>"
--- with parameters passed via environment variables.
+-- with all parameters passed as one internal JSON env var, _NTF_WORKER_PAYLOAD.
 --
 -- It is run with `-c` (after startup) rather than `-l` on purpose: under `-l`
 -- Neovim turns otherwise non-fatal Vim errors (e.g. E348 from `expand()`) into
@@ -15,46 +15,43 @@ local function emit(payload)
   io.stdout:write("\n<<<END_NTF_JSON>>>\n")
 end
 
+-- All worker parameters arrive as one internal JSON env var set by the controller
+-- (see runner.lua). Decoded at module scope so the error handler below can still
+-- attribute a failure to its spec file.
+local payload = vim.json.decode(vim.env._NTF_WORKER_PAYLOAD)
+
 local function main()
-  local root = vim.env.NTF_ROOT
-  vim.opt.runtimepath:prepend(root)
+  vim.opt.runtimepath:prepend(payload.root)
 
   require("ntf.core.runtime").setup()
 
-  -- The `--setup` script (forwarded by the controller via NTF_SETUP) runs before
-  -- any spec is built or executed, e.g. `require("lldebugger").start()` for
-  -- stepping through tests. ntf itself has no debugger dependency; this is just an
-  -- injection point. Errors here are caught by the xpcall around main() and
-  -- surfaced as a load error.
-  local setup = vim.env.NTF_SETUP
-  if setup and setup ~= "" then
-    dofile(setup)
+  -- The `--setup` script runs before any spec is built or executed, e.g.
+  -- `require("lldebugger").start()` for stepping through tests. ntf itself has no
+  -- debugger dependency; this is just an injection point. Errors here are caught
+  -- by the xpcall around main() and surfaced as a load error.
+  if payload.setup and payload.setup ~= "" then
+    dofile(payload.setup)
   end
 
-  local file = vim.env.NTF_FILE
-  local nodes = vim.env.NTF_NODES
-  local shuffle = vim.env.NTF_SHUFFLE == "1"
-  local seed = tonumber(vim.env.NTF_SEED)
-
   local tree = require("ntf.core.tree")
-  local root_node = tree.build(file)
+  local root_node = tree.build(payload.file)
 
   if root_node.load_error then
-    emit({ load_error = tostring(root_node.load_error), file = file })
+    emit({ load_error = tostring(root_node.load_error), file = payload.file })
     return 1
   end
 
   local selected
-  if nodes and nodes ~= "" and nodes ~= "all" then
+  if payload.node_ids and #payload.node_ids > 0 then
     selected = {}
-    for id in vim.gsplit(nodes, ",", { trimempty = true }) do
+    for _, id in ipairs(payload.node_ids) do
       selected[id] = true
     end
   end
 
   local results = require("ntf.core.run").execute(root_node, selected, {
-    shuffle = shuffle,
-    seed = seed,
+    shuffle = payload.shuffle,
+    seed = payload.seed,
   })
 
   emit({ results = results })
@@ -69,7 +66,7 @@ end
 
 local ok, result = xpcall(main, debug.traceback)
 if not ok then
-  emit({ load_error = tostring(result), file = vim.env.NTF_FILE })
+  emit({ load_error = tostring(result), file = payload.file })
   os.exit(1)
 end
 os.exit(result)
