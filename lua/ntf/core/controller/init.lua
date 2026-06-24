@@ -53,7 +53,7 @@ function M.run(root)
     })
   end
 
-  local results = runner.run(items, {
+  local results, outputs = runner.run(items, {
     root = root,
     jobs = opts.jobs,
     shuffle = opts.shuffle,
@@ -66,7 +66,7 @@ function M.run(root)
     prog.finish()
   end
 
-  local text, code = require("ntf.core.controller.report").build(results, load_errors, opts)
+  local text, code = require("ntf.core.controller.report").build(results, load_errors, opts, outputs)
   io.stdout:write(text)
   os.exit(code)
 end

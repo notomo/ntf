@@ -26,7 +26,6 @@ local M = {}
 ---        enforced only when this node is its own isolation unit)
 --- @field trace NtfTrace? declaration site
 --- @field fn fun()? test body (it only)
---- @field output "always"|"never"? captured-output handling (it only)
 --- @field load_error any? load/build error captured on this node (root/describe)
 
 -- Sentinel carried by errors thrown to abort a running test as "pending".
@@ -106,8 +105,6 @@ local function new_it(name, fn, opts)
     trace = trace_of(fn),
     isolate = opts and opts.isolate or false,
     timeout = opts and opts.timeout or nil,
-    -- "always" (default) surfaces captured output in the report; "never" drops it.
-    output = opts and opts.output or "always",
   }
   return add_child(node)
 end

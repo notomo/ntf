@@ -74,9 +74,11 @@ end
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
 --- @param opts { color?: boolean, slow?: integer, shuffle?: boolean, seed?: integer }
+--- @param outputs NtfWorkerOutput[]? per-worker captured stdout blobs
 --- @return string text, integer exit_code
-function M.build(results, load_errors, opts)
+function M.build(results, load_errors, opts, outputs)
   load_errors = load_errors or {}
+  outputs = outputs or {}
 
   local color
   if opts.color == nil then
@@ -123,21 +125,22 @@ function M.build(results, load_errors, opts)
     if traceback then
       table.insert(lines, paint("dim", indent(traceback:gsub("^\n", ""), "    ")))
     end
-    if result.output then
-      table.insert(lines, paint("dim", "    output:"))
-      table.insert(lines, indent(result.output:gsub("\n$", ""), "      "))
-    end
     table.insert(lines, "")
   end
 
-  -- Captured output from non-failing tests, attributed to each test case.
-  for _, result in ipairs(results) do
-    local is_problem = result.status == "failed" or result.status == "error"
-    if result.output and not is_problem then
-      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", full_name(result)))
-      table.insert(lines, indent(result.output:gsub("\n$", ""), "    "))
-      table.insert(lines, "")
+  -- Captured output, attributed to the worker (one work item) that emitted it.
+  -- The worker's scope names the block (the test case under `--isolate it`, a
+  -- describe, or the file itself); the file is shown dim when a name is present.
+  for _, out in ipairs(outputs) do
+    local rel = out.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
+    if out.name and out.name ~= "" then
+      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", out.name))
+      table.insert(lines, "  " .. paint("dim", rel))
+    else
+      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", rel))
     end
+    table.insert(lines, indent(out.output:gsub("\n$", ""), "    "))
+    table.insert(lines, "")
   end
 
   if #slows > 0 then

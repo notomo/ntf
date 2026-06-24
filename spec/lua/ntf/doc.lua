@@ -94,18 +94,15 @@ A timed-out worker is reported as an error ("worker timed out after Nms").]]
       name = "OUTPUT",
       body = function()
         return [[
-`print` and `io.write` output emitted while a test runs is captured and shown in
-the report, attributed to the test case it came from (under the failure block for
-a failing test, or its own `OUTPUT <name>` block otherwise).
+Everything a worker writes while it runs is captured and shown in the report as
+an `OUTPUT <spec file>` block. Both standard streams are included: `io.write`,
+`io.stdout:write` and native writes on stdout, plus `print`, `vim.api.nvim_echo`
+and other messages, which Neovim routes to stderr. Capture is per worker (one
+work item), not per test, so the report cannot attribute a line to an individual
+test case; stdout is shown before stderr.
 
-Opt a single test out of having its output shown with `opts.output = "never"`:
->lua
-  it("noisy but uninteresting", function()
-    print("ignored")
-  end, { output = "never" })
-<
-Other output channels (`io.stdout:write`, `vim.api.nvim_echo`, native writes) are
-not captured.]]
+With `--isolate it` or `--isolate describe` a file is split across several
+workers, so it may produce several `OUTPUT <spec file>` blocks.]]
       end,
     },
     {

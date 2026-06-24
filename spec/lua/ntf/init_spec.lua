@@ -71,6 +71,18 @@ local ntf = require("ntf")
 error("top-level boom")
 ]]
 
+local NOISY = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("writes to stdout", function()
+    print("from print")
+    io.stdout:write("from native write\n")
+  end)
+end)
+]]
+
 local HANGING = [[
 local ntf = require("ntf")
 local describe, it = ntf.describe, ntf.it
@@ -223,6 +235,26 @@ f:close()
 
     assert.equal(2, obj.code)
     assert.match("%-%-setup script not found", obj.stderr)
+  end)
+
+  it("captures all of a worker's stdout, including native writes", function()
+    local path = spec("noisy_spec.lua", NOISY)
+    local obj = run({ path })
+
+    assert.equal(0, obj.code)
+    assert.match("OUTPUT", obj.stdout)
+    -- both the Lua `print` and the native `io.stdout:write` land in one block,
+    -- proving capture no longer depends on swapping `_G.print`/`io.write`.
+    assert.match("from print", obj.stdout)
+    assert.match("from native write", obj.stdout)
+  end)
+
+  it("labels captured output with the test case name under --isolate it", function()
+    local path = spec("noisy_spec.lua", NOISY)
+    local obj = helper.run_cli({ "--no-color", "--no-progress", "--isolate=it", path })
+
+    assert.equal(0, obj.code)
+    assert.match("OUTPUT group writes to stdout", obj.stdout)
   end)
 
   it("discovers and runs every spec file under a directory path", function()

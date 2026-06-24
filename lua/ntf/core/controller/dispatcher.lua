@@ -34,6 +34,31 @@ local function full_name(names)
   )
 end
 
+-- The scope a worker (work item) covers, named by the deepest describe/it chain
+-- its leaves share: a single leaf (e.g. `--isolate it`) yields that test's full
+-- name, a describe unit yields the describe name, and a whole-file item with
+-- unrelated top-level groups yields "" (the report then falls back to the file).
+local function item_scope(item)
+  local prefix
+  for _, id in ipairs(item.node_ids) do
+    local names = (item.map[id] or {}).names or {}
+    if not prefix then
+      prefix = names
+    else
+      local n = 0
+      for i = 1, math.min(#prefix, #names) do
+        if prefix[i] == names[i] then
+          n = i
+        else
+          break
+        end
+      end
+      prefix = vim.list_slice(prefix, 1, n)
+    end
+  end
+  return full_name(prefix)
+end
+
 --- @return table<string, NtfLeafInfo>
 local function leaf_map(root)
   local map = {}
@@ -100,6 +125,25 @@ local function parse_output(stdout)
   return decoded
 end
 
+-- A worker's captured output is everything it wrote to either standard stream.
+-- On stdout that means explicit `io.write`/`io.stdout:write`/native writes (the
+-- result marker block is excluded; `emit` is always the last thing written). On
+-- stderr it means `print`, `vim.api.nvim_echo` and other messages, which Neovim
+-- routes to its message channel rather than stdout. The two streams cannot be
+-- interleaved after the fact, so stdout is shown first, then stderr.
+local function worker_output(stdout, stderr)
+  local from = stdout and stdout:find(BEGIN, 1, true)
+  local out = stdout and (from and stdout:sub(1, from - 1) or stdout) or ""
+  local parts = {}
+  for _, blob in ipairs({ out, stderr or "" }) do
+    blob = blob:gsub("\n$", "")
+    if blob ~= "" then
+      table.insert(parts, blob)
+    end
+  end
+  return table.concat(parts, "\n")
+end
+
 -- Turn a finished worker process into a list of result records. `timed_out_ms` is
 -- the timeout value when the worker was killed for exceeding it, else nil.
 local function results_of(item, obj, timed_out_ms)
@@ -137,10 +181,16 @@ local function results_of(item, obj, timed_out_ms)
   return results
 end
 
+--- @class NtfWorkerOutput
+--- @field index integer item index (used to order the report deterministically)
+--- @field file string spec file path
+--- @field name string describe/it scope the worker covered ("" for a whole file)
+--- @field output string captured stdout blob
+
 --- Run all work items in parallel worker processes and aggregate results.
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
---- @return NtfResult[] results
+--- @return NtfResult[] results, NtfWorkerOutput[] outputs
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
   local cwd = vim.fn.getcwd()
@@ -148,6 +198,7 @@ function M.run(items, opts)
   local total = #items
 
   local results = {}
+  local outputs = {}
   local started = 0
   local finished = 0
 
@@ -156,6 +207,7 @@ function M.run(items, opts)
       return
     end
     started = started + 1
+    local index = started
     local item = items[started]
 
     -- A per-item timeout (from the isolation-unit node) overrides the run default;
@@ -207,6 +259,14 @@ function M.run(items, opts)
       end
       local item_results = results_of(item, obj, timed_out and timeout or nil)
       vim.list_extend(results, item_results)
+      -- A crashed/timed-out worker surfaces its stderr as the error detail
+      -- (results_of), so only collect output when it reported real results.
+      if parse_output(obj.stdout) then
+        local blob = worker_output(obj.stdout, obj.stderr)
+        if blob ~= "" then
+          table.insert(outputs, { index = index, file = item.file, name = item_scope(item), output = blob })
+        end
+      end
       if opts.on_item then
         opts.on_item(item, item_results)
       end
@@ -234,7 +294,13 @@ function M.run(items, opts)
     return finished >= total
   end, 20)
 
-  return results
+  -- Workers finish in nondeterministic order; sort by item index so the report
+  -- lists captured output in spec order.
+  table.sort(outputs, function(a, b)
+    return a.index < b.index
+  end)
+
+  return results, outputs
 end
 
 return M
