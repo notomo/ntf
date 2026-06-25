@@ -19,8 +19,6 @@ local M = {}
 --- @field children NtfNode[]? child nodes (root/describe only)
 --- @field before_each (fun())[]? before_each hooks (root/describe only)
 --- @field after_each (fun())[]? after_each hooks (root/describe only)
---- @field setups (fun())[]? setup hooks (root/describe only)
---- @field teardowns (fun())[]? teardown hooks (root/describe only)
 --- @field timeout integer? kill this it's process after N ms (it only)
 --- @field trace NtfTrace? declaration site
 --- @field fn fun()? test body (it only)
@@ -73,8 +71,6 @@ local function new_describe(name, fn)
     children = {},
     before_each = {},
     after_each = {},
-    setups = {},
-    teardowns = {},
     trace = trace_of(fn),
   }
   add_child(node)
@@ -135,8 +131,6 @@ M.it = new_it
 M.pending = new_pending
 M.before_each = add_hook("before_each")
 M.after_each = add_hook("after_each")
-M.setup = add_hook("setups")
-M.teardown = add_hook("teardowns")
 M.finally = function(fn)
   if finally_collector then
     table.insert(finally_collector, fn)
@@ -174,8 +168,6 @@ function M.build(file_path)
     children = {},
     before_each = {},
     after_each = {},
-    setups = {},
-    teardowns = {},
   }
   stack = { root }
 

@@ -1,6 +1,5 @@
 -- Executes a (sub)set of a spec file's test tree in the current process.
 --
--- Honors the busted execution model: `setup`/`teardown` run once per block,
 -- `before_each` runs outer->inner before each test, `after_each` runs
 -- inner->outer after each test, and `finally` callbacks run (in reverse) right
 -- after the test body.
@@ -158,20 +157,6 @@ function M.execute(root, selected, opts)
       return
     end
 
-    local setup_err = run_hooks(node.setups or {})
-    if setup_err then
-      table.insert(results, {
-        id = node.id,
-        name = node.name,
-        names = names,
-        trace = node.trace,
-        status = "error",
-        message = setup_err.message,
-        traceback = setup_err.traceback,
-      })
-      return
-    end
-
     local child_before = extend(before_chain, node.before_each or {})
     local child_after = extend(node.after_each or {}, after_chain)
 
@@ -187,10 +172,6 @@ function M.execute(root, selected, opts)
       elseif selected == nil or selected[child.id] == true then
         run_leaf(child, child_names, child_before, child_after)
       end
-    end
-
-    for _, teardown in ipairs(node.teardowns or {}) do
-      pcall(teardown)
     end
   end
 

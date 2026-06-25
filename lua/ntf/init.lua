@@ -41,18 +41,6 @@ function M.after_each(fn)
   return tree.after_each(fn)
 end
 
---- Register a hook run once before the current group's tests.
---- @param fn fun() hook body
-function M.setup(fn)
-  return tree.setup(fn)
-end
-
---- Register a hook run once after the current group's tests.
---- @param fn fun() hook body
-function M.teardown(fn)
-  return tree.teardown(fn)
-end
-
 --- Register a callback run when the current test finishes (pass or fail).
 --- @param fn fun() callback body
 function M.finally(fn)

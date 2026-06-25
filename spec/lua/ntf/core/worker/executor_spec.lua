@@ -8,7 +8,7 @@ local source = [[
 local ntf = require("ntf")
 local describe, it, pending = ntf.describe, ntf.it, ntf.pending
 local before_each, after_each = ntf.before_each, ntf.after_each
-local setup, teardown, finally = ntf.setup, ntf.teardown, ntf.finally
+local finally = ntf.finally
 
 _G.__NTF_LOG = {}
 local log = function(entry)
@@ -16,12 +16,6 @@ local log = function(entry)
 end
 
 describe("block", function()
-  setup(function()
-    log("setup")
-  end)
-  teardown(function()
-    log("teardown")
-  end)
   before_each(function()
     log("before")
   end)
@@ -62,7 +56,7 @@ describe("ntf.core.worker.executor.execute", function()
     assert.match("boom", results[2].message)
   end)
 
-  it("runs setup/teardown once and before_each/after_each/finally per test", function()
+  it("runs before_each/after_each/finally per test", function()
     local root = tree.build(helper.write_spec(source))
     run.execute(root, nil, {})
 
@@ -70,7 +64,6 @@ describe("ntf.core.worker.executor.execute", function()
     -- hooks still run (runtime pending != declaration pending)
     local log = rawget(_G, "__NTF_LOG")
     assert.same({
-      "setup",
       "before",
       "it1",
       "finally1",
@@ -80,7 +73,6 @@ describe("ntf.core.worker.executor.execute", function()
       "after",
       "before",
       "after",
-      "teardown",
     }, log)
   end)
 

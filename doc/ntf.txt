@@ -125,18 +125,6 @@ after_each({fn})                                            *ntf.after_each()*
   Parameters: ~
     {fn} (fun()) hook body
 
-setup({fn})                                                      *ntf.setup()*
-  Register a hook run once before the current group's tests.
-
-  Parameters: ~
-    {fn} (fun()) hook body
-
-teardown({fn})                                                *ntf.teardown()*
-  Register a hook run once after the current group's tests.
-
-  Parameters: ~
-    {fn} (fun()) hook body
-
 finally({fn})                                                  *ntf.finally()*
   Register a callback run when the current test finishes (pass or fail).
 
