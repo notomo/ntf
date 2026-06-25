@@ -42,7 +42,7 @@ function M.run(root)
     for _, item in ipairs(items) do
       total = total + #item.node_ids
     end
-    local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR and opts.color ~= false
+    local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR
     prog = require("ntf.core.controller.progress").new({
       write = function(s)
         io.stderr:write(s)

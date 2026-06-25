@@ -11,7 +11,6 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed used with shuffle
---- @field color boolean? force colors on/off (nil = auto)
 --- @field no_progress boolean disable streaming progress dots
 --- @field slow integer? report tests slower than N ms
 --- @field setup string? Lua script run in each worker before any spec
@@ -27,7 +26,6 @@ M.flags = {
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
   { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
-  { name = "--no-color", description = "disable ANSI colors" },
   { name = "--no-progress", description = "disable the streaming progress dots on stderr" },
   { name = "--slow=MS", description = "report tests slower than MS milliseconds" },
   { name = "--setup=PATH", description = "run a Lua script in each worker before any spec (for debugging)" },
@@ -61,7 +59,6 @@ function M.parse(argv)
     jobs = nil,
     shuffle = false,
     seed = nil,
-    color = nil,
     no_progress = false,
     slow = nil,
     setup = nil,
@@ -103,8 +100,6 @@ function M.parse(argv)
       opts.help = true
     elseif arg == "--shuffle" then
       opts.shuffle = true
-    elseif arg == "--no-color" then
-      opts.color = false
     elseif arg == "--no-progress" then
       opts.no_progress = true
     elseif value_flags[name] then
