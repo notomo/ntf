@@ -1,11 +1,8 @@
 -- Command line parsing for the controller (`ntf [options] <paths...>`).
 local M = {}
 
-local ISOLATE_LEVELS = { file = true, describe = true, it = true }
-
 --- @class NtfOptions
 --- @field paths string[] spec files or directories
---- @field isolate string process split granularity: "file"|"describe"|"it"
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
@@ -19,7 +16,6 @@ local ISOLATE_LEVELS = { file = true, describe = true, it = true }
 --- and the doc generation, so the flag list is never duplicated.
 --- @type { name: string, description: string }[]
 M.flags = {
-  { name = "--isolate=LEVEL", description = "process split granularity: file|describe|it (default: it)" },
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
@@ -51,7 +47,6 @@ end
 function M.parse(argv)
   local opts = {
     paths = {},
-    isolate = vim.env.NTF_ISOLATE or "it",
     timeout = tonumber(vim.env.NTF_TIMEOUT or "") or 60000,
     filter = nil,
     jobs = nil,
@@ -65,9 +60,6 @@ function M.parse(argv)
   -- Value-taking flags, each storing its value into `opts`. Both the
   -- `--name=VALUE` and the `--name VALUE` (space-separated) forms are accepted.
   local value_flags = {
-    ["--isolate"] = function(v)
-      opts.isolate = v
-    end,
     ["--timeout"] = function(v)
       opts.timeout = tonumber(v)
     end,
@@ -123,9 +115,6 @@ function M.parse(argv)
     else
       return "no spec paths given\n\n" .. usage()
     end
-  end
-  if not ISOLATE_LEVELS[opts.isolate] then
-    return "invalid --isolate level: " .. tostring(opts.isolate)
   end
   if type(opts.timeout) ~= "number" or opts.timeout < 0 then
     return "invalid --timeout value (expected milliseconds >= 0)"

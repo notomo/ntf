@@ -32,14 +32,14 @@ describe("ntf.core.controller.dispatcher.plan", function()
 
   it("keeps every leaf when no filter is given", function()
     local file = helper.write_spec(source)
-    local items = runner.plan({ file }, "file")
+    local items = runner.plan({ file })
 
     assert.same({ "1.1", "1.2", "2.1" }, planned_ids(items))
   end)
 
   it("keeps only leaves whose full name matches the filter", function()
     local file = helper.write_spec(source)
-    local items = runner.plan({ file }, "file", "adds")
+    local items = runner.plan({ file }, "adds")
 
     -- "math adds" and "string adds" match; "math subtracts" is dropped
     assert.same({ "1.1", "2.1" }, planned_ids(items))
@@ -47,14 +47,14 @@ describe("ntf.core.controller.dispatcher.plan", function()
 
   it("matches the filter as a Lua pattern against the full name", function()
     local file = helper.write_spec(source)
-    local items = runner.plan({ file }, "it", "^math")
+    local items = runner.plan({ file }, "^math")
 
     assert.same({ "1.1", "1.2" }, planned_ids(items))
   end)
 
   it("drops work items that have no matching leaf", function()
     local file = helper.write_spec(source)
-    local items = runner.plan({ file }, "it", "subtracts")
+    local items = runner.plan({ file }, "subtracts")
 
     assert.equal(1, #items)
     assert.same({ "1.2" }, items[1].node_ids)
@@ -62,7 +62,7 @@ describe("ntf.core.controller.dispatcher.plan", function()
 
   it("yields no items when the filter matches nothing", function()
     local file = helper.write_spec(source)
-    local items = runner.plan({ file }, "file", "nope")
+    local items = runner.plan({ file }, "nope")
 
     assert.equal(0, #items)
   end)
@@ -77,7 +77,7 @@ describe("broken", function()
   error("describe body blew up")
 end)
 ]])
-    local items, load_errors = runner.plan({ file }, "file")
+    local items, load_errors = runner.plan({ file })
 
     -- The file loaded, so it is not a file-level load error; the broken
     -- describe is scheduled as a leaf so its error gets reported on execution.

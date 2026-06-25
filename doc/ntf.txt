@@ -7,7 +7,6 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --isolate=LEVEL   process split granularity: file|describe|it (default: it)
     --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
     --filter=PATTERN  run only tests whose full name matches the Lua pattern
     --jobs=N          max parallel nvim workers (default: cpu count)
@@ -40,19 +39,8 @@ The test API is pulled from `require("ntf")` explicitly (no global injection):
 ==============================================================================
 ISOLATION                                                      *ntf-ISOLATION*
 
-ntf can run describe/it units in separate Neovim processes.
-
-- `--isolate=file`: one process per spec file
-- `--isolate=describe`: one process per top-level describe
-- `--isolate=it` (default): one process per it
-
-describe/it take an optional opts table; opt a single block into its own process
-with `opts.isolate`:
->lua
-  describe("a whole block in its own process", function() end, { isolate = true })
-
-  it("a single test in a fresh process", function() end, { isolate = true })
-<
+Every `it` runs in its own fresh Neovim process. This is not configurable: state
+never leaks between tests, because no two tests ever share a process.
 
 ==============================================================================
 TIMEOUT                                                          *ntf-TIMEOUT*
@@ -61,24 +49,12 @@ Each worker process is killed if it runs longer than a timeout, so a hung test
 fails fast instead of stalling the whole run. The global default is set with
 `--timeout=MS` (default 60000; `--timeout=0` disables it).
 
-describe/it can override it per node with `opts.timeout` (milliseconds):
+An `it` can override the default with `opts.timeout` (milliseconds):
 >lua
   it("must be quick", function() end, { timeout = 1000 })
-
-  describe("slow integration block", function() end, { timeout = 30000 })
 <
-The timeout is enforced at the granularity of the isolation unit (the process),
-not the individual test, because a timed-out process is killed as a whole. A
-per-node `opts.timeout` therefore only takes effect when that node is its own
-isolation unit:
-
-- with `--isolate=it` (default) every `it` is its own process, so every
-  `it`-level `opts.timeout` is enforced precisely
-- a node marked `opts.isolate = true` becomes its own process, so its
-  `opts.timeout` is enforced too
-- otherwise (e.g. several `it`s sharing one process under `--isolate=file`), only
-  the unit node's timeout applies; inner per-`it` timeouts are ignored, and the
-  process timeout bounds the unit as a whole
+Because every `it` is its own process, an `it`-level `opts.timeout` is always
+enforced precisely.
 
 A timed-out worker is reported as an error ("worker timed out after Nms").
 
@@ -86,14 +62,13 @@ A timed-out worker is reported as an error ("worker timed out after Nms").
 OUTPUT                                                            *ntf-OUTPUT*
 
 Everything a worker writes while it runs is captured and shown in the report as
-an `OUTPUT <spec file>` block. Both standard streams are included: `io.write`,
-`io.stdout:write` and native writes on stdout, plus `print`, `vim.api.nvim_echo`
-and other messages, which Neovim routes to stderr. Capture is per worker (one
-work item), not per test, so the report cannot attribute a line to an individual
-test case; stdout is shown before stderr.
+an `OUTPUT` block, labeled with the test case's full name. Both standard streams
+are included: `io.write`, `io.stdout:write` and native writes on stdout, plus
+`print`, `vim.api.nvim_echo` and other messages, which Neovim routes to stderr;
+stdout is shown before stderr.
 
-With `--isolate it` or `--isolate describe` a file is split across several
-workers, so it may produce several `OUTPUT <spec file>` blocks.
+Each `it` runs in its own worker, so a spec file with several `it`s that write
+output produces several `OUTPUT` blocks.
 
 ==============================================================================
 DEBUGGING                                                      *ntf-DEBUGGING*
@@ -115,14 +90,13 @@ with `--filter`). Wiring the debugger transport itself is up to your script.
 ==============================================================================
 Lua module: ntf                                                      *ntf-ntf*
 
-describe({name}, {fn}, {opts})                                *ntf.describe()*
+describe({name}, {fn})                                        *ntf.describe()*
   Define a test group. Its body runs at build time to discover nested
   `describe`/`it`; the body itself is never reported as a test.
 
   Parameters: ~
     {name} (string) group name
     {fn} (fun()) body that declares nested `describe`/`it`
-    {opts} (NtfDescribeOption?) |NtfDescribeOption|
 
 it({name}, {fn}, {opts})                                            *ntf.it()*
   Define a test case. The body runs at execution time.
@@ -220,15 +194,9 @@ get_module_root({module_name})                  *ntf.helper.get_module_root()*
 ==============================================================================
 STRUCTURE                                                      *ntf-STRUCTURE*
 
-NtfDescribeOption                                          *NtfDescribeOption*
-
-- {isolate} (boolean?) run this block in its own process
-- {timeout} (integer?) per-process timeout in ms (effective only when this block is its own isolation unit; see |ntf-TIMEOUT|)
-
 NtfItOption                                                      *NtfItOption*
 
-- {isolate} (boolean?) run this test in its own process
-- {timeout} (integer?) per-process timeout in ms (effective only when this test is its own isolation unit; see |ntf-TIMEOUT|)
+- {timeout} (integer?) per-process timeout in ms; see |ntf-TIMEOUT|
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help

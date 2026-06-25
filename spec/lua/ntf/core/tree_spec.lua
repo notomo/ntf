@@ -13,12 +13,8 @@ describe("outer", function()
   describe("inner", function()
     it("three", function() end)
   end)
-  it("isolated four", function() end, { isolate = true })
+  it("quick four", function() end, { timeout = 1000 })
 end)
-
-describe("isolated group", function()
-  it("five", function() end)
-end, { isolate = true })
 ]]
 
 describe("ntf.core.tree.build", function()
@@ -45,15 +41,11 @@ describe("ntf.core.tree.build", function()
     assert.equal("pending two", pending_node.name)
   end)
 
-  it("records .isolate opt-in on it and describe", function()
+  it("records an it-level timeout opt-in", function()
     local root = tree.build(helper.write_spec(source))
-    local isolated_it = root.children[1].children[4]
-    assert.equal("isolated four", isolated_it.name)
-    assert.is_true(isolated_it.isolate)
-
-    local isolated_describe = root.children[2]
-    assert.equal("isolated group", isolated_describe.name)
-    assert.is_true(isolated_describe.isolate)
+    local timed_it = root.children[1].children[4]
+    assert.equal("quick four", timed_it.name)
+    assert.equal(1000, timed_it.timeout)
   end)
 
   it("captures load errors instead of throwing", function()

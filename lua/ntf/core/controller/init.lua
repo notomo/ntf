@@ -34,7 +34,7 @@ function M.run(root)
   end
 
   local runner = require("ntf.core.controller.dispatcher")
-  local items, load_errors = runner.plan(files, opts.isolate, opts.filter)
+  local items, load_errors = runner.plan(files, opts.filter)
 
   local prog
   if not opts.no_progress then

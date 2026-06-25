@@ -5,10 +5,9 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local helper = require("ntf.test.helper")
 
--- Keep output deterministic (no progress dots; colors auto-disable off a tty) and
--- run the whole file in a single worker so each case spawns the fewest nested nvim
--- processes.
-local BASE_FLAGS = { "--no-progress", "--isolate=file" }
+-- Keep output deterministic (no progress dots; colors auto-disable off a tty).
+-- Every `it` runs in its own worker, so a case spawns one nested nvim per `it`.
+local BASE_FLAGS = { "--no-progress" }
 
 --- Write a spec file under the temp data dir and return its absolute path.
 local function spec(name, source)
@@ -161,14 +160,6 @@ describe("bin/ntf end-to-end", function()
     assert.match("unknown option", obj.stderr)
   end)
 
-  it("exits 2 on an invalid --isolate level", function()
-    local path = spec("pass_spec.lua", PASSING)
-    local obj = helper.run_cli({ "--isolate=bogus", path })
-
-    assert.equal(2, obj.code)
-    assert.match("invalid %-%-isolate level", obj.stderr)
-  end)
-
   it("exits 2 when a directory contains no spec files", function()
     helper.test_data:create_file("notes.txt", "not a spec")
     local obj = run({ helper.test_data.full_path })
@@ -250,9 +241,9 @@ f:close()
     assert.match("from native write", obj.stdout)
   end)
 
-  it("labels captured output with the test case name under --isolate it", function()
+  it("labels captured output with the test case name", function()
     local path = spec("noisy_spec.lua", NOISY)
-    local obj = helper.run_cli({ "--no-progress", "--isolate=it", path })
+    local obj = run({ path })
 
     assert.equal(0, obj.code)
     assert.match("OUTPUT group writes to stdout", obj.stdout)

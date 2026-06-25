@@ -2,21 +2,15 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
---- @class NtfDescribeOption
---- @field isolate boolean? run this block in its own process
---- @field timeout integer? per-process timeout in ms (effective only when this block is its own isolation unit; see |ntf-TIMEOUT|)
-
 --- @class NtfItOption
---- @field isolate boolean? run this test in its own process
---- @field timeout integer? per-process timeout in ms (effective only when this test is its own isolation unit; see |ntf-TIMEOUT|)
+--- @field timeout integer? per-process timeout in ms; see |ntf-TIMEOUT|
 
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
 --- @param name string: group name
 --- @param fn fun() body that declares nested `describe`/`it`
---- @param opts NtfDescribeOption?: |NtfDescribeOption|
-function M.describe(name, fn, opts)
-  return tree.describe(name, fn, opts)
+function M.describe(name, fn)
+  return tree.describe(name, fn)
 end
 
 --- Define a test case. The body runs at execution time.

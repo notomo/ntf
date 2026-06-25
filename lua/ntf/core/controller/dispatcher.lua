@@ -35,9 +35,8 @@ local function full_name(names)
 end
 
 -- The scope a worker (work item) covers, named by the deepest describe/it chain
--- its leaves share: a single leaf (e.g. `--isolate it`) yields that test's full
--- name, a describe unit yields the describe name, and a whole-file item with
--- unrelated top-level groups yields "" (the report then falls back to the file).
+-- its leaves share. Each item is a single leaf, so this is that test's full name
+-- (the report uses it to label the captured OUTPUT block).
 local function item_scope(item)
   local prefix
   for _, id in ipairs(item.node_ids) do
@@ -78,10 +77,9 @@ end
 
 --- Build the flat list of work items across all files.
 --- @param files string[]
---- @param granularity string
 --- @param filter string|nil Lua pattern; keep only leaves whose full name matches
 --- @return NtfWorkItem[] items, NtfLoadError[] load_errors
-function M.plan(files, granularity, filter)
+function M.plan(files, filter)
   local items = {}
   local load_errors = {}
 
@@ -91,7 +89,7 @@ function M.plan(files, granularity, filter)
       table.insert(load_errors, { file = file, message = tostring(root.load_error) })
     else
       local map = leaf_map(root)
-      for _, item in ipairs(schedule.split(root, granularity)) do
+      for _, item in ipairs(schedule.split(root)) do
         local node_ids = item.node_ids
         if filter then
           node_ids = vim.tbl_filter(function(id)
@@ -184,7 +182,7 @@ end
 --- @class NtfWorkerOutput
 --- @field index integer item index (used to order the report deterministically)
 --- @field file string spec file path
---- @field name string describe/it scope the worker covered ("" for a whole file)
+--- @field name string the test scope the worker covered (its full describe/it name)
 --- @field output string captured stdout blob
 
 --- Run all work items in parallel worker processes and aggregate results.

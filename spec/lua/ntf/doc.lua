@@ -45,19 +45,8 @@ The test API is pulled from `require("ntf")` explicitly (no global injection):
       name = "ISOLATION",
       body = function()
         return [[
-ntf can run describe/it units in separate Neovim processes.
-
-- `--isolate=file`: one process per spec file
-- `--isolate=describe`: one process per top-level describe
-- `--isolate=it` (default): one process per it
-
-describe/it take an optional opts table; opt a single block into its own process
-with `opts.isolate`:
->lua
-  describe("a whole block in its own process", function() end, { isolate = true })
-
-  it("a single test in a fresh process", function() end, { isolate = true })
-<]]
+Every `it` runs in its own fresh Neovim process. This is not configurable: state
+never leaks between tests, because no two tests ever share a process.]]
       end,
     },
     {
@@ -68,24 +57,12 @@ Each worker process is killed if it runs longer than a timeout, so a hung test
 fails fast instead of stalling the whole run. The global default is set with
 `--timeout=MS` (default 60000; `--timeout=0` disables it).
 
-describe/it can override it per node with `opts.timeout` (milliseconds):
+An `it` can override the default with `opts.timeout` (milliseconds):
 >lua
   it("must be quick", function() end, { timeout = 1000 })
-
-  describe("slow integration block", function() end, { timeout = 30000 })
 <
-The timeout is enforced at the granularity of the isolation unit (the process),
-not the individual test, because a timed-out process is killed as a whole. A
-per-node `opts.timeout` therefore only takes effect when that node is its own
-isolation unit:
-
-- with `--isolate=it` (default) every `it` is its own process, so every
-  `it`-level `opts.timeout` is enforced precisely
-- a node marked `opts.isolate = true` becomes its own process, so its
-  `opts.timeout` is enforced too
-- otherwise (e.g. several `it`s sharing one process under `--isolate=file`), only
-  the unit node's timeout applies; inner per-`it` timeouts are ignored, and the
-  process timeout bounds the unit as a whole
+Because every `it` is its own process, an `it`-level `opts.timeout` is always
+enforced precisely.
 
 A timed-out worker is reported as an error ("worker timed out after Nms").]]
       end,
@@ -95,14 +72,13 @@ A timed-out worker is reported as an error ("worker timed out after Nms").]]
       body = function()
         return [[
 Everything a worker writes while it runs is captured and shown in the report as
-an `OUTPUT <spec file>` block. Both standard streams are included: `io.write`,
-`io.stdout:write` and native writes on stdout, plus `print`, `vim.api.nvim_echo`
-and other messages, which Neovim routes to stderr. Capture is per worker (one
-work item), not per test, so the report cannot attribute a line to an individual
-test case; stdout is shown before stderr.
+an `OUTPUT` block, labeled with the test case's full name. Both standard streams
+are included: `io.write`, `io.stdout:write` and native writes on stdout, plus
+`print`, `vim.api.nvim_echo` and other messages, which Neovim routes to stderr;
+stdout is shown before stderr.
 
-With `--isolate it` or `--isolate describe` a file is split across several
-workers, so it may produce several `OUTPUT <spec file>` blocks.]]
+Each `it` runs in its own worker, so a spec file with several `it`s that write
+output produces several `OUTPUT` blocks.]]
       end,
     },
     {
@@ -155,8 +131,8 @@ local gen_readme = function()
 > WIP
 
 ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
-It runs busted-style `*_spec.lua` files and can execute `describe`/`it` units in
-separate Neovim processes.
+It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
+Neovim process so state never leaks between tests.
 
 ## Usage
 

@@ -4,8 +4,8 @@
 > WIP
 
 ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
-It runs busted-style `*_spec.lua` files and can execute `describe`/`it` units in
-separate Neovim processes.
+It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
+Neovim process so state never leaks between tests.
 
 ## Usage
 
@@ -13,7 +13,6 @@ separate Neovim processes.
 Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
-  --isolate=LEVEL   process split granularity: file|describe|it (default: it)
   --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
   --filter=PATTERN  run only tests whose full name matches the Lua pattern
   --jobs=N          max parallel nvim workers (default: cpu count)

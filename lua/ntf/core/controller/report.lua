@@ -125,8 +125,8 @@ function M.build(results, load_errors, opts, outputs)
   end
 
   -- Captured output, attributed to the worker (one work item) that emitted it.
-  -- The worker's scope names the block (the test case under `--isolate it`, a
-  -- describe, or the file itself); the file is shown dim when a name is present.
+  -- The worker's scope (the test case's full name) labels the block; the file is
+  -- shown dim beneath it.
   for _, out in ipairs(outputs) do
     local rel = out.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
     if out.name and out.name ~= "" then

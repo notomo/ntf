@@ -21,9 +21,7 @@ local M = {}
 --- @field after_each (fun())[]? after_each hooks (root/describe only)
 --- @field setups (fun())[]? setup hooks (root/describe only)
 --- @field teardowns (fun())[]? teardown hooks (root/describe only)
---- @field isolate boolean? run this subtree in its own process (describe/it)
---- @field timeout integer? kill this node's process after N ms (describe/it;
----        enforced only when this node is its own isolation unit)
+--- @field timeout integer? kill this it's process after N ms (it only)
 --- @field trace NtfTrace? declaration site
 --- @field fn fun()? test body (it only)
 --- @field load_error any? load/build error captured on this node (root/describe)
@@ -66,9 +64,8 @@ end
 
 --- @param name string
 --- @param fn fun()
---- @param opts NtfDescribeOption?
 --- @return NtfNode node
-local function new_describe(name, fn, opts)
+local function new_describe(name, fn)
   local node = {
     type = "describe",
     name = name,
@@ -78,8 +75,6 @@ local function new_describe(name, fn, opts)
     after_each = {},
     setups = {},
     teardowns = {},
-    isolate = opts and opts.isolate or false,
-    timeout = opts and opts.timeout or nil,
     trace = trace_of(fn),
   }
   add_child(node)
@@ -103,7 +98,6 @@ local function new_it(name, fn, opts)
     name = name,
     fn = fn,
     trace = trace_of(fn),
-    isolate = opts and opts.isolate or false,
     timeout = opts and opts.timeout or nil,
   }
   return add_child(node)
@@ -135,7 +129,7 @@ end
 -- The busted-style test API. Exposed through `require("ntf")`; specs pull what
 -- they need explicitly (`local describe, it = ntf.describe, ntf.it`) instead of
 -- relying on injected globals.
--- describe / it take an optional opts table: `describe(name, fn, { isolate = true })`
+-- `it` takes an optional opts table: `it(name, fn, { timeout = 1000 })`
 M.describe = new_describe
 M.it = new_it
 M.pending = new_pending
