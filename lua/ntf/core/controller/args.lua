@@ -47,7 +47,7 @@ end
 function M.parse(argv)
   local opts = {
     paths = {},
-    timeout = tonumber(vim.env.NTF_TIMEOUT or "") or 60000,
+    timeout = 60000,
     filter = nil,
     jobs = nil,
     shuffle = false,
