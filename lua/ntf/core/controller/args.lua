@@ -8,7 +8,6 @@ local M = {}
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed used with shuffle
---- @field no_progress boolean disable streaming progress dots
 --- @field setup string? Lua script run in each worker before any spec
 --- @field help boolean show usage and exit
 
@@ -21,8 +20,7 @@ M.flags = {
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle", description = "randomize test order" },
   { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
-  { name = "--no-progress", description = "disable the streaming progress dots on stderr" },
-  { name = "--setup=PATH", description = "run a Lua script in each worker before any spec (for debugging)" },
+  { name = "--setup=PATH", description = "run a Lua script in each worker before any spec" },
   { name = "-h, --help", description = "show this help" },
 }
 
@@ -52,7 +50,6 @@ function M.parse(argv)
     jobs = nil,
     shuffle = false,
     seed = nil,
-    no_progress = false,
     setup = nil,
     help = false,
   }
@@ -86,8 +83,6 @@ function M.parse(argv)
       opts.help = true
     elseif arg == "--shuffle" then
       opts.shuffle = true
-    elseif arg == "--no-progress" then
-      opts.no_progress = true
     elseif value_flags[name] then
       local v = inline
       if v == nil then

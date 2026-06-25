@@ -12,8 +12,7 @@ USAGE                                                              *ntf-USAGE*
     --jobs=N          max parallel nvim workers (default: cpu count)
     --shuffle         randomize test order
     --seed=N          seed used with --shuffle (default: time based)
-    --no-progress     disable the streaming progress dots on stderr
-    --setup=PATH      run a Lua script in each worker before any spec (for debugging)
+    --setup=PATH      run a Lua script in each worker before any spec
     -h, --help        show this help
 
   With no paths, runs the *_spec.lua files under ./spec.

@@ -5,19 +5,14 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local helper = require("ntf.test.helper")
 
--- Keep output deterministic (no progress dots; colors auto-disable off a tty).
--- Every `it` runs in its own worker, so a case spawns one nested nvim per `it`.
-local BASE_FLAGS = { "--no-progress" }
-
 --- Write a spec file under the temp data dir and return its absolute path.
 local function spec(name, source)
   return helper.test_data:create_file(name, source)
 end
 
---- Run `bin/ntf` against the given paths plus the shared base flags.
+--- Run `bin/ntf` against the given paths plus any extra flags.
 local function run(paths, extra_flags)
-  local args = vim.list_extend(vim.list_extend({}, BASE_FLAGS), extra_flags or {})
-  args = vim.list_extend(args, paths)
+  local args = vim.list_extend(vim.list_extend({}, extra_flags or {}), paths)
   return helper.run_cli(args)
 end
 
@@ -140,14 +135,14 @@ describe("bin/ntf end-to-end", function()
 
   it("defaults to ./spec when no path is given", function()
     helper.test_data:create_file("spec/pass_spec.lua", PASSING)
-    local obj = helper.run_cli(BASE_FLAGS, helper.test_data.full_path)
+    local obj = helper.run_cli({}, helper.test_data.full_path)
 
     assert.equal(0, obj.code)
     assert.match("2 passed", obj.stdout)
   end)
 
   it("exits 2 when no spec path is given and there is no ./spec", function()
-    local obj = helper.run_cli(BASE_FLAGS, helper.test_data.full_path)
+    local obj = helper.run_cli({}, helper.test_data.full_path)
 
     assert.equal(2, obj.code)
     assert.match("no spec paths given", obj.stderr)

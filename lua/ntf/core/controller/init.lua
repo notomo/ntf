@@ -37,12 +37,12 @@ function M.run(root)
   local items, load_errors = runner.plan(files, opts.filter)
 
   local prog
-  if not opts.no_progress then
+  if vim.uv.guess_handle(2) == "tty" then
     local total = 0
     for _, item in ipairs(items) do
       total = total + #item.node_ids
     end
-    local color = vim.uv.guess_handle(2) == "tty" and not vim.env.NO_COLOR
+    local color = not vim.env.NO_COLOR
     prog = require("ntf.core.controller.progress").new({
       write = function(s)
         io.stderr:write(s)
