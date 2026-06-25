@@ -73,7 +73,7 @@ end
 
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
---- @param opts { color?: boolean, slow?: integer, shuffle?: boolean, seed?: integer }
+--- @param opts { color?: boolean, shuffle?: boolean, seed?: integer }
 --- @param outputs NtfWorkerOutput[]? per-worker captured stdout blobs
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts, outputs)
@@ -93,15 +93,11 @@ function M.build(results, load_errors, opts, outputs)
 
   local counts = { passed = 0, failed = 0, error = 0, pending = 0 }
   local problems = {}
-  local slows = {}
 
   for _, result in ipairs(results) do
     counts[result.status] = (counts[result.status] or 0) + 1
     if result.status == "failed" or result.status == "error" then
       table.insert(problems, result)
-    end
-    if opts.slow and result.duration and result.duration * 1000 >= opts.slow then
-      table.insert(slows, result)
     end
   end
 
@@ -140,17 +136,6 @@ function M.build(results, load_errors, opts, outputs)
       table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", rel))
     end
     table.insert(lines, indent(out.output:gsub("\n$", ""), "    "))
-    table.insert(lines, "")
-  end
-
-  if #slows > 0 then
-    table.sort(slows, function(a, b)
-      return (a.duration or 0) > (b.duration or 0)
-    end)
-    table.insert(lines, paint("yellow", ("Slow (>= %d ms):"):format(opts.slow)))
-    for _, result in ipairs(slows) do
-      table.insert(lines, ("  %.1f ms  %s"):format(result.duration * 1000, full_name(result)))
-    end
     table.insert(lines, "")
   end
 

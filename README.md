@@ -20,7 +20,6 @@ Options:
   --shuffle         randomize test order
   --seed=N          seed used with --shuffle (default: time based)
   --no-progress     disable the streaming progress dots on stderr
-  --slow=MS         report tests slower than MS milliseconds
   --setup=PATH      run a Lua script in each worker before any spec (for debugging)
   -h, --help        show this help
 
