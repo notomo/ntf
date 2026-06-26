@@ -85,3 +85,32 @@ end)
     assert.same({ "1" }, planned_ids(items))
   end)
 end)
+
+describe("ntf.core.controller.dispatcher.run", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("aborts the run when a worker callback raises an internal error", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("runs", function() end)
+end)
+]])
+    local items = runner.plan({ file })
+
+    -- on_item fires for every finished worker; throwing here stands in for any
+    -- bug in the result/output handling. Such an error must surface, not hang.
+    local ok, err = pcall(function()
+      runner.run(items, {
+        root = helper.root,
+        on_item = function()
+          error("boom in callback")
+        end,
+      })
+    end)
+
+    assert.is_false(ok)
+    assert.match("boom in callback", err)
+  end)
+end)

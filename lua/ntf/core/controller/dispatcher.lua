@@ -200,6 +200,10 @@ function M.run(items, opts)
   local results = {}
   local started = 0
   local finished = 0
+  -- First internal error raised from a worker callback. The callback body only
+  -- fails on a bug in ntf (never on a failing test), so we abort the whole run
+  -- instead of letting Neovim swallow the error and the wait loop hang.
+  local fatal
 
   local function spawn_next()
     if started >= total then
@@ -255,18 +259,25 @@ function M.run(items, opts)
         timer:close()
         timer = nil
       end
-      local item_results = results_of(item, obj, timed_out and timeout or nil)
-      vim.list_extend(results, item_results)
-      -- A crashed/timed-out worker surfaces its stderr as the error detail
-      -- (results_of), so only emit output when it reported real results.
-      if opts.on_output and parse_output(obj.stdout) then
-        local blob = worker_output(obj.stdout, obj.stderr)
-        if blob ~= "" then
-          opts.on_output({ file = item.file, name = item_scope(item), output = blob })
+      -- Errors here mean an ntf bug, not a test failure; libuv would otherwise
+      -- just log and drop them, so capture the first to re-raise after the wait.
+      local ok, err = xpcall(function()
+        local item_results = results_of(item, obj, timed_out and timeout or nil)
+        vim.list_extend(results, item_results)
+        -- A crashed/timed-out worker surfaces its stderr as the error detail
+        -- (results_of), so only emit output when it reported real results.
+        if opts.on_output and parse_output(obj.stdout) then
+          local blob = worker_output(obj.stdout, obj.stderr)
+          if blob ~= "" then
+            opts.on_output({ file = item.file, name = item_scope(item), output = blob })
+          end
         end
-      end
-      if opts.on_item then
-        opts.on_item(item, item_results)
+        if opts.on_item then
+          opts.on_item(item, item_results)
+        end
+      end, debug.traceback)
+      if not ok then
+        fatal = fatal or err
       end
       finished = finished + 1
       vim.schedule(spawn_next)
@@ -289,8 +300,12 @@ function M.run(items, opts)
   end
 
   vim.wait(10 * 60 * 1000, function()
-    return finished >= total
+    return finished >= total or fatal ~= nil
   end, 20)
+
+  if fatal then
+    error(fatal, 0)
+  end
 
   return results
 end
