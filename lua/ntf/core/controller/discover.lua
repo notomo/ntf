@@ -23,7 +23,7 @@ function M.specs(paths)
     elseif vim.fn.filereadable(path) == 1 then
       add(path)
     else
-      error("path not found: " .. path)
+      error("path not found: " .. path, 0)
     end
   end
 

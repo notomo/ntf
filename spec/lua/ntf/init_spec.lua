@@ -163,6 +163,13 @@ describe("bin/ntf end-to-end", function()
     assert.match("no %*_spec%.lua found", obj.stderr)
   end)
 
+  it("exits 2 with a clean message (no raw trace) when a path does not exist", function()
+    local obj = run({ "/no/such/path_spec.lua" })
+
+    assert.equal(2, obj.code)
+    assert.match("^path not found: /no/such/path_spec%.lua", obj.stderr)
+  end)
+
   it("exits 1 and reports a LOAD ERROR for a spec that throws at load time", function()
     local path = spec("broken_spec.lua", LOAD_ERROR)
     local obj = run({ path })
