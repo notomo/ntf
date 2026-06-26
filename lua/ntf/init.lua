@@ -3,7 +3,9 @@ local tree = require("ntf.core.tree")
 local M = {}
 
 --- @class NtfItOption
---- @field timeout integer? per-process timeout in ms; see |ntf-TIMEOUT|
+--- @field timeout integer? per-process timeout in ms (e.g. `{ timeout = 1000 }`),
+---   overriding the `--timeout` default; an exceeded worker is killed and
+---   reported as an error.
 
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
@@ -13,7 +15,9 @@ function M.describe(name, fn)
   return tree.describe(name, fn)
 end
 
---- Define a test case. The body runs at execution time.
+--- Define a test case. The body runs at execution time, in its own fresh Neovim
+--- process. This is not configurable: state never leaks between tests, because
+--- no two tests ever share a process.
 --- @param name string: test name
 --- @param fn fun() test body
 --- @param opts NtfItOption?: |NtfItOption|

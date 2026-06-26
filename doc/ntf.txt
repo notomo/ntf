@@ -21,53 +21,32 @@ USAGE                                                              *ntf-USAGE*
 ==============================================================================
 WRITING SPECS                                              *ntf-WRITING-SPECS*
 
-The test API is pulled from `require("ntf")` explicitly (no global injection):
 >lua
+  -- The test API is pulled from `require("ntf")` explicitly (no global injection).
   local ntf = require("ntf")
-  local describe, it = ntf.describe, ntf.it
-  local before_each, after_each = ntf.before_each, ntf.after_each
+  local describe, it, pending = ntf.describe, ntf.it, ntf.pending
+  local before_each, after_each, finally = ntf.before_each, ntf.after_each, ntf.finally
   local assert = ntf.assert
 
   describe("group", function()
-    it("does something", function()
-      assert.equal(1, 1)
+    local value
+    before_each(function()
+      value = 1
     end)
+    after_each(function()
+      value = nil
+    end)
+
+    it("does something", function()
+      finally(function()
+        -- runs when this test finishes, whether it passed or failed
+      end)
+      assert.equal(1, value)
+    end)
+
+    pending("not implemented yet")
   end)
 <
-
-==============================================================================
-ISOLATION                                                      *ntf-ISOLATION*
-
-Every `it` runs in its own fresh Neovim process. This is not configurable: state
-never leaks between tests, because no two tests ever share a process.
-
-==============================================================================
-TIMEOUT                                                          *ntf-TIMEOUT*
-
-Each worker process is killed if it runs longer than a timeout, so a hung test
-fails fast instead of stalling the whole run. The global default is set with
-`--timeout=MS` (default 60000; `--timeout=0` disables it).
-
-An `it` can override the default with `opts.timeout` (milliseconds):
->lua
-  it("must be quick", function() end, { timeout = 1000 })
-<
-Because every `it` is its own process, an `it`-level `opts.timeout` is always
-enforced precisely.
-
-A timed-out worker is reported as an error ("worker timed out after Nms").
-
-==============================================================================
-OUTPUT                                                            *ntf-OUTPUT*
-
-Everything a worker writes while it runs is captured and shown in the report as
-an `OUTPUT` block, labeled with the test case's full name. Both standard streams
-are included: `io.write`, `io.stdout:write` and native writes on stdout, plus
-`print`, `vim.api.nvim_echo` and other messages, which Neovim routes to stderr;
-stdout is shown before stderr.
-
-Each `it` runs in its own worker, so a spec file with several `it`s that write
-output produces several `OUTPUT` blocks.
 
 ==============================================================================
 DEBUGGING                                                      *ntf-DEBUGGING*
@@ -98,7 +77,9 @@ describe({name}, {fn})                                        *ntf.describe()*
     {fn} (fun()) body that declares nested `describe`/`it`
 
 it({name}, {fn}, {opts})                                            *ntf.it()*
-  Define a test case. The body runs at execution time.
+  Define a test case. The body runs at execution time, in its own fresh Neovim
+  process. This is not configurable: state never leaks between tests, because
+  no two tests ever share a process.
 
   Parameters: ~
     {name} (string) test name
@@ -183,7 +164,9 @@ STRUCTURE                                                      *ntf-STRUCTURE*
 
 NtfItOption                                                      *NtfItOption*
 
-- {timeout} (integer?) per-process timeout in ms; see |ntf-TIMEOUT|
+- {timeout} (integer?) per-process timeout in ms (e.g. `{ timeout = 1000 }`),
+    overriding the `--timeout` default; an exceeded worker is killed and
+    reported as an error.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help

@@ -7,6 +7,16 @@ local plugin_name = vim.env.PLUGIN_NAME
 -- flags / usage come from core.controller.args so they are never duplicated here
 local usage = args.usage()
 
+-- The "writing specs" snippet lives in one runnable file, reused by both the
+-- vimdoc chapter and the README. A spec is not directly `dofile`-able (it needs
+-- ntf's build context), so verify it by running it through the real CLI; a
+-- broken example fails `make doc` instead of shipping.
+local example_path = ("./spec/lua/%s/example.lua"):format(plugin_name)
+local example_result = vim.system({ "./bin/ntf", example_path }):wait()
+if example_result.code ~= 0 then
+  error(("example failed to run: %s\n%s"):format(example_path, example_result.stdout .. example_result.stderr))
+end
+
 require("genvdoc").generate(plugin_name, {
   source = {
     patterns = {
@@ -25,60 +35,7 @@ require("genvdoc").generate(plugin_name, {
     {
       name = "WRITING SPECS",
       body = function()
-        return [[
-The test API is pulled from `require("ntf")` explicitly (no global injection):
->lua
-  local ntf = require("ntf")
-  local describe, it = ntf.describe, ntf.it
-  local before_each, after_each = ntf.before_each, ntf.after_each
-  local assert = ntf.assert
-
-  describe("group", function()
-    it("does something", function()
-      assert.equal(1, 1)
-    end)
-  end)
-<]]
-      end,
-    },
-    {
-      name = "ISOLATION",
-      body = function()
-        return [[
-Every `it` runs in its own fresh Neovim process. This is not configurable: state
-never leaks between tests, because no two tests ever share a process.]]
-      end,
-    },
-    {
-      name = "TIMEOUT",
-      body = function()
-        return [[
-Each worker process is killed if it runs longer than a timeout, so a hung test
-fails fast instead of stalling the whole run. The global default is set with
-`--timeout=MS` (default 60000; `--timeout=0` disables it).
-
-An `it` can override the default with `opts.timeout` (milliseconds):
->lua
-  it("must be quick", function() end, { timeout = 1000 })
-<
-Because every `it` is its own process, an `it`-level `opts.timeout` is always
-enforced precisely.
-
-A timed-out worker is reported as an error ("worker timed out after Nms").]]
-      end,
-    },
-    {
-      name = "OUTPUT",
-      body = function()
-        return [[
-Everything a worker writes while it runs is captured and shown in the report as
-an `OUTPUT` block, labeled with the test case's full name. Both standard streams
-are included: `io.write`, `io.stdout:write` and native writes on stdout, plus
-`print`, `vim.api.nvim_echo` and other messages, which Neovim routes to stderr;
-stdout is shown before stderr.
-
-Each `it` runs in its own worker, so a spec file with several `it`s that write
-output produces several `OUTPUT` blocks.]]
+        return util.help_code_block_from_file(example_path, { language = "lua" })
       end,
     },
     {
@@ -124,6 +81,8 @@ with `--filter`). Wiring the debugger transport itself is up to your script.]]
 })
 
 local gen_readme = function()
+  local example = util.read_all(example_path)
+
   local content = ([[
 # %s
 
@@ -142,20 +101,9 @@ Neovim process so state never leaks between tests.
 
 ## Writing specs
 
-The test API is pulled from `require("ntf")` explicitly (no global injection):
-
 ```lua
-local ntf = require("ntf")
-local describe, it = ntf.describe, ntf.it
-local assert = ntf.assert
-
-describe("group", function()
-  it("does something", function()
-    assert.equal(1, 1)
-  end)
-end)
-```
-]]):format(plugin_name, usage)
+%s```
+]]):format(plugin_name, usage, example)
 
   util.write("README.md", content)
 end
