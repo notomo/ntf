@@ -248,7 +248,7 @@ f:close()
     local obj = run({ path })
 
     assert.equal(0, obj.code)
-    assert.match("OUTPUT group writes to stdout", obj.stdout)
+    assert.match("OUTPUT .* group writes to stdout", obj.stdout)
   end)
 
   it("discovers and runs every spec file under a directory path", function()

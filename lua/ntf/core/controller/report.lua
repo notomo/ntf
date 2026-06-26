@@ -97,15 +97,14 @@ function M.output_block(out, color)
   -- Vimscript `getcwd()` is forbidden; `vim.uv.cwd()` is the safe equivalent.
   local rel = out.file:gsub("^" .. vim.pesc(vim.uv.cwd() or "") .. "/?", "")
   local lines = {}
-  -- The worker's scope (the test case's full name) labels the block; the file is
-  -- shown dim beneath it.
+  -- The block is labelled by its file, followed by the test case's full name when
+  -- the worker ran a single case (a whole-file worker has no name).
+  local header = paint("dim", "OUTPUT ") .. paint("dim", rel)
   if out.name and out.name ~= "" then
-    table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", out.name))
-    table.insert(lines, "  " .. paint("dim", rel))
-  else
-    table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", rel))
+    header = header .. " " .. paint("bold", out.name)
   end
-  table.insert(lines, indent(out.output:gsub("\n$", ""), "    "))
+  table.insert(lines, header)
+  table.insert(lines, (out.output:gsub("\n$", "")))
   table.insert(lines, "")
   return table.concat(lines, "\n") .. "\n"
 end

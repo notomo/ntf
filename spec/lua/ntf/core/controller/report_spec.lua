@@ -8,17 +8,16 @@ describe("ntf.core.controller.report.output_block", function()
     local text = report.output_block(out, false)
 
     assert.match("OUTPUT spec/a_spec.lua", text)
-    assert.match("    hello", text)
-    assert.match("    world", text)
+    assert.match("\nhello", text)
+    assert.match("\nworld", text)
   end)
 
-  it("labels a single-test worker by its full name, with the file dim below", function()
+  it("labels a single-test worker by its file followed by its full name", function()
     local out = { file = "spec/a_spec.lua", name = "group adds", output = "noise\n" }
     local text = report.output_block(out, false)
 
-    assert.match("OUTPUT group adds", text)
-    assert.match("spec/a_spec.lua", text)
-    assert.match("    noise", text)
+    assert.match("OUTPUT spec/a_spec.lua group adds", text)
+    assert.match("\nnoise", text)
   end)
 end)
 
