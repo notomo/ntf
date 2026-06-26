@@ -71,25 +71,53 @@ local function indent(text, prefix)
   )
 end
 
+--- Decide whether to emit ANSI color: an explicit opt wins, otherwise color when
+--- stdout is a tty and NO_COLOR is unset. Shared by the final report and the
+--- streamed OUTPUT blocks so both agree.
+--- @param opt_color boolean?
+--- @return boolean
+function M.resolve_color(opt_color)
+  if opt_color ~= nil then
+    return opt_color
+  end
+  local ok, handle = pcall(function()
+    return vim.uv.guess_handle(1)
+  end)
+  return (ok and handle == "tty" and not vim.env.NO_COLOR) or false
+end
+
+--- Render one worker's captured output as an `OUTPUT` block. Streamed live as each
+--- worker finishes, so the block carries its own trailing blank line as a separator.
+--- @param out NtfWorkerOutput
+--- @param color boolean
+--- @return string
+function M.output_block(out, color)
+  local paint = painter(color)
+  -- Streamed from a `vim.system` on_exit callback (a fast event context), where
+  -- Vimscript `getcwd()` is forbidden; `vim.uv.cwd()` is the safe equivalent.
+  local rel = out.file:gsub("^" .. vim.pesc(vim.uv.cwd() or "") .. "/?", "")
+  local lines = {}
+  -- The worker's scope (the test case's full name) labels the block; the file is
+  -- shown dim beneath it.
+  if out.name and out.name ~= "" then
+    table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", out.name))
+    table.insert(lines, "  " .. paint("dim", rel))
+  else
+    table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", rel))
+  end
+  table.insert(lines, indent(out.output:gsub("\n$", ""), "    "))
+  table.insert(lines, "")
+  return table.concat(lines, "\n") .. "\n"
+end
+
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
 --- @param opts { color?: boolean, shuffle?: boolean, seed?: integer }
---- @param outputs NtfWorkerOutput[]? per-worker captured stdout blobs
 --- @return string text, integer exit_code
-function M.build(results, load_errors, opts, outputs)
+function M.build(results, load_errors, opts)
   load_errors = load_errors or {}
-  outputs = outputs or {}
 
-  local color
-  if opts.color == nil then
-    local ok, handle = pcall(function()
-      return vim.uv.guess_handle(1)
-    end)
-    color = ok and handle == "tty" and not vim.env.NO_COLOR
-  else
-    color = opts.color
-  end
-  local paint = painter(color)
+  local paint = painter(M.resolve_color(opts.color))
 
   local counts = { passed = 0, failed = 0, error = 0, pending = 0 }
   local problems = {}
@@ -121,21 +149,6 @@ function M.build(results, load_errors, opts, outputs)
     if traceback then
       table.insert(lines, paint("dim", indent(traceback:gsub("^\n", ""), "    ")))
     end
-    table.insert(lines, "")
-  end
-
-  -- Captured output, attributed to the worker (one work item) that emitted it.
-  -- The worker's scope (the test case's full name) labels the block; the file is
-  -- shown dim beneath it.
-  for _, out in ipairs(outputs) do
-    local rel = out.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
-    if out.name and out.name ~= "" then
-      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", out.name))
-      table.insert(lines, "  " .. paint("dim", rel))
-    else
-      table.insert(lines, paint("dim", "OUTPUT ") .. paint("bold", rel))
-    end
-    table.insert(lines, indent(out.output:gsub("\n$", ""), "    "))
     table.insert(lines, "")
   end
 

@@ -180,15 +180,17 @@ local function results_of(item, obj, timed_out_ms)
 end
 
 --- @class NtfWorkerOutput
---- @field index integer item index (used to order the report deterministically)
 --- @field file string spec file path
 --- @field name string the test scope the worker covered (its full describe/it name)
 --- @field output string captured stdout blob
 
 --- Run all work items in parallel worker processes and aggregate results.
+--- Captured output is handed to `on_output` the moment each worker finishes, so it
+--- is reported live rather than held back until the whole run completes. (The cost
+--- is that blocks appear in worker-completion order, not deterministic spec order.)
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]) }
---- @return NtfResult[] results, NtfWorkerOutput[] outputs
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
+--- @return NtfResult[] results
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
   local cwd = vim.fn.getcwd()
@@ -196,7 +198,6 @@ function M.run(items, opts)
   local total = #items
 
   local results = {}
-  local outputs = {}
   local started = 0
   local finished = 0
 
@@ -205,7 +206,6 @@ function M.run(items, opts)
       return
     end
     started = started + 1
-    local index = started
     local item = items[started]
 
     -- A per-item timeout (from the isolation-unit node) overrides the run default;
@@ -258,11 +258,11 @@ function M.run(items, opts)
       local item_results = results_of(item, obj, timed_out and timeout or nil)
       vim.list_extend(results, item_results)
       -- A crashed/timed-out worker surfaces its stderr as the error detail
-      -- (results_of), so only collect output when it reported real results.
-      if parse_output(obj.stdout) then
+      -- (results_of), so only emit output when it reported real results.
+      if opts.on_output and parse_output(obj.stdout) then
         local blob = worker_output(obj.stdout, obj.stderr)
         if blob ~= "" then
-          table.insert(outputs, { index = index, file = item.file, name = item_scope(item), output = blob })
+          opts.on_output({ file = item.file, name = item_scope(item), output = blob })
         end
       end
       if opts.on_item then
@@ -292,13 +292,7 @@ function M.run(items, opts)
     return finished >= total
   end, 20)
 
-  -- Workers finish in nondeterministic order; sort by item index so the report
-  -- lists captured output in spec order.
-  table.sort(outputs, function(a, b)
-    return a.index < b.index
-  end)
-
-  return results, outputs
+  return results
 end
 
 return M

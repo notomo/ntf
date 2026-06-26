@@ -38,22 +38,20 @@ function M.run(root)
 
   local prog
   if vim.uv.guess_handle(2) == "tty" then
-    local total = 0
-    for _, item in ipairs(items) do
-      total = total + #item.node_ids
-    end
-    local color = not vim.env.NO_COLOR
     prog = require("ntf.core.controller.progress").new({
       write = function(s)
         io.stderr:write(s)
         io.stderr:flush()
       end,
-      color = color,
-      total = total,
+      color = not vim.env.NO_COLOR,
     })
   end
 
-  local results, outputs = runner.run(items, {
+  local report = require("ntf.core.controller.report")
+  -- Resolve once so the streamed OUTPUT blocks and the final report color alike.
+  local color = report.resolve_color()
+
+  local results = runner.run(items, {
     root = root,
     jobs = opts.jobs,
     shuffle = opts.shuffle,
@@ -61,12 +59,22 @@ function M.run(root)
     timeout = opts.timeout,
     setup = opts.setup,
     on_item = prog and prog.on_item or nil,
+    -- Print each worker's captured output the instant it finishes, rather than
+    -- holding it for the final report. Close any pending dot line first (on
+    -- stderr) so the block starts on its own line instead of trailing the dots.
+    on_output = function(out)
+      if prog then
+        prog.newline()
+      end
+      io.stdout:write(report.output_block(out, color))
+      io.stdout:flush()
+    end,
   })
   if prog then
     prog.finish()
   end
 
-  local text, code = require("ntf.core.controller.report").build(results, load_errors, opts, outputs)
+  local text, code = report.build(results, load_errors, opts)
   io.stdout:write(text)
   os.exit(code)
 end
