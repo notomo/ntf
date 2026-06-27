@@ -16,8 +16,7 @@ Options:
   --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
   --filter=PATTERN  run only tests whose full name matches the Lua pattern
   --jobs=N          max parallel nvim workers (default: cpu count)
-  --shuffle         randomize test order
-  --seed=N          seed used with --shuffle (default: time based)
+  --shuffle[=SEED]  randomize test order; SEED fixes it (default: time based)
   --setup=PATH      run a Lua script in each worker before any spec
   -h, --help        show this help
 

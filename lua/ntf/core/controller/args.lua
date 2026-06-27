@@ -7,7 +7,7 @@ local M = {}
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
---- @field seed integer? seed used with shuffle
+--- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
 --- @field setup string? Lua script run in each worker before any spec
 --- @field help boolean show usage and exit
 
@@ -18,8 +18,7 @@ M.flags = {
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
-  { name = "--shuffle", description = "randomize test order" },
-  { name = "--seed=N", description = "seed used with --shuffle (default: time based)" },
+  { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
   { name = "--setup=PATH", description = "run a Lua script in each worker before any spec" },
   { name = "-h, --help", description = "show this help" },
 }
@@ -66,9 +65,6 @@ function M.parse(argv)
     ["--jobs"] = function(v)
       opts.jobs = tonumber(v)
     end,
-    ["--seed"] = function(v)
-      opts.seed = tonumber(v)
-    end,
     ["--setup"] = function(v)
       opts.setup = v
     end,
@@ -81,8 +77,18 @@ function M.parse(argv)
     name = name or arg
     if arg == "-h" or arg == "--help" then
       opts.help = true
-    elseif arg == "--shuffle" then
+    elseif name == "--shuffle" then
+      -- Optional-argument flag: bare `--shuffle` randomizes with a time-based
+      -- seed; `--shuffle=SEED` fixes the order. The value must be `=`-attached,
+      -- never space-separated, so a bare `--shuffle` is never confused with a
+      -- following path. (This is why shuffle and seed are one flag, not two.)
       opts.shuffle = true
+      if inline ~= nil then
+        opts.seed = tonumber(inline)
+        if opts.seed == nil then
+          return "invalid --shuffle seed (expected an integer): " .. inline .. "\n\n" .. usage()
+        end
+      end
     elseif value_flags[name] then
       local v = inline
       if v == nil then
