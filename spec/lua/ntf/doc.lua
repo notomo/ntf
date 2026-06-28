@@ -40,22 +40,48 @@ require("genvdoc").generate(plugin_name, {
       end,
     },
     {
-      name = "DEBUGGING",
+      name = "HOOKS",
       body = function()
         return [[
-`--setup=PATH` runs the given Lua script in every worker (via `dofile`) before
-building or running any spec. ntf has no debugger dependency of its own; this is
-just an injection point, so you can drop in whatever you need:
->sh
-  echo 'require("lldebugger").start()' > debug.lua
-  ntf --setup=./debug.lua --jobs=1 --filter='the test name'
+`--hook=PATH` loads the given Lua module in every worker (via `dofile`). The
+module returns a table with optional `setup` and `teardown` functions that run
+once per worker, outside everything the spec itself defines: `setup` before the
+spec is built, `teardown` after the worker's test has run. They are deliberately
+not named `before_each`/`after_each` — those are per-test spec hooks; `setup`/
+`teardown` bracket the whole worker instead.
+>lua
+  -- hook.lua
+  return {
+    setup = function() end,
+    teardown = function() end,
+  }
 <
-A relative path resolves against the working directory (the plugin under test),
-and an error raised by the script is reported as a load error.
+>sh
+  ntf --hook=./hook.lua
+<
+A relative path resolves against the working directory (the plugin under test).
+An error raised while loading the module or from `setup` is reported as a load
+error. A `teardown` error is reported too — as an error entry alongside the
+worker's results, so it fails the run without discarding the results already
+produced.
 
+Because `setup` runs before the spec is built, it is the injection point for a
+debugger: the code under test loads while the debugger is already attached. ntf
+has no debugger dependency of its own:
+>lua
+  -- debug.lua
+  return {
+    setup = function()
+      require("lldebugger").start()
+    end,
+  }
+<
+>sh
+  ntf --hook=./debug.lua --jobs=1 --filter='the test name'
+<
 Tests run in parallel worker processes whose stdout ntf captures, so to actually
 attach a debugger keep it to a single worker (`--jobs=1`, and narrow to one test
-with `--filter`). Wiring the debugger transport itself is up to your script.]]
+with `--filter`). Wiring the debugger transport itself is up to your module.]]
       end,
     },
     {

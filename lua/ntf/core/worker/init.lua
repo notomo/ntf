@@ -25,12 +25,54 @@ local function main()
 
   require("ntf.core.runtime").setup()
 
-  -- The `--setup` script runs before any spec is built or executed, e.g.
-  -- `require("lldebugger").start()` for stepping through tests. ntf itself has no
-  -- debugger dependency; this is just an injection point. Errors here are caught
-  -- by the xpcall around main() and surfaced as a load error.
-  if payload.setup and payload.setup ~= "" then
-    dofile(payload.setup)
+  -- The `--hook` module returns an optional table with `setup`/`teardown`. They run
+  -- once at the worker boundary, outside every spec hook: `setup` before the spec is
+  -- built (so it can attach a debugger that steps through the code under test, e.g.
+  -- `require("lldebugger").start()`; ntf has no debugger dependency, this is just an
+  -- injection point), `teardown` after the worker's test has run. A `setup` error is
+  -- caught by the xpcall around main() and surfaced as a load error.
+  local hook = {}
+  if payload.hook and payload.hook ~= "" then
+    local loaded = dofile(payload.hook)
+    if type(loaded) == "table" then
+      hook = loaded
+    end
+  end
+
+  if hook.setup then
+    hook.setup()
+  end
+
+  -- teardown runs right before each emit. It must not discard the already-computed
+  -- results, but its error still has to be visible, so run it under our own handler
+  -- and return the failure as a synthetic error entry the caller folds into the
+  -- report (a separate emit path could be dropped on the floor, an error here cannot).
+  --- @return { message: string, traceback: string? }?
+  local function teardown()
+    if not hook.teardown then
+      return nil
+    end
+    local captured
+    local ok = xpcall(hook.teardown, function(err)
+      captured = { message = type(err) == "string" and err or vim.inspect(err), traceback = debug.traceback("", 2) }
+    end)
+    if ok then
+      return nil
+    end
+    return captured
+  end
+
+  --- @param err { message: string, traceback: string? }
+  local function teardown_result(err)
+    return {
+      id = "<teardown>",
+      name = "teardown",
+      names = { "teardown" },
+      trace = { source = "@" .. payload.hook },
+      status = "error",
+      message = err.message,
+      traceback = err.traceback,
+    }
   end
 
   -- Start coverage before building the tree so that module-level code of the code
@@ -49,11 +91,17 @@ local function main()
 
   if root_node.load_error then
     -- A spec that failed to load has no meaningful coverage; drop the hook and
-    -- report only the load error.
+    -- report only the load error (with any teardown error appended, since this path
+    -- has no results array to carry it).
     if collector then
       collector.stop()
     end
-    emit({ load_error = tostring(root_node.load_error), file = payload.file })
+    local message = tostring(root_node.load_error)
+    local teardown_err = teardown()
+    if teardown_err then
+      message = message .. "\n\nteardown error: " .. teardown_err.message
+    end
+    emit({ load_error = message, file = payload.file })
     return 1
   end
 
@@ -70,8 +118,13 @@ local function main()
     seed = payload.seed,
   })
 
-  if collector then
-    emit({ results = results, coverage = collector.stop() })
+  local coverage = collector and collector.stop() or nil
+  local teardown_err = teardown()
+  if teardown_err then
+    table.insert(results, teardown_result(teardown_err))
+  end
+  if coverage then
+    emit({ results = results, coverage = coverage })
   else
     emit({ results = results })
   end

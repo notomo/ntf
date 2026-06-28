@@ -8,7 +8,7 @@ local M = {}
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
---- @field setup string? Lua script run in each worker before any spec
+--- @field hook string? Lua module returning optional setup/teardown, run once per worker around the spec
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field help boolean show usage and exit
@@ -21,7 +21,7 @@ M.flags = {
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
-  { name = "--setup=PATH", description = "run a Lua script in each worker before any spec" },
+  { name = "--hook=PATH", description = "run a Lua module providing setup/teardown around each worker's spec" },
   {
     name = "--coverage[=FILE]",
     description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
@@ -55,7 +55,7 @@ function M.parse(argv)
     jobs = nil,
     shuffle = false,
     seed = nil,
-    setup = nil,
+    hook = nil,
     coverage = false,
     coverage_file = "luacov.stats.out",
     help = false,
@@ -73,8 +73,8 @@ function M.parse(argv)
     ["--jobs"] = function(v)
       opts.jobs = tonumber(v)
     end,
-    ["--setup"] = function(v)
-      opts.setup = v
+    ["--hook"] = function(v)
+      opts.hook = v
     end,
   }
 
@@ -139,8 +139,8 @@ function M.parse(argv)
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter
   end
-  if opts.setup and vim.fn.filereadable(opts.setup) == 0 then
-    return "--setup script not found: " .. opts.setup
+  if opts.hook and vim.fn.filereadable(opts.hook) == 0 then
+    return "--hook module not found: " .. opts.hook
   end
 
   return opts

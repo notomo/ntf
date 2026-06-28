@@ -195,40 +195,69 @@ describe("bin/ntf end-to-end", function()
     assert.match("invalid %-%-timeout value", obj.stderr)
   end)
 
-  it("runs the --setup script in each worker before any spec", function()
-    local path = spec("pass_spec.lua", PASSING)
-    local marker = vim.fs.joinpath(helper.test_data.full_path, "injected.marker")
-    local setup = spec(
-      "setup.lua",
+  it("runs the --hook module's setup before the spec and teardown after it", function()
+    local log = vim.fs.joinpath(helper.test_data.full_path, "hook.log")
+    local path = spec(
+      "hooked_spec.lua",
       ([[
-local f = assert(io.open(%q, "w"))
-f:write("ok")
-f:close()
-]]):format(marker)
+local ntf = require("ntf")
+local it = ntf.it
+it("passes", function()
+  local f = assert(io.open(%q, "a"))
+  f:write("test\n")
+  f:close()
+end)
+]]):format(log)
+    )
+    local hook = spec(
+      "hook.lua",
+      ([[
+local function append(line)
+  local f = assert(io.open(%q, "a"))
+  f:write(line .. "\n")
+  f:close()
+end
+return {
+  setup = function() append("setup") end,
+  teardown = function() append("teardown") end,
+}
+]]):format(log)
     )
 
-    local obj = run({ path }, { "--setup=" .. setup })
+    local obj = run({ path }, { "--hook=" .. hook })
 
     assert.equal(0, obj.code)
-    assert.equal(1, vim.fn.filereadable(marker))
+    assert.same({ "setup", "test", "teardown" }, vim.fn.readfile(log))
   end)
 
-  it("surfaces an error from the --setup script as a load error", function()
+  it("surfaces a --hook teardown error without discarding the worker's results", function()
     local path = spec("pass_spec.lua", PASSING)
-    local setup = spec("setup.lua", [[error("setup boom")]])
+    local hook = spec("hook.lua", [[return { teardown = function() error("teardown boom") end }]])
 
-    local obj = run({ path }, { "--setup=" .. setup })
+    local obj = run({ path }, { "--hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("teardown boom", obj.stdout)
+    -- the actual tests still ran and are reported, not dropped on the floor
+    assert.match("2 passed", obj.stdout)
+  end)
+
+  it("surfaces an error from the --hook module's setup as a load error", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("hook.lua", [[return { setup = function() error("setup boom") end }]])
+
+    local obj = run({ path }, { "--hook=" .. hook })
 
     assert.equal(1, obj.code)
     assert.match("setup boom", obj.stdout)
   end)
 
-  it("exits 2 when the --setup script does not exist", function()
+  it("exits 2 when the --hook module does not exist", function()
     local path = spec("pass_spec.lua", PASSING)
-    local obj = run({ path }, { "--setup=/no/such/setup.lua" })
+    local obj = run({ path }, { "--hook=/no/such/hook.lua" })
 
     assert.equal(2, obj.code)
-    assert.match("%-%-setup script not found", obj.stderr)
+    assert.match("%-%-hook module not found", obj.stderr)
   end)
 
   it("writes a luacov stats file and prints a summary with --coverage", function()

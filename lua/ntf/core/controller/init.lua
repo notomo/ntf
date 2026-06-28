@@ -57,7 +57,7 @@ function M.run(root)
     shuffle = opts.shuffle,
     seed = opts.seed,
     timeout = opts.timeout,
-    setup = opts.setup,
+    hook = opts.hook,
     coverage = opts.coverage,
     on_item = prog and prog.on_item or nil,
     -- Print each worker's captured output the instant it finishes, rather than
