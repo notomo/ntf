@@ -231,6 +231,21 @@ f:close()
     assert.match("%-%-setup script not found", obj.stderr)
   end)
 
+  it("writes a luacov stats file and prints a summary with --coverage", function()
+    local path = spec("pass_spec.lua", PASSING)
+    -- Keep the stats file inside the temp data dir so teardown cleans it up.
+    local stats_file = vim.fs.joinpath(helper.test_data.full_path, "cov.stats.out")
+    local obj = run({ path }, { "--coverage=" .. stats_file })
+
+    assert.equal(0, obj.code)
+    assert.match("2 passed", obj.stdout)
+    assert.match("Coverage:", obj.stdout)
+    -- The file exists in luacov format: a "<max>:<path>" header line. (ntf's own
+    -- modules run under the spec, so there is always at least one measured file.)
+    assert.equal(1, vim.fn.filereadable(stats_file))
+    assert.match("^%d+:.+%.lua$", vim.fn.readfile(stats_file)[1])
+  end)
+
   it("captures all of a worker's stdout, including native writes", function()
     local path = spec("noisy_spec.lua", NOISY)
     local obj = run({ path })
