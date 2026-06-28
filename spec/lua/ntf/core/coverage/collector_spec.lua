@@ -85,20 +85,27 @@ describe("ntf.core.coverage.collector.start/stop", function()
 end)
 
 describe("ntf.core.coverage.collector.exclude_roots", function()
-  it("derives each spec file's top-level directory under cwd", function()
-    local roots = collector.exclude_roots({ "/repo/spec/lua/x/a_spec.lua" }, "/repo")
+  -- Build the fake paths under a real absolute base so the test holds on Windows
+  -- too, where a bare "/repo" would gain a drive letter once made absolute.
+  local function abs(path)
+    return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
+  end
+  local repo = abs("/repo")
 
-    assert.same({ "/repo/spec/" }, roots)
+  it("derives each spec file's top-level directory under cwd", function()
+    local roots = collector.exclude_roots({ repo .. "/spec/lua/x/a_spec.lua" }, repo)
+
+    assert.same({ repo .. "/spec/" }, roots)
   end)
 
   it("dedups roots shared by many spec files", function()
-    local roots = collector.exclude_roots({ "/repo/spec/a_spec.lua", "/repo/spec/lua/b_spec.lua" }, "/repo")
+    local roots = collector.exclude_roots({ repo .. "/spec/a_spec.lua", repo .. "/spec/lua/b_spec.lua" }, repo)
 
-    assert.same({ "/repo/spec/" }, roots)
+    assert.same({ repo .. "/spec/" }, roots)
   end)
 
   it("ignores spec files outside cwd and those sitting directly in cwd", function()
-    local roots = collector.exclude_roots({ "/elsewhere/a_spec.lua", "/repo/top_spec.lua" }, "/repo")
+    local roots = collector.exclude_roots({ abs("/elsewhere") .. "/a_spec.lua", repo .. "/top_spec.lua" }, repo)
 
     assert.same({}, roots)
   end)
