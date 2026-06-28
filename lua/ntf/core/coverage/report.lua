@@ -100,7 +100,12 @@ function M.summary(merged, cwd)
       total_coverable
     )
     for _, row in ipairs(rows) do
-      lines[#lines + 1] = ("  %-" .. (width + 2) .. "s%5.1f%%"):format(row.name, 100 * row.covered / row.coverable)
+      lines[#lines + 1] = ("  %-" .. (width + 2) .. "s%5.1f%% (%d/%d)"):format(
+        row.name,
+        100 * row.covered / row.coverable,
+        row.covered,
+        row.coverable
+      )
     end
   end
   return table.concat(lines, "\n") .. "\n"

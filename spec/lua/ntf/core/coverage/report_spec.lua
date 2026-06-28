@@ -26,7 +26,7 @@ describe("ntf.core.coverage.report.summary", function()
 
     -- coverable code lines = {1,3,4,6}; covered (hit) = {1,3,6} -> 3/4 = 75%.
     assert.match("Coverage: 75.0%% %(3/4 lines%)", text)
-    assert.match("mod.lua%s+75.0%%", text)
+    assert.match("mod.lua%s+75.0%% %(3/4%)", text)
   end)
 
   it("reports n/a when nothing was measured", function()
