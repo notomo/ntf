@@ -4,7 +4,6 @@
 -- never runs `it` bodies. The same globals are reused at execution time; the
 -- only execution-specific globals are `finally` and a runtime `pending()`, which
 -- are routed through the mutable hooks installed by `ntf.core.worker.executor`.
-local builder = require("ntf.assert.builder")
 
 local M = {}
 
@@ -136,7 +135,6 @@ M.finally = function(fn)
     table.insert(finally_collector, fn)
   end
 end
-M.assert = builder.assert
 
 --- @param collector (fun())[]|nil list to receive finally callbacks, or nil to disable
 function M.set_finally_collector(collector)

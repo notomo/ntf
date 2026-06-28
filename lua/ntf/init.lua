@@ -1,4 +1,5 @@
 local tree = require("ntf.core.tree")
+local builder = require("ntf.assert.builder")
 
 local M = {}
 
@@ -53,6 +54,6 @@ end
 
 -- Assertion namespace (`assert.equal`, `assert.same`, `assert.match`, ...).
 -- See |ntf-WRITING-SPECS|.
-M.assert = tree.assert
+M.assert = builder.assert
 
 return M
