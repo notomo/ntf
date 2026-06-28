@@ -33,10 +33,26 @@ local function main()
     dofile(payload.setup)
   end
 
+  -- Start coverage before building the tree so that module-level code of the code
+  -- under test (which runs once, when the spec `require`s it during tree building)
+  -- is counted, not just code reached from inside test bodies. ntf's own machinery
+  -- and the spec files are kept out of the report by path (the excludes and the
+  -- `*_spec.lua` rule in the collector), so timing no longer has to do that.
+  local collector
+  if payload.coverage then
+    collector = require("ntf.core.coverage.collector")
+    collector.start({ cwd = payload.cwd, excludes = payload.coverage_excludes })
+  end
+
   local tree = require("ntf.core.tree")
   local root_node = tree.build(payload.file)
 
   if root_node.load_error then
+    -- A spec that failed to load has no meaningful coverage; drop the hook and
+    -- report only the load error.
+    if collector then
+      collector.stop()
+    end
     emit({ load_error = tostring(root_node.load_error), file = payload.file })
     return 1
   end
@@ -47,15 +63,6 @@ local function main()
     for _, id in ipairs(payload.node_ids) do
       selected[id] = true
     end
-  end
-
-  -- Coverage is collected only for the test execution below: the line hook is
-  -- installed right before and removed right after, so building the tree and
-  -- ntf's own machinery are not counted.
-  local collector
-  if payload.coverage then
-    collector = require("ntf.core.coverage.collector")
-    collector.start({ cwd = payload.cwd, excludes = payload.coverage_excludes })
   end
 
   local results = require("ntf.core.worker.executor").execute(root_node, selected, {

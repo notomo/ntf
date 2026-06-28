@@ -246,6 +246,50 @@ f:close()
     assert.match("^%d+:.+%.lua$", vim.fn.readfile(stats_file)[1])
   end)
 
+  it("counts module-level lines of code required at spec load time", function()
+    -- A tiny project: production module under lua/, required at the spec's top
+    -- level (so it loads while the tree is built, before any test body runs).
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    -- The module-level line (`local M = {}`, line 1) runs only at require time,
+    -- during tree building. It must still be counted, i.e. have a non-zero hit.
+    local lines = vim.fn.readfile(stats_file)
+    local hits1
+    for i, line in ipairs(lines) do
+      if line:match("/lua/mod/init%.lua$") then
+        hits1 = tonumber(vim.split(lines[i + 1], " ")[1])
+      end
+    end
+    assert.equal(1, hits1)
+  end)
+
   it("captures all of a worker's stdout, including native writes", function()
     local path = spec("noisy_spec.lua", NOISY)
     local obj = run({ path })
