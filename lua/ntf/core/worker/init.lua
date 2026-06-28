@@ -49,12 +49,25 @@ local function main()
     end
   end
 
+  -- Coverage is collected only for the test execution below: the line hook is
+  -- installed right before and removed right after, so building the tree and
+  -- ntf's own machinery are not counted.
+  local collector
+  if payload.coverage then
+    collector = require("ntf.core.coverage.collector")
+    collector.start({ cwd = payload.cwd })
+  end
+
   local results = require("ntf.core.worker.executor").execute(root_node, selected, {
     shuffle = payload.shuffle,
     seed = payload.seed,
   })
 
-  emit({ results = results })
+  if collector then
+    emit({ results = results, coverage = collector.stop() })
+  else
+    emit({ results = results })
+  end
 
   for _, result in ipairs(results) do
     if result.status == "failed" or result.status == "error" then

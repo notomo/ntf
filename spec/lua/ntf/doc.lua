@@ -59,6 +59,29 @@ with `--filter`). Wiring the debugger transport itself is up to your script.]]
       end,
     },
     {
+      name = "COVERAGE",
+      body = function()
+        return [[
+`--coverage` measures line coverage of the code under test (every file under the
+working directory that is not a `*_spec.lua`) while the specs run. It needs no
+extra install: ntf sets a Lua line hook in each worker, merges the per-worker
+counts, prints a short summary, and writes a `luacov.stats.out` (override the
+path with `--coverage=FILE`):
+>sh
+  ntf --coverage
+<
+The built-in summary is intentionally simple (its line classification is a
+heuristic). For an authoritative or HTML report, point LuaCov — which ntf does
+not depend on — at the same stats file:
+>sh
+  luarocks install luacov
+  luacov          # reads luacov.stats.out -> luacov.report.out
+<
+Coverage forces the interpreter (`jit.off()`) in each worker so the line hook is
+not skipped by the JIT, which makes a `--coverage` run slower than a plain one.]]
+      end,
+    },
+    {
       name = function(group)
         return "Lua module: " .. group
       end,

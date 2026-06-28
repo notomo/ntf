@@ -7,12 +7,13 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
-    --filter=PATTERN  run only tests whose full name matches the Lua pattern
-    --jobs=N          max parallel nvim workers (default: cpu count)
-    --shuffle[=SEED]  randomize test order; SEED fixes it (default: time based)
-    --setup=PATH      run a Lua script in each worker before any spec
-    -h, --help        show this help
+    --timeout=MS       kill a worker after MS milliseconds (default: 60000; 0 disables)
+    --filter=PATTERN   run only tests whose full name matches the Lua pattern
+    --jobs=N           max parallel nvim workers (default: cpu count)
+    --shuffle[=SEED]   randomize test order; SEED fixes it (default: time based)
+    --setup=PATH       run a Lua script in each worker before any spec
+    --coverage[=FILE]  measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    -h, --help         show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
 <
@@ -63,6 +64,27 @@ and an error raised by the script is reported as a load error.
 Tests run in parallel worker processes whose stdout ntf captures, so to actually
 attach a debugger keep it to a single worker (`--jobs=1`, and narrow to one test
 with `--filter`). Wiring the debugger transport itself is up to your script.
+
+==============================================================================
+COVERAGE                                                        *ntf-COVERAGE*
+
+`--coverage` measures line coverage of the code under test (every file under the
+working directory that is not a `*_spec.lua`) while the specs run. It needs no
+extra install: ntf sets a Lua line hook in each worker, merges the per-worker
+counts, prints a short summary, and writes a `luacov.stats.out` (override the
+path with `--coverage=FILE`):
+>sh
+  ntf --coverage
+<
+The built-in summary is intentionally simple (its line classification is a
+heuristic). For an authoritative or HTML report, point LuaCov — which ntf does
+not depend on — at the same stats file:
+>sh
+  luarocks install luacov
+  luacov          # reads luacov.stats.out -> luacov.report.out
+<
+Coverage forces the interpreter (`jit.off()`) in each worker so the line hook is
+not skipped by the JIT, which makes a `--coverage` run slower than a plain one.
 
 ==============================================================================
 Lua module: ntf                                                      *ntf-ntf*

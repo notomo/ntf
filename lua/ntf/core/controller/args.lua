@@ -9,6 +9,8 @@ local M = {}
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
 --- @field setup string? Lua script run in each worker before any spec
+--- @field coverage boolean measure line coverage of the code under test
+--- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field help boolean show usage and exit
 
 --- Supported flags in display order. Single source of truth shared by `usage()`
@@ -20,6 +22,10 @@ M.flags = {
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
   { name = "--setup=PATH", description = "run a Lua script in each worker before any spec" },
+  {
+    name = "--coverage[=FILE]",
+    description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
+  },
   { name = "-h, --help", description = "show this help" },
 }
 
@@ -50,6 +56,8 @@ function M.parse(argv)
     shuffle = false,
     seed = nil,
     setup = nil,
+    coverage = false,
+    coverage_file = "luacov.stats.out",
     help = false,
   }
 
@@ -88,6 +96,14 @@ function M.parse(argv)
         if opts.seed == nil then
           return "invalid --shuffle seed (expected an integer): " .. inline .. "\n\n" .. usage()
         end
+      end
+    elseif name == "--coverage" then
+      -- Optional-argument flag like --shuffle: bare `--coverage` writes the
+      -- default stats file; `--coverage=FILE` overrides the path. The value must
+      -- be `=`-attached so a bare `--coverage` is never confused with a path.
+      opts.coverage = true
+      if inline ~= nil and inline ~= "" then
+        opts.coverage_file = inline
       end
     elseif value_flags[name] then
       local v = inline

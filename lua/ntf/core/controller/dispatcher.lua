@@ -189,8 +189,8 @@ end
 --- is reported live rather than held back until the whole run completes. (The cost
 --- is that blocks appear in worker-completion order, not deterministic spec order.)
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
---- @return NtfResult[] results
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, setup?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
+--- @return NtfResult[] results, table coverage merged per-file line hit counts
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
   local cwd = vim.fn.getcwd()
@@ -198,6 +198,10 @@ function M.run(items, opts)
   local total = #items
 
   local results = {}
+  -- Each worker measures only what it ran; summing per-line hits across workers
+  -- yields whole-run coverage. Empty unless opts.coverage is set.
+  local coverage = require("ntf.core.coverage.collector")
+  local merged_coverage = {}
   local started = 0
   local finished = 0
   -- First internal error raised from a worker callback. The callback body only
@@ -244,6 +248,8 @@ function M.run(items, opts)
         shuffle = opts.shuffle or false,
         seed = opts.seed,
         setup = opts.setup,
+        coverage = opts.coverage or false,
+        cwd = cwd,
       }),
     }
 
@@ -264,6 +270,10 @@ function M.run(items, opts)
       local ok, err = xpcall(function()
         local item_results = results_of(item, obj, timed_out and timeout or nil)
         vim.list_extend(results, item_results)
+        if opts.coverage then
+          local decoded = parse_output(obj.stdout)
+          coverage.merge(merged_coverage, decoded and decoded.coverage)
+        end
         -- A crashed/timed-out worker surfaces its stderr as the error detail
         -- (results_of), so only emit output when it reported real results.
         if opts.on_output and parse_output(obj.stdout) then
@@ -307,7 +317,7 @@ function M.run(items, opts)
     error(fatal, 0)
   end
 
-  return results
+  return results, merged_coverage
 end
 
 return M

@@ -13,12 +13,13 @@ Neovim process so state never leaks between tests.
 Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
-  --timeout=MS      kill a worker after MS milliseconds (default: 60000; 0 disables)
-  --filter=PATTERN  run only tests whose full name matches the Lua pattern
-  --jobs=N          max parallel nvim workers (default: cpu count)
-  --shuffle[=SEED]  randomize test order; SEED fixes it (default: time based)
-  --setup=PATH      run a Lua script in each worker before any spec
-  -h, --help        show this help
+  --timeout=MS       kill a worker after MS milliseconds (default: 60000; 0 disables)
+  --filter=PATTERN   run only tests whose full name matches the Lua pattern
+  --jobs=N           max parallel nvim workers (default: cpu count)
+  --shuffle[=SEED]   randomize test order; SEED fixes it (default: time based)
+  --setup=PATH       run a Lua script in each worker before any spec
+  --coverage[=FILE]  measure line coverage; write luacov.stats.out (or FILE) and print a summary
+  -h, --help         show this help
 
 With no paths, runs the *_spec.lua files under ./spec.
 ```

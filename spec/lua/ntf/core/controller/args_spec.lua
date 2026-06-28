@@ -101,6 +101,35 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("invalid %-%-shuffle seed", err)
   end)
 
+  it("leaves coverage off by default", function()
+    local opts = args.parse({ "spec" })
+
+    assert.equal(false, opts.coverage)
+  end)
+
+  it("enables coverage with the default stats file for bare --coverage", function()
+    local opts = args.parse({ "--coverage", "spec" })
+
+    assert.equal(true, opts.coverage)
+    assert.equal("luacov.stats.out", opts.coverage_file)
+    assert.equal("spec", opts.paths[1])
+  end)
+
+  it("overrides the stats file with --coverage=FILE", function()
+    local opts = args.parse({ "--coverage=cov.out", "spec" })
+
+    assert.equal(true, opts.coverage)
+    assert.equal("cov.out", opts.coverage_file)
+  end)
+
+  it("does not treat a following path as the coverage file", function()
+    local opts = args.parse({ "--coverage", "spec" })
+
+    assert.equal(true, opts.coverage)
+    assert.equal("luacov.stats.out", opts.coverage_file)
+    assert.equal("spec", opts.paths[1])
+  end)
+
   describe("with no paths", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

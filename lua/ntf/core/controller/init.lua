@@ -51,13 +51,14 @@ function M.run(root)
   -- Resolve once so the streamed OUTPUT blocks and the final report color alike.
   local color = report.resolve_color()
 
-  local results = runner.run(items, {
+  local results, coverage = runner.run(items, {
     root = root,
     jobs = opts.jobs,
     shuffle = opts.shuffle,
     seed = opts.seed,
     timeout = opts.timeout,
     setup = opts.setup,
+    coverage = opts.coverage,
     on_item = prog and prog.on_item or nil,
     -- Print each worker's captured output the instant it finishes, rather than
     -- holding it for the final report. Close any pending dot line first (on
@@ -76,6 +77,12 @@ function M.run(root)
 
   local text, code = report.build(results, load_errors, opts)
   io.stdout:write(text)
+
+  if opts.coverage then
+    require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
+    io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, vim.fn.getcwd()))
+  end
+
   os.exit(code)
 end
 
