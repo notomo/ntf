@@ -60,4 +60,25 @@ describe("ntf.core.coverage.collector.start/stop", function()
 
     assert.same({}, data)
   end)
+
+  it("does not measure files under the spec/ test tree", function()
+    -- The test tree (specs and the cloned test deps under spec/.shared) lives
+    -- under <cwd>/spec/, which is excluded even though it is under cwd.
+    local file = helper.test_data:create_file(
+      "spec/sub.lua",
+      table.concat({
+        "local function add(a, b)",
+        "  return a + b",
+        "end",
+        "return add",
+      }, "\n")
+    )
+    local add = assert(loadfile(file))()
+
+    collector.start({ cwd = helper.test_data.full_path })
+    add(1, 2)
+    local data = collector.stop()
+
+    assert.same({}, data)
+  end)
 end)

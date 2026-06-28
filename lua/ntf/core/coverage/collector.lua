@@ -12,12 +12,15 @@ local M = {}
 local active
 
 --- Decide, once per distinct chunk source, whether to measure it and under which
---- path. Only files under `cwd` that are not specs are measured: in a user's
---- project that is their own source (ntf itself lives elsewhere); when ntf
---- self-hosts it is ntf's `lua/` (the `*_spec.lua` files are excluded).
+--- path. Only production files under `cwd` are measured: the whole test tree
+--- (`<cwd>/spec/`, which by convention also holds the cloned test dependencies
+--- under `spec/.shared/packages/...`) and any `*_spec.lua` file are excluded. So
+--- in a user's project this is their own source (ntf and the other test deps live
+--- under `spec/`); when ntf self-hosts it is ntf's `lua/`.
 --- @param cwd string normalized absolute working directory
 --- @return fun(source: string): string|false
 local function make_resolver(cwd)
+  local spec_prefix = cwd .. "/spec/"
   local decided = {}
   return function(source)
     local cached = decided[source]
@@ -32,7 +35,8 @@ local function make_resolver(cwd)
     if path then
       path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
       local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. "/"
-      if under_cwd and not path:match("_spec%.lua$") then
+      local in_spec_tree = path:sub(1, #spec_prefix) == spec_prefix
+      if under_cwd and not in_spec_tree and not path:match("_spec%.lua$") then
         result = path
       end
     end

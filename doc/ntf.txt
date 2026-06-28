@@ -68,11 +68,12 @@ with `--filter`). Wiring the debugger transport itself is up to your script.
 ==============================================================================
 COVERAGE                                                        *ntf-COVERAGE*
 
-`--coverage` measures line coverage of the code under test (every file under the
-working directory that is not a `*_spec.lua`) while the specs run. It needs no
-extra install: ntf sets a Lua line hook in each worker, merges the per-worker
-counts, prints a short summary, and writes a `luacov.stats.out` (override the
-path with `--coverage=FILE`):
+`--coverage` measures line coverage of the code under test while the specs run.
+It measures every file under the working directory except the test tree: anything
+under `spec/` (which by convention also holds the cloned test dependencies) and
+any `*_spec.lua` file are excluded. It needs no extra install: ntf sets a Lua line
+hook in each worker, merges the per-worker counts, prints a short summary, and
+writes a `luacov.stats.out` (override the path with `--coverage=FILE`):
 >sh
   ntf --coverage
 <
