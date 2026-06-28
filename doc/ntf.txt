@@ -114,6 +114,57 @@ finally({fn})                                                  *ntf.finally()*
 ==============================================================================
 Lua module: ntf.assert                                        *ntf-ntf.assert*
 
+equal({want}, {got})                                      *ntf.assert.equal()*
+  Assert two values are equal (`==`).
+
+  Parameters: ~
+    {want} (any) expected value
+    {got} (any) actual value
+
+same({want}, {got})                                        *ntf.assert.same()*
+  Assert two values are deeply equal.
+
+  Parameters: ~
+    {want} (any) expected value
+    {got} (any) actual value
+
+truthy({got})                                            *ntf.assert.truthy()*
+  Assert `got` is truthy (not `nil` and not `false`).
+
+  Parameters: ~
+    {got} (any) value under test
+
+falsy({got})                                              *ntf.assert.falsy()*
+  Assert `got` is falsy (`nil` or `false`).
+
+  Parameters: ~
+    {got} (any) value under test
+
+is_true({got})                                          *ntf.assert.is_true()*
+  Assert `got` is exactly `true`.
+
+  Parameters: ~
+    {got} (any) value under test
+
+is_false({got})                                        *ntf.assert.is_false()*
+  Assert `got` is exactly `false`.
+
+  Parameters: ~
+    {got} (any) value under test
+
+is_nil({got})                                            *ntf.assert.is_nil()*
+  Assert `got` is `nil`.
+
+  Parameters: ~
+    {got} (any) value under test
+
+match({pattern}, {got})                                   *ntf.assert.match()*
+  Assert `got` is a string matching the Lua `pattern`.
+
+  Parameters: ~
+    {pattern} (string) Lua pattern
+    {got} (any) value under test
+
 register({name}, {fn})                                 *ntf.assert.register()*
   Register a custom assertion onto ntf's assert object.
   Available afterwards as `assert.{name}(...)` and `assert.is_not.{name}(...)`.
@@ -166,6 +217,11 @@ NtfItOption                                                      *NtfItOption*
 - {timeout} (integer?) per-process timeout in ms (e.g. `{ timeout = 1000 }`),
     overriding the `--timeout` default; an exceeded worker is killed and
     reported as an error.
+
+NtfAssert                                                          *NtfAssert*
+
+- {no} (NtfAssert) negated assertions, e.g. `assert.no.equal(want, got)`
+- {[string]} (fun(...)) custom assertions registered via `ntf.assert.register*`
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help

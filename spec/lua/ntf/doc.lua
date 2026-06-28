@@ -22,6 +22,7 @@ require("genvdoc").generate(plugin_name, {
     patterns = {
       ("lua/%s/init.lua"):format(plugin_name),
       ("lua/%s/helper.lua"):format(plugin_name),
+      ("lua/%s/assert/meta.lua"):format(plugin_name),
       ("lua/%s/assert/init.lua"):format(plugin_name),
     },
   },
@@ -64,6 +65,11 @@ with `--filter`). Wiring the debugger transport itself is up to your script.]]
       group = function(node)
         if node.declaration == nil or node.declaration.type ~= "function" then
           return nil
+        end
+        -- assert/meta.lua is a @meta types file, but its functions are called as
+        -- `ntf.assert.X`; document them under ntf.assert with `*ntf.assert.X()*` tags.
+        if node.declaration.module == "ntf.assert.meta" then
+          node.declaration.module = "ntf.assert"
         end
         return node.declaration.module
       end,

@@ -54,6 +54,7 @@ end
 
 -- Assertion namespace (`assert.equal`, `assert.same`, `assert.match`, ...).
 -- See |ntf-WRITING-SPECS|.
+--- @type NtfAssert
 M.assert = builder.assert
 
 return M
