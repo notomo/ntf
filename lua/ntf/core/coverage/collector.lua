@@ -11,16 +11,52 @@ local M = {}
 -- Shape: { [abs_path] = { max = integer, lines = { [line] = hits } } }.
 local active
 
+--- @param cwd string any form of the working directory
+--- @return string normalized absolute path with no trailing slash
+local function normalize_dir(cwd)
+  return (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", ""))
+end
+
+--- The test directories to exclude from coverage, derived from where the spec
+--- files actually live: each spec file's top-level directory under `cwd`. The
+--- test directory is not assumed to be `spec/` — whatever directory the specs
+--- were found in is excluded, and so is anything alongside them in it (e.g. the
+--- cloned test dependencies the workflow puts under `spec/.shared/packages/...`).
+--- @param spec_files string[] absolute paths of the spec files being run
+--- @param cwd string working directory (any form)
+--- @return string[] absolute dir prefixes (each ending with "/") to exclude
+function M.exclude_roots(spec_files, cwd)
+  cwd = normalize_dir(cwd)
+  local roots = {}
+  local seen = {}
+  for _, file in ipairs(spec_files) do
+    local abs = vim.fs.normalize(vim.fn.fnamemodify(file, ":p"))
+    if abs:sub(1, #cwd + 1) == cwd .. "/" then
+      local first = abs:sub(#cwd + 2):match("^[^/]+")
+      -- Only a directory (the spec lives below it) makes a subtree to exclude;
+      -- a spec file sitting directly in cwd has no top-level dir of its own.
+      if first and abs:sub(#cwd + 2) ~= first then
+        local root = cwd .. "/" .. first .. "/"
+        if not seen[root] then
+          seen[root] = true
+          table.insert(roots, root)
+        end
+      end
+    end
+  end
+  return roots
+end
+
 --- Decide, once per distinct chunk source, whether to measure it and under which
---- path. Only production files under `cwd` are measured: the whole test tree
---- (`<cwd>/spec/`, which by convention also holds the cloned test dependencies
---- under `spec/.shared/packages/...`) and any `*_spec.lua` file are excluded. So
---- in a user's project this is their own source (ntf and the other test deps live
---- under `spec/`); when ntf self-hosts it is ntf's `lua/`.
+--- path. Only production files under `cwd` are measured: any `*_spec.lua` file
+--- and anything under one of the `excludes` test-directory roots are skipped. So
+--- in a user's project this is their own source (the specs and the other test
+--- deps live in the excluded test directory); when ntf self-hosts it is ntf's
+--- `lua/`.
 --- @param cwd string normalized absolute working directory
+--- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return fun(source: string): string|false
-local function make_resolver(cwd)
-  local spec_prefix = cwd .. "/spec/"
+local function make_resolver(cwd, excludes)
   local decided = {}
   return function(source)
     local cached = decided[source]
@@ -35,8 +71,14 @@ local function make_resolver(cwd)
     if path then
       path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
       local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. "/"
-      local in_spec_tree = path:sub(1, #spec_prefix) == spec_prefix
-      if under_cwd and not in_spec_tree and not path:match("_spec%.lua$") then
+      local in_test_tree = false
+      for _, prefix in ipairs(excludes) do
+        if path:sub(1, #prefix) == prefix then
+          in_test_tree = true
+          break
+        end
+      end
+      if under_cwd and not in_test_tree and not path:match("_spec%.lua$") then
         result = path
       end
     end
@@ -47,10 +89,10 @@ local function make_resolver(cwd)
 end
 
 --- Start collecting. Installs the line hook; pair with `M.stop`.
---- @param opts { cwd: string }
+--- @param opts { cwd: string, excludes?: string[] }
 function M.start(opts)
-  local cwd = vim.fs.normalize(vim.fn.fnamemodify(opts.cwd, ":p")):gsub("/$", "")
-  local resolve = make_resolver(cwd)
+  local cwd = normalize_dir(opts.cwd)
+  local resolve = make_resolver(cwd, opts.excludes or {})
   local data = {}
 
   -- A line hook is called as hook("line", linenumber); the source of the

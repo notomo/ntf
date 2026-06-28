@@ -63,9 +63,11 @@ with `--filter`). Wiring the debugger transport itself is up to your script.]]
       body = function()
         return [[
 `--coverage` measures line coverage of the code under test while the specs run.
-It measures every file under the working directory except the test tree: anything
-under `spec/` (which by convention also holds the cloned test dependencies) and
-any `*_spec.lua` file are excluded. It needs no extra install: ntf sets a Lua line
+It measures every file under the working directory except the test tree: any
+`*_spec.lua` file and the test directory the specs were found in (its top-level
+directory under the working directory — `spec/` by default, but whatever path you
+pass) are excluded, so anything sitting alongside the specs there (such as cloned
+test dependencies) is left out too. It needs no extra install: ntf sets a Lua line
 hook in each worker, merges the per-worker counts, prints a short summary, and
 writes a `luacov.stats.out` (override the path with `--coverage=FILE`):
 >sh

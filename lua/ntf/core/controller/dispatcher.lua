@@ -202,6 +202,15 @@ function M.run(items, opts)
   -- yields whole-run coverage. Empty unless opts.coverage is set.
   local coverage = require("ntf.core.coverage.collector")
   local merged_coverage = {}
+  -- The test directories to keep out of coverage, derived from where the specs
+  -- being run actually live (not assumed to be `spec/`).
+  local coverage_excludes
+  if opts.coverage then
+    local spec_files = vim.tbl_map(function(item)
+      return item.file
+    end, items)
+    coverage_excludes = coverage.exclude_roots(spec_files, cwd)
+  end
   local started = 0
   local finished = 0
   -- First internal error raised from a worker callback. The callback body only
@@ -249,6 +258,7 @@ function M.run(items, opts)
         seed = opts.seed,
         setup = opts.setup,
         coverage = opts.coverage or false,
+        coverage_excludes = coverage_excludes,
         cwd = cwd,
       }),
     }

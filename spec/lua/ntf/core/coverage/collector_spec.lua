@@ -61,11 +61,11 @@ describe("ntf.core.coverage.collector.start/stop", function()
     assert.same({}, data)
   end)
 
-  it("does not measure files under the spec/ test tree", function()
-    -- The test tree (specs and the cloned test deps under spec/.shared) lives
-    -- under <cwd>/spec/, which is excluded even though it is under cwd.
+  it("does not measure files under an excluded test directory", function()
+    -- The test tree (specs and any deps alongside them) is excluded. The dir need
+    -- not be `spec/`: here it is `test/`, derived from where the spec lives.
     local file = helper.test_data:create_file(
-      "spec/sub.lua",
+      "test/sub.lua",
       table.concat({
         "local function add(a, b)",
         "  return a + b",
@@ -74,11 +74,32 @@ describe("ntf.core.coverage.collector.start/stop", function()
       }, "\n")
     )
     local add = assert(loadfile(file))()
+    local excludes = collector.exclude_roots({ helper.test_data:path("test/x_spec.lua") }, helper.test_data.full_path)
 
-    collector.start({ cwd = helper.test_data.full_path })
+    collector.start({ cwd = helper.test_data.full_path, excludes = excludes })
     add(1, 2)
     local data = collector.stop()
 
     assert.same({}, data)
+  end)
+end)
+
+describe("ntf.core.coverage.collector.exclude_roots", function()
+  it("derives each spec file's top-level directory under cwd", function()
+    local roots = collector.exclude_roots({ "/repo/spec/lua/x/a_spec.lua" }, "/repo")
+
+    assert.same({ "/repo/spec/" }, roots)
+  end)
+
+  it("dedups roots shared by many spec files", function()
+    local roots = collector.exclude_roots({ "/repo/spec/a_spec.lua", "/repo/spec/lua/b_spec.lua" }, "/repo")
+
+    assert.same({ "/repo/spec/" }, roots)
+  end)
+
+  it("ignores spec files outside cwd and those sitting directly in cwd", function()
+    local roots = collector.exclude_roots({ "/elsewhere/a_spec.lua", "/repo/top_spec.lua" }, "/repo")
+
+    assert.same({}, roots)
   end)
 end)

@@ -55,7 +55,7 @@ local function main()
   local collector
   if payload.coverage then
     collector = require("ntf.core.coverage.collector")
-    collector.start({ cwd = payload.cwd })
+    collector.start({ cwd = payload.cwd, excludes = payload.coverage_excludes })
   end
 
   local results = require("ntf.core.worker.executor").execute(root_node, selected, {
