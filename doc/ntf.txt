@@ -162,6 +162,15 @@ finally({fn})                                                  *ntf.finally()*
   Parameters: ~
     {fn} (fun()) callback body
 
+decorate_coverage({opts})                            *ntf.decorate_coverage()*
+  Decorate a buffer's sign column with per-line test coverage read from a
+  `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
+  marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
+  with `NtfCoverageMissed`.
+
+  Parameters: ~
+    {opts} (NtfDecorateCoverageOption?) |NtfDecorateCoverageOption|
+
 ==============================================================================
 Lua module: ntf.assert                                        *ntf-ntf.assert*
 
@@ -268,6 +277,14 @@ NtfItOption                                                      *NtfItOption*
 - {timeout} (integer?) per-process timeout in ms (e.g. `{ timeout = 1000 }`),
     overriding the `--timeout` default; an exceeded worker is killed and
     reported as an error.
+
+NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
+
+- {enable} (boolean?) when `false`, clear the decoration instead of drawing
+    it (default `true`).
+- {path} (string?) `luacov.stats.out` file to read (default
+    `"./luacov.stats.out"`).
+- {bufnr} (integer?) target buffer (default `0`, the current buffer).
 
 NtfAssert                                                          *NtfAssert*
 

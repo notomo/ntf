@@ -39,3 +39,35 @@ describe("ntf.core.coverage.stats.write", function()
     assert.equal("", read_all(out))
   end)
 end)
+
+describe("ntf.core.coverage.stats.read", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("parses a header + counts block into { max, lines } with integer keys", function()
+    local out = helper.test_data:create_file("luacov.stats.out", "3:/x.lua\n2 0 5\n")
+
+    assert.same({ ["/x.lua"] = { max = 3, lines = { [1] = 2, [2] = 0, [3] = 5 } } }, stats.read(out))
+  end)
+
+  it("round-trips write -> read", function()
+    local out = helper.test_data:path("luacov.stats.out")
+    local merged = {
+      ["/a.lua"] = { max = 2, lines = { [1] = 0, [2] = 4 } },
+      ["/b.lua"] = { max = 1, lines = { [1] = 1 } },
+    }
+    stats.write(out, merged)
+
+    assert.same(merged, stats.read(out))
+  end)
+
+  it("returns an empty table for a missing file", function()
+    assert.same({}, stats.read(helper.test_data:path("nope.stats.out")))
+  end)
+
+  it("returns an empty table for an empty file", function()
+    local out = helper.test_data:create_file("luacov.stats.out", "")
+
+    assert.same({}, stats.read(out))
+  end)
+end)

@@ -32,4 +32,39 @@ function M.write(path, merged)
   f:close()
 end
 
+--- Parse a `luacov.stats.out` file back into the in-memory counts shape (the
+--- inverse of `M.write`). Line keys are integers, matching the merged data the
+--- collector produces. An unreadable or empty file yields an empty table.
+--- @param path string stats file path
+--- @return table<string, { max: integer, lines: table<integer, integer> }>
+function M.read(path)
+  local f = io.open(path, "r")
+  if not f then
+    return {}
+  end
+
+  local merged = {}
+  -- Each file is two lines: a "<max>:<path>" header, then its space-separated
+  -- counts. Read the header, then consume the following counts line.
+  while true do
+    local header = f:read("*l")
+    if not header then
+      break
+    end
+    local max, file = header:match("^(%d+):(.*)$")
+    local counts = f:read("*l")
+    if max and counts then
+      local lines = {}
+      local i = 0
+      for n in counts:gmatch("%S+") do
+        i = i + 1
+        lines[i] = tonumber(n)
+      end
+      merged[file] = { max = tonumber(max), lines = lines }
+    end
+  end
+  f:close()
+  return merged
+end
+
 return M

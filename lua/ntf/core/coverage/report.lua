@@ -2,26 +2,9 @@
 -- "simple": the denominator (coverable lines) comes from a lightweight source
 -- heuristic, not a full parse, so the percentages are approximate. For
 -- authoritative, per-line reports point LuaCov at the emitted `luacov.stats.out`.
-local M = {}
+local is_code = require("ntf.core.coverage.source").is_code
 
--- Lines that carry no executable code: blank, comment-only, or a line whose only
--- content is a block terminator (`end`, `else`, `until ...`, a closing `)`/`}`).
--- Anything a line hook actually recorded is always counted regardless, so this
--- only affects lines that were never hit (the heuristic can never push a file
--- above 100%).
-local function is_code(text)
-  local trimmed = text:gsub("^%s+", ""):gsub("%s+$", "")
-  if trimmed == "" or trimmed:match("^%-%-") then
-    return false
-  end
-  if trimmed:match("^end[%)%]},;]*$") or trimmed == "else" or trimmed:match("^until%f[%W]") then
-    return false
-  end
-  if trimmed:match("^[%)%]}%s,;]+$") then
-    return false
-  end
-  return true
-end
+local M = {}
 
 --- @param file string absolute path
 --- @return string[]|nil

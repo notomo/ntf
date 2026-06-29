@@ -52,6 +52,22 @@ function M.finally(fn)
   return tree.finally(fn)
 end
 
+--- @class NtfDecorateCoverageOption
+--- @field enable boolean? when `false`, clear the decoration instead of drawing
+---   it (default `true`).
+--- @field path string? `luacov.stats.out` file to read (default
+---   `"./luacov.stats.out"`).
+--- @field bufnr integer? target buffer (default `0`, the current buffer).
+
+--- Decorate a buffer's sign column with per-line test coverage read from a
+--- `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
+--- marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
+--- with `NtfCoverageMissed`.
+--- @param opts NtfDecorateCoverageOption?: |NtfDecorateCoverageOption|
+function M.decorate_coverage(opts)
+  return require("ntf.core.coverage.decorate").decorate(opts)
+end
+
 -- Assertion namespace (`assert.equal`, `assert.same`, `assert.match`, ...).
 -- See |ntf-WRITING-SPECS|.
 --- @type NtfAssert
