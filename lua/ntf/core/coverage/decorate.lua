@@ -27,7 +27,13 @@ function M.decorate(opts)
   vim.api.nvim_set_hl(0, "NtfCoverageCovered", { default = true, link = "DiffAdd" })
   vim.api.nvim_set_hl(0, "NtfCoverageMissed", { default = true, link = "DiffDelete" })
 
-  local data = stats.read(opts.path or "./luacov.stats.out")
+  local path = opts.path or "./luacov.stats.out"
+  if not vim.uv.fs_stat(path) then
+    local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    error(("[ntf] coverage file is not found: %s"):format(full_path), 0)
+  end
+
+  local data = stats.read(path)
   local file = vim.fs.normalize(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":p"))
   local entry = data[file]
   if not entry then

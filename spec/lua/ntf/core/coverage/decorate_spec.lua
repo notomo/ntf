@@ -56,6 +56,18 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     assert.same({}, signs(bufnr))
   end)
 
+  it("errors when the coverage file does not exist", function()
+    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local path = helper.test_data:path("missing.stats.out")
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    local ok, err = pcall(ntf.decorate_coverage, { path = path, buffer = bufnr })
+
+    assert.is_false(ok)
+    assert.match("%[ntf%] coverage file is not found: ", err)
+  end)
+
   it("leaves the buffer untouched when its file is not in the stats", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local stats = helper.test_data:create_file("luacov.stats.out", "1:/other.lua\n1\n")
