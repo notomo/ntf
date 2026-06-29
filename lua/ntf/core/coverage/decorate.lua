@@ -11,10 +11,10 @@ local ns = vim.api.nvim_create_namespace("ntf.coverage")
 
 local SIGN = "▌"
 
---- @param opts { enable: boolean?, path: string?, bufnr: integer? }?
+--- @param opts { enable: boolean?, path: string?, buffer: integer? }?
 function M.decorate(opts)
   opts = opts or {}
-  local bufnr = opts.bufnr or 0
+  local bufnr = opts.buffer or 0
   local enable = opts.enable ~= false
 
   -- Always clear first so a re-run (or the off path) starts from a clean buffer.
@@ -55,12 +55,12 @@ function M.decorate(opts)
 end
 
 --- Whether the buffer currently carries coverage decoration.
---- @param opts { bufnr: integer? }?
+--- @param opts { buffer: integer? }?
 --- @return boolean
 function M.is_decorated(opts)
   opts = opts or {}
   -- We only need to know if any coverage extmark exists, so stop at the first.
-  local marks = vim.api.nvim_buf_get_extmarks(opts.bufnr or 0, ns, 0, -1, { limit = 1 })
+  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })
   return #marks > 0
 end
 

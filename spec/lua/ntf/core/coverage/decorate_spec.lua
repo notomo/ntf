@@ -34,7 +34,7 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
-    ntf.decorate_coverage({ path = stats, bufnr = bufnr })
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
 
     assert.same({
       [0] = "NtfCoverageCovered", -- line 1
@@ -50,8 +50,8 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
-    ntf.decorate_coverage({ path = stats, bufnr = bufnr })
-    ntf.decorate_coverage({ enable = false, bufnr = bufnr })
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+    ntf.decorate_coverage({ enable = false, buffer = bufnr })
 
     assert.same({}, signs(bufnr))
   end)
@@ -62,7 +62,7 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
-    ntf.decorate_coverage({ path = stats, bufnr = bufnr })
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
 
     assert.same({}, signs(bufnr))
   end)
@@ -79,13 +79,13 @@ describe("ntf.is_decorated_coverage", function()
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
-    assert.is_false(ntf.is_decorated_coverage({ bufnr = bufnr }))
+    assert.is_false(ntf.is_decorated_coverage({ buffer = bufnr }))
 
-    ntf.decorate_coverage({ path = stats, bufnr = bufnr })
-    assert.is_true(ntf.is_decorated_coverage({ bufnr = bufnr }))
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+    assert.is_true(ntf.is_decorated_coverage({ buffer = bufnr }))
 
-    ntf.decorate_coverage({ enable = false, bufnr = bufnr })
-    assert.is_false(ntf.is_decorated_coverage({ bufnr = bufnr }))
+    ntf.decorate_coverage({ enable = false, buffer = bufnr })
+    assert.is_false(ntf.is_decorated_coverage({ buffer = bufnr }))
   end)
 
   it("reports per buffer", function()
@@ -95,10 +95,10 @@ describe("ntf.is_decorated_coverage", function()
 
     vim.cmd.edit(src)
     local decorated = vim.api.nvim_get_current_buf()
-    ntf.decorate_coverage({ path = stats, bufnr = decorated })
+    ntf.decorate_coverage({ path = stats, buffer = decorated })
     local other = vim.api.nvim_create_buf(false, true)
 
-    assert.is_true(ntf.is_decorated_coverage({ bufnr = decorated }))
-    assert.is_false(ntf.is_decorated_coverage({ bufnr = other }))
+    assert.is_true(ntf.is_decorated_coverage({ buffer = decorated }))
+    assert.is_false(ntf.is_decorated_coverage({ buffer = other }))
   end)
 end)

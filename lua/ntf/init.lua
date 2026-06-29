@@ -57,7 +57,7 @@ end
 ---   it (default `true`).
 --- @field path string? `luacov.stats.out` file to read (default
 ---   `"./luacov.stats.out"`).
---- @field bufnr integer? target buffer (default `0`, the current buffer).
+--- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Decorate a buffer's sign column with per-line test coverage read from a
 --- `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
@@ -69,7 +69,7 @@ function M.decorate_coverage(opts)
 end
 
 --- @class NtfIsDecoratedCoverageOption
---- @field bufnr integer? target buffer (default `0`, the current buffer).
+--- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Whether `decorate_coverage` is currently drawing on the buffer. Intended for
 --- a toggle mapping paired with `decorate_coverage`.

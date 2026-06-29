@@ -294,11 +294,11 @@ NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
     it (default `true`).
 - {path} (string?) `luacov.stats.out` file to read (default
     `"./luacov.stats.out"`).
-- {bufnr} (integer?) target buffer (default `0`, the current buffer).
+- {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfIsDecoratedCoverageOption                    *NtfIsDecoratedCoverageOption*
 
-- {bufnr} (integer?) target buffer (default `0`, the current buffer).
+- {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfAssert                                                          *NtfAssert*
 
