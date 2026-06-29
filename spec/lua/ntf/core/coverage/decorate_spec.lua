@@ -2,7 +2,7 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local helper = require("ntf.test.helper")
 
-local ns = vim.api.nvim_create_namespace("ntf-coverage")
+local ns = vim.api.nvim_create_namespace("ntf.coverage")
 
 local SOURCE = table.concat({
   "local M = {}", -- 1 code, hit
@@ -65,5 +65,40 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     ntf.decorate_coverage({ path = stats, bufnr = bufnr })
 
     assert.same({}, signs(bufnr))
+  end)
+end)
+
+describe("ntf.is_decorated_coverage", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("is false before decorating and true after, then false again when cleared", function()
+    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    assert.is_false(ntf.is_decorated_coverage({ bufnr = bufnr }))
+
+    ntf.decorate_coverage({ path = stats, bufnr = bufnr })
+    assert.is_true(ntf.is_decorated_coverage({ bufnr = bufnr }))
+
+    ntf.decorate_coverage({ enable = false, bufnr = bufnr })
+    assert.is_false(ntf.is_decorated_coverage({ bufnr = bufnr }))
+  end)
+
+  it("reports per buffer", function()
+    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
+
+    vim.cmd.edit(src)
+    local decorated = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, bufnr = decorated })
+    local other = vim.api.nvim_create_buf(false, true)
+
+    assert.is_true(ntf.is_decorated_coverage({ bufnr = decorated }))
+    assert.is_false(ntf.is_decorated_coverage({ bufnr = other }))
   end)
 end)

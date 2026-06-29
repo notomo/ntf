@@ -68,6 +68,17 @@ function M.decorate_coverage(opts)
   return require("ntf.core.coverage.decorate").decorate(opts)
 end
 
+--- @class NtfIsDecoratedCoverageOption
+--- @field bufnr integer? target buffer (default `0`, the current buffer).
+
+--- Whether `decorate_coverage` is currently drawing on the buffer. Intended for
+--- a toggle mapping paired with `decorate_coverage`.
+--- @param opts NtfIsDecoratedCoverageOption?: |NtfIsDecoratedCoverageOption|
+--- @return boolean
+function M.is_decorated_coverage(opts)
+  return require("ntf.core.coverage.decorate").is_decorated(opts)
+end
+
 -- Assertion namespace (`assert.equal`, `assert.same`, `assert.match`, ...).
 -- See |ntf-WRITING-SPECS|.
 --- @type NtfAssert

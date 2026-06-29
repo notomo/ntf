@@ -171,6 +171,16 @@ decorate_coverage({opts})                            *ntf.decorate_coverage()*
   Parameters: ~
     {opts} (NtfDecorateCoverageOption?) |NtfDecorateCoverageOption|
 
+is_decorated_coverage({opts})                    *ntf.is_decorated_coverage()*
+  Whether `decorate_coverage` is currently drawing on the buffer. Intended for
+  a toggle mapping paired with `decorate_coverage`.
+
+  Parameters: ~
+    {opts} (NtfIsDecoratedCoverageOption?) |NtfIsDecoratedCoverageOption|
+
+  Return: ~
+    (boolean) 
+
 ==============================================================================
 Lua module: ntf.assert                                        *ntf-ntf.assert*
 
@@ -284,6 +294,10 @@ NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
     it (default `true`).
 - {path} (string?) `luacov.stats.out` file to read (default
     `"./luacov.stats.out"`).
+- {bufnr} (integer?) target buffer (default `0`, the current buffer).
+
+NtfIsDecoratedCoverageOption                    *NtfIsDecoratedCoverageOption*
+
 - {bufnr} (integer?) target buffer (default `0`, the current buffer).
 
 NtfAssert                                                          *NtfAssert*
