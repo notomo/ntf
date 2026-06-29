@@ -43,6 +43,34 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("does not flag multi-line closure header lines as missed", function()
+    -- LuaJIT attributes the closure-creating instruction to the closing `end`,
+    -- so the `function(...)` header lines never get a hit; they must not be
+    -- treated as coverable-but-missed.
+    local header_src = table.concat({
+      "local a = function()", -- 1 closure header, unhit
+      "  return 1", -- 2 code, missed (closure never called)
+      "end", -- 3 lone end, hit (closure creation lands here)
+      "return function()", -- 4 closure header, unhit
+      "  return 2", -- 5 code, missed
+      "end", -- 6 lone end, hit
+    }, "\n")
+    local src = helper.test_data:create_file("mod.lua", header_src)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("6:%s\n0 0 1 0 0 1\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [1] = "NtfCoverageMissed", -- line 2
+      [2] = "NtfCoverageCovered", -- line 3 (end, hit)
+      [4] = "NtfCoverageMissed", -- line 5
+      [5] = "NtfCoverageCovered", -- line 6 (end, hit)
+    }, signs(bufnr))
+  end)
+
   it("clears the decoration with enable = false", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))

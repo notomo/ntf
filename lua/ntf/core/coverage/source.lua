@@ -20,6 +20,14 @@ function M.is_code(text)
   if trimmed:match("^[%)%]}%s,;]+$") then
     return false
   end
+  -- A multi-line function/closure header (`...function(args)` with the body on
+  -- following lines). LuaJIT attributes the closure-creating instruction to the
+  -- closing `end`, not this header, so the header never receives a line-hook
+  -- event even when the surrounding statement runs. Counting it would flag a
+  -- spurious miss; the matching `end` (or a body line) carries the real hit.
+  if trimmed:match("function%s*%([^()]*%)$") then
+    return false
+  end
   return true
 end
 
