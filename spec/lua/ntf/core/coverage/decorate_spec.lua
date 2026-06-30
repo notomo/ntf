@@ -71,6 +71,29 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("does not flag explicit `= nil` assignment lines as missed", function()
+    -- Assigning nil to a table field emits no bytecode, so the line can never
+    -- get a hit; it must not be treated as coverable-but-missed.
+    local nil_src = table.concat({
+      "local t = {", -- 1 code, hit (constructor opener)
+      "  path = nil,", -- 2 = nil, unhit -> not coverable (no sign)
+      "}", -- 3 lone close, not code
+      "return t", -- 4 code, missed
+    }, "\n")
+    local src = helper.test_data:create_file("mod.lua", nil_src)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 0 0\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [0] = "NtfCoverageCovered", -- line 1
+      [3] = "NtfCoverageMissed", -- line 4
+    }, signs(bufnr))
+  end)
+
   it("clears the decoration with enable = false", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))

@@ -28,6 +28,13 @@ function M.is_code(text)
   if trimmed:match("function%s*%([^()]*%)$") then
     return false
   end
+  -- An explicit `= nil` assignment. Assigning nil to a table field (or default)
+  -- emits no bytecode at all, so the line can never receive a line-hook event;
+  -- counting it would flag a permanent spurious miss. (`== nil` comparisons and
+  -- `return nil` still execute, so they are intentionally not matched.)
+  if trimmed:match("[^=~<>]=%s*nil%s*[,;]?$") then
+    return false
+  end
   return true
 end
 
