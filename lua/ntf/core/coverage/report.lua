@@ -1,8 +1,8 @@
 -- A small built-in coverage summary printed after a run. It is deliberately
--- "simple": the denominator (coverable lines) comes from a lightweight source
--- heuristic, not a full parse, so the percentages are approximate. For
--- authoritative, per-line reports point LuaCov at the emitted `luacov.stats.out`.
-local is_code = require("ntf.core.coverage.source").is_code
+-- "simple": the denominator (coverable lines) comes from a treesitter analysis
+-- of the source, so the percentages are approximate. For authoritative, per-line
+-- reports point LuaCov at the emitted `luacov.stats.out`.
+local coverable_lines = require("ntf.core.coverage.source").coverable_lines
 
 local M = {}
 
@@ -27,16 +27,14 @@ end
 --- @return integer covered, integer coverable
 local function count_file(source_lines, hits)
   local coverable, covered = 0, 0
-  -- Union the heuristic's code lines with every line that was actually hit, so a
-  -- recorded line is never dropped from the denominator.
+  -- Union the source's coverable lines with every line that was actually hit, so
+  -- a recorded line is never dropped from the denominator.
   local seen = {}
   for line in pairs(hits) do
     seen[line] = true
   end
-  for i, text in ipairs(source_lines) do
-    if is_code(text) then
-      seen[i] = true
-    end
+  for line in pairs(coverable_lines(table.concat(source_lines, "\n"))) do
+    seen[line] = true
   end
   for line in pairs(seen) do
     coverable = coverable + 1

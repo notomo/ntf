@@ -29,6 +29,29 @@ describe("ntf.core.coverage.report.summary", function()
     assert.match("mod.lua%s+75.0%% %(3/4%)", text)
   end)
 
+  it("excludes table fields and opener braces from the denominator", function()
+    local src = helper.test_data:create_file(
+      "mod.lua",
+      table.concat({
+        "local t1 = {", -- 1 code, hit
+        '  one = "one",', -- 2 field, not coverable
+        '  two = "two",', -- 3 field, not coverable
+        "}", -- 4 lone close, not coverable
+        "local t2 = {", -- 5 code, hit
+        "  f(),", -- 6 call, coverable, missed
+        "}", -- 7 lone close, not coverable
+        "return t1", -- 8 code, hit
+      }, "\n")
+    )
+    local merged = { [vim.fs.normalize(src)] = { max = 8, lines = { [1] = 1, [5] = 1, [8] = 1 } } }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    -- coverable lines = {1,5,6,8}; covered = {1,5,8} -> 3/4 = 75%. The fields and
+    -- braces (2,3,4,7) must not inflate the denominator.
+    assert.match("Coverage: 75.0%% %(3/4 lines%)", text)
+  end)
+
   it("reports n/a when nothing was measured", function()
     local text = report.summary({}, helper.test_data.full_path)
 

@@ -43,12 +43,13 @@ function M.decorate(opts)
   -- Iterate over the buffer (not the stats file) so a stale stats file can never
   -- place a sign past the buffer's end.
   local buf_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  for i, text in ipairs(buf_lines) do
+  local coverable = source.coverable_lines(table.concat(buf_lines, "\n"))
+  for i, _ in ipairs(buf_lines) do
     local hits = entry.lines[i]
     local hl
     if hits and hits > 0 then
       hl = "NtfCoverageCovered"
-    elseif source.is_code(text) then
+    elseif coverable[i] then
       hl = "NtfCoverageMissed"
     end
     if hl then

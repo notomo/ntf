@@ -94,6 +94,40 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("does not flag table fields, bare locals, or opener braces as missed", function()
+    -- LuaJIT collapses a table constructor onto its opening line, merges
+    -- consecutive bare `local`s onto the first, and never hits a lone `{`. None
+    -- of those lines can receive a hit, so they must not be coverable. A genuine
+    -- unhit call line, by contrast, must still show as missed.
+    local mixed_src = table.concat({
+      "local t1 = {", -- 1  opener, hit
+      '  one = "one",', -- 2  field, never hit -> not coverable
+      '  two = "two",', -- 3  field, never hit -> not coverable
+      "}", -- 4  lone close
+      "local x", -- 5  bare local (first), hit
+      "local y", -- 6  bare local, never hit -> not coverable
+      "local t2 = {", -- 7  opener, hit
+      "  f(),", -- 8  call, unhit -> missed
+      "}", -- 9  lone close
+      "return t1, t2, x, y", -- 10 return, hit
+    }, "\n")
+    local src = helper.test_data:create_file("mod.lua", mixed_src)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("10:%s\n1 0 0 0 1 0 1 0 0 1\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [0] = "NtfCoverageCovered", -- line 1 opener
+      [4] = "NtfCoverageCovered", -- line 5 bare local (hit)
+      [6] = "NtfCoverageCovered", -- line 7 opener
+      [7] = "NtfCoverageMissed", -- line 8 unhit call
+      [9] = "NtfCoverageCovered", -- line 10 return
+    }, signs(bufnr))
+  end)
+
   it("clears the decoration with enable = false", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
