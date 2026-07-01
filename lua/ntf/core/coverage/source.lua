@@ -50,12 +50,26 @@ function M.coverable_lines(src)
   local lines = {}
   local function walk(node)
     local kind = node:type()
-    local coverable = EXEC_STMT[kind] or kind == "function_call"
-    if kind == "assignment_statement" or kind == "return_statement" then
-      coverable = not only_closures(node)
-    end
-    if coverable then
-      lines[node:start() + 1] = true
+    if kind == "function_call" then
+      -- Anchor on the `(` (the `arguments` child), where the call's hit lands,
+      -- not the call node's start: a multi-line method chain begins on the
+      -- receiver line (`vim` alone) whose row never receives a hit.
+      local anchor = node
+      for child in node:iter_children() do
+        if child:type() == "arguments" then
+          anchor = child
+          break
+        end
+      end
+      lines[anchor:start() + 1] = true
+    else
+      local coverable = EXEC_STMT[kind]
+      if kind == "assignment_statement" or kind == "return_statement" then
+        coverable = not only_closures(node)
+      end
+      if coverable then
+        lines[node:start() + 1] = true
+      end
     end
     for child in node:iter_children() do
       if child:named() then

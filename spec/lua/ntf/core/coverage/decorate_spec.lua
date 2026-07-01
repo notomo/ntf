@@ -128,6 +128,34 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("does not flag the receiver line of a multi-line method chain as missed", function()
+    -- A call node begins on its receiver line (`vim` alone), but LuaJIT lands the
+    -- hit on the `arguments` line (`.iter(...)`). The receiver line must not be
+    -- coverable; the call line carries the coverage.
+    local chain_src = table.concat({
+      "local t = {", -- 1  opener, hit
+      "  vim", -- 2  receiver, never hit -> not coverable
+      "    .iter(x)", -- 3  call arguments, hit
+      "    :totable(),", -- 4  call arguments, unhit -> missed
+      "}", -- 5  lone close
+      "return t", -- 6  return, hit
+    }, "\n")
+    local src = helper.test_data:create_file("mod.lua", chain_src)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("6:%s\n1 0 1 0 0 1\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [0] = "NtfCoverageCovered", -- line 1 opener
+      [2] = "NtfCoverageCovered", -- line 3 .iter(x) (hit)
+      [3] = "NtfCoverageMissed", -- line 4 :totable() (unhit call)
+      [5] = "NtfCoverageCovered", -- line 6 return
+    }, signs(bufnr))
+  end)
+
   it("clears the decoration with enable = false", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
