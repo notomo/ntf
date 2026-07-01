@@ -20,8 +20,30 @@ local EXEC_STMT = {
   goto_statement = true,
 }
 
---- Whether a statement's only values are closures: their creation hit lands on
---- the closing `end`, not this line, so the header must not count as coverable.
+--- Whether a value's evaluation is dominated by creating a closure, whose hit
+--- lands on the closing `end` rather than the statement's opening line. True for
+--- a bare `function() ... end` and for a short-circuit `a or function() ... end`
+--- (the operand closure, not the opener, carries the hit).
+--- @param node TSNode a value expression
+--- @return boolean
+local function is_closure_value(node)
+  local kind = node:type()
+  if kind == "function_definition" then
+    return true
+  end
+  if kind == "binary_expression" then
+    for child in node:iter_children() do
+      if child:named() and is_closure_value(child) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--- Whether a statement's only values are closure-dominated: their creation hit
+--- lands on the closing `end`, not this line, so the header must not count as
+--- coverable.
 --- @param node TSNode an `assignment_statement` or `return_statement`
 --- @return boolean
 local function only_closures(node)
@@ -31,7 +53,7 @@ local function only_closures(node)
       for value in child:iter_children() do
         if value:named() then
           total = total + 1
-          if value:type() == "function_definition" then
+          if is_closure_value(value) then
             closures = closures + 1
           end
         end

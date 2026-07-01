@@ -156,6 +156,32 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("does not flag a `x = a or function() end` header as missed", function()
+    -- The value is `existing or function()`: LuaJIT lands the hit on the closure
+    -- line, not the assignment's opening line, so the header must not count as
+    -- coverable (the closure body still carries its own coverage).
+    local or_src = table.concat({
+      "local cb = existing", -- 1  header (a or closure), never hit -> not coverable
+      "  or function()", -- 2  closure creation, hit
+      "    return 1", -- 3  closure body, unhit -> missed
+      "  end", -- 4  lone end
+      "return cb", -- 5  return, hit
+    }, "\n")
+    local src = helper.test_data:create_file("mod.lua", or_src)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    local stats = helper.test_data:create_file("luacov.stats.out", ("5:%s\n0 1 0 0 1\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [1] = "NtfCoverageCovered", -- line 2 closure creation (hit)
+      [2] = "NtfCoverageMissed", -- line 3 unhit closure body
+      [4] = "NtfCoverageCovered", -- line 5 return
+    }, signs(bufnr))
+  end)
+
   it("clears the decoration with enable = false", function()
     local src = helper.test_data:create_file("mod.lua", SOURCE)
     local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
