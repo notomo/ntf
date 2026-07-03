@@ -7,6 +7,19 @@ ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
 It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
 Neovim process so state never leaks between tests.
 
+## Setup
+
+`bin/ntf` is the CLI. With ntf installed as a Neovim plugin, you can expose the
+command to `:terminal` (and anything else Neovim spawns) by prepending its `bin`
+directory to `$PATH`:
+
+```lua
+local ntf = vim.api.nvim_get_runtime_file("bin/ntf", false)[1]
+if ntf then
+  vim.env.PATH = vim.fs.dirname(ntf) .. (vim.fn.has("win32") == 1 and ";" or ":") .. vim.env.PATH
+end
+```
+
 ## Usage
 
 ```
