@@ -9,6 +9,7 @@ local M = {}
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
 --- @field hook string? Lua module returning optional setup/teardown, run once per worker around the spec
+--- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field help boolean show usage and exit
@@ -22,6 +23,10 @@ M.flags = {
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
   { name = "--hook=PATH", description = "run a Lua module providing setup/teardown around each worker's spec" },
+  {
+    name = "--global-hook=PATH",
+    description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
+  },
   {
     name = "--coverage[=FILE]",
     description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
@@ -56,6 +61,7 @@ function M.parse(argv)
     shuffle = false,
     seed = nil,
     hook = nil,
+    global_hook = nil,
     coverage = false,
     coverage_file = "luacov.stats.out",
     help = false,
@@ -75,6 +81,9 @@ function M.parse(argv)
     end,
     ["--hook"] = function(v)
       opts.hook = v
+    end,
+    ["--global-hook"] = function(v)
+      opts.global_hook = v
     end,
   }
 
@@ -141,6 +150,9 @@ function M.parse(argv)
   end
   if opts.hook and vim.fn.filereadable(opts.hook) == 0 then
     return "--hook module not found: " .. opts.hook
+  end
+  if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
+    return "--global-hook module not found: " .. opts.global_hook
   end
 
   return opts

@@ -260,6 +260,79 @@ return {
     assert.match("%-%-hook module not found", obj.stderr)
   end)
 
+  it("runs the --global-hook module's setup and teardown once around the whole run", function()
+    local log = vim.fs.joinpath(helper.test_data.full_path, "global_hook.log")
+    -- Two top-level tests become two work items (two workers), so a per-worker
+    -- hook would log twice; the global hook must still log exactly once.
+    local path = spec(
+      "global_hooked_spec.lua",
+      ([[
+local ntf = require("ntf")
+local it = ntf.it
+local function append(line)
+  local f = assert(io.open(%q, "a"))
+  f:write(line .. "\n")
+  f:close()
+end
+it("passes", function()
+  append("test")
+end)
+it("also passes", function()
+  append("test")
+end)
+]]):format(log)
+    )
+    local hook = spec(
+      "global_hook.lua",
+      ([[
+local function append(line)
+  local f = assert(io.open(%q, "a"))
+  f:write(line .. "\n")
+  f:close()
+end
+return {
+  setup = function() append("setup") end,
+  teardown = function() append("teardown") end,
+}
+]]):format(log)
+    )
+
+    local obj = run({ path }, { "--global-hook=" .. hook })
+
+    assert.equal(0, obj.code)
+    assert.same({ "setup", "test", "test", "teardown" }, vim.fn.readfile(log))
+  end)
+
+  it("surfaces a --global-hook teardown error without discarding the results", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("global_hook.lua", [[return { teardown = function() error("teardown boom") end }]])
+
+    local obj = run({ path }, { "--global-hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("teardown boom", obj.stderr)
+    -- the actual tests still ran and are reported, not dropped on the floor
+    assert.match("2 passed", obj.stdout)
+  end)
+
+  it("exits 1 when the --global-hook module's setup errors", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("global_hook.lua", [[return { setup = function() error("setup boom") end }]])
+
+    local obj = run({ path }, { "--global-hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("setup boom", obj.stderr)
+  end)
+
+  it("exits 2 when the --global-hook module does not exist", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "--global-hook=/no/such/hook.lua" })
+
+    assert.equal(2, obj.code)
+    assert.match("%-%-global%-hook module not found", obj.stderr)
+  end)
+
   it("writes a luacov stats file and prints a summary with --coverage", function()
     local path = spec("pass_spec.lua", PASSING)
     -- Keep the stats file inside the temp data dir so teardown cleans it up.

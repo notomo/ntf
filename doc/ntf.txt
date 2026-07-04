@@ -7,13 +7,14 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --timeout=MS       kill a worker after MS milliseconds (default: 60000; 0 disables)
-    --filter=PATTERN   run only tests whose full name matches the Lua pattern
-    --jobs=N           max parallel nvim workers (default: cpu count)
-    --shuffle[=SEED]   randomize test order; SEED fixes it (default: time based)
-    --hook=PATH        run a Lua module providing setup/teardown around each worker's spec
-    --coverage[=FILE]  measure line coverage; write luacov.stats.out (or FILE) and print a summary
-    -h, --help         show this help
+    --timeout=MS        kill a worker after MS milliseconds (default: 60000; 0 disables)
+    --filter=PATTERN    run only tests whose full name matches the Lua pattern
+    --jobs=N            max parallel nvim workers (default: cpu count)
+    --shuffle[=SEED]    randomize test order; SEED fixes it (default: time based)
+    --hook=PATH         run a Lua module providing setup/teardown around each worker's spec
+    --global-hook=PATH  run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --coverage[=FILE]   measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    -h, --help          show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
 <
@@ -72,6 +73,18 @@ An error raised while loading the module or from `setup` is reported as a load
 error. A `teardown` error is reported too — as an error entry alongside the
 worker's results, so it fails the run without discarding the results already
 produced.
+
+`--global-hook=PATH` takes a module with the same contract but runs it once in
+the launcher process instead of in every worker: `setup` before any spec file is
+loaded, `teardown` after all workers have finished. Use it for state shared by
+the whole run — start a server once, build a fixture once — while `--hook`
+remains the per-worker bracket:
+>sh
+  ntf --global-hook=./global_hook.lua
+<
+An error raised while loading the module or from its `setup` aborts the run
+before any test starts. A `teardown` error is reported after the results, so it
+fails the run without discarding them.
 
 Because `setup` runs before the spec is built, it is the injection point for a
 debugger: the code under test loads while the debugger is already attached. ntf

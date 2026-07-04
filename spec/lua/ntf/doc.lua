@@ -65,6 +65,18 @@ error. A `teardown` error is reported too — as an error entry alongside the
 worker's results, so it fails the run without discarding the results already
 produced.
 
+`--global-hook=PATH` takes a module with the same contract but runs it once in
+the launcher process instead of in every worker: `setup` before any spec file is
+loaded, `teardown` after all workers have finished. Use it for state shared by
+the whole run — start a server once, build a fixture once — while `--hook`
+remains the per-worker bracket:
+>sh
+  ntf --global-hook=./global_hook.lua
+<
+An error raised while loading the module or from its `setup` aborts the run
+before any test starts. A `teardown` error is reported after the results, so it
+fails the run without discarding them.
+
 Because `setup` runs before the spec is built, it is the injection point for a
 debugger: the code under test loads while the debugger is already attached. ntf
 has no debugger dependency of its own:

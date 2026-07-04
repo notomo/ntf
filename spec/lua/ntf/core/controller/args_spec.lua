@@ -130,6 +130,40 @@ describe("ntf.core.controller.args.parse", function()
     assert.equal("spec", opts.paths[1])
   end)
 
+  describe("--global-hook", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("parses --global-hook into opts.global_hook", function()
+      local path = helper.test_data:create_file("global_hook.lua", "return {}")
+
+      local opts = args.parse({ "--global-hook=" .. path, "spec" })
+
+      assert.equal(path, opts.global_hook)
+    end)
+
+    it("leaves opts.global_hook nil when --global-hook is absent", function()
+      local opts = args.parse({ "spec" })
+
+      assert.equal(nil, opts.global_hook)
+    end)
+
+    it("accepts the space-separated --global-hook VALUE form", function()
+      local path = helper.test_data:create_file("global_hook.lua", "return {}")
+
+      local opts = args.parse({ "--global-hook", path, "spec" })
+
+      assert.equal(path, opts.global_hook)
+      assert.equal("spec", opts.paths[1])
+    end)
+
+    it("errors when the --global-hook module does not exist", function()
+      local err = args.parse({ "--global-hook=/no/such/hook.lua", "spec" })
+
+      assert.match("%-%-global%-hook module not found", err)
+    end)
+  end)
+
   describe("with no paths", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

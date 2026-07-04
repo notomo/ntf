@@ -26,13 +26,14 @@ end
 Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
-  --timeout=MS       kill a worker after MS milliseconds (default: 60000; 0 disables)
-  --filter=PATTERN   run only tests whose full name matches the Lua pattern
-  --jobs=N           max parallel nvim workers (default: cpu count)
-  --shuffle[=SEED]   randomize test order; SEED fixes it (default: time based)
-  --hook=PATH        run a Lua module providing setup/teardown around each worker's spec
-  --coverage[=FILE]  measure line coverage; write luacov.stats.out (or FILE) and print a summary
-  -h, --help         show this help
+  --timeout=MS        kill a worker after MS milliseconds (default: 60000; 0 disables)
+  --filter=PATTERN    run only tests whose full name matches the Lua pattern
+  --jobs=N            max parallel nvim workers (default: cpu count)
+  --shuffle[=SEED]    randomize test order; SEED fixes it (default: time based)
+  --hook=PATH         run a Lua module providing setup/teardown around each worker's spec
+  --global-hook=PATH  run a Lua module providing setup/teardown once around the whole run, in the launcher process
+  --coverage[=FILE]   measure line coverage; write luacov.stats.out (or FILE) and print a summary
+  -h, --help          show this help
 
 With no paths, runs the *_spec.lua files under ./spec.
 ```

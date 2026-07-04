@@ -33,6 +33,27 @@ function M.run(root)
     opts.seed = os.time()
   end
 
+  -- The `--global-hook` module returns an optional table with `setup`/`teardown`,
+  -- like `--hook` — but it runs once in this launcher process, not per worker:
+  -- `setup` before any spec is loaded (planning below loads the spec files),
+  -- `teardown` after all workers have finished.
+  local global_hook = {}
+  if opts.global_hook then
+    local ok_setup, err = xpcall(function()
+      local loaded = dofile(opts.global_hook)
+      if type(loaded) == "table" then
+        global_hook = loaded
+      end
+      if global_hook.setup then
+        global_hook.setup()
+      end
+    end, debug.traceback)
+    if not ok_setup then
+      io.stderr:write("--global-hook setup error: " .. tostring(err) .. "\n")
+      os.exit(1)
+    end
+  end
+
   local runner = require("ntf.core.controller.dispatcher")
   local items, load_errors = runner.plan(files, opts.filter)
 
@@ -75,12 +96,27 @@ function M.run(root)
     prog.finish()
   end
 
+  -- Global teardown runs whatever the test outcome. Its error must not discard
+  -- the results already produced, so capture it, still print the report, and
+  -- only then fail the run.
+  local teardown_err
+  if global_hook.teardown then
+    xpcall(global_hook.teardown, function(err)
+      teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
+    end)
+  end
+
   local text, code = report.build(results, load_errors, opts)
   io.stdout:write(text)
 
   if opts.coverage then
     require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
     io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, vim.fn.getcwd()))
+  end
+
+  if teardown_err then
+    io.stderr:write("--global-hook teardown error: " .. teardown_err .. "\n")
+    code = code ~= 0 and code or 1
   end
 
   os.exit(code)
