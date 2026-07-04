@@ -1,3 +1,5 @@
+DEPS_SKIP_NTF=1
+
 include spec/.shared/neovim-plugin.mk
 
 spec/.shared/neovim-plugin.mk:
