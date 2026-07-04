@@ -189,7 +189,7 @@ end
 --- is reported live rather than held back until the whole run completes. (The cost
 --- is that blocks appear in worker-completion order, not deterministic spec order.)
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
 function M.run(items, opts)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
@@ -256,7 +256,7 @@ function M.run(items, opts)
         node_ids = item.node_ids,
         shuffle = opts.shuffle or false,
         seed = opts.seed,
-        hook = opts.hook,
+        test_hook = opts.test_hook,
         coverage = opts.coverage or false,
         coverage_excludes = coverage_excludes,
         cwd = cwd,

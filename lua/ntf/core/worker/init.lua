@@ -25,15 +25,15 @@ local function main()
 
   require("ntf.core.runtime").setup()
 
-  -- The `--hook` module returns an optional table with `setup`/`teardown`. They run
+  -- The `--test-hook` module returns an optional table with `setup`/`teardown`. They run
   -- once at the worker boundary, outside every spec hook: `setup` before the spec is
   -- built (so it can attach a debugger that steps through the code under test, e.g.
   -- `require("lldebugger").start()`; ntf has no debugger dependency, this is just an
   -- injection point), `teardown` after the worker's test has run. A `setup` error is
   -- caught by the xpcall around main() and surfaced as a load error.
   local hook = {}
-  if payload.hook and payload.hook ~= "" then
-    local loaded = dofile(payload.hook)
+  if payload.test_hook and payload.test_hook ~= "" then
+    local loaded = dofile(payload.test_hook)
     if type(loaded) == "table" then
       hook = loaded
     end
@@ -68,7 +68,7 @@ local function main()
       id = "<teardown>",
       name = "teardown",
       names = { "teardown" },
-      trace = { source = "@" .. payload.hook },
+      trace = { source = "@" .. payload.test_hook },
       status = "error",
       message = err.message,
       traceback = err.traceback,

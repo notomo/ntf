@@ -8,7 +8,7 @@ local M = {}
 --- @field jobs integer? max parallel workers
 --- @field shuffle boolean randomize test order
 --- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
---- @field hook string? Lua module returning optional setup/teardown, run once per worker around the spec
+--- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
@@ -22,7 +22,10 @@ M.flags = {
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
-  { name = "--hook=PATH", description = "run a Lua module providing setup/teardown around each worker's spec" },
+  {
+    name = "--test-hook=PATH",
+    description = "run a Lua module providing setup/teardown around each test, in its worker",
+  },
   {
     name = "--global-hook=PATH",
     description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
@@ -60,7 +63,7 @@ function M.parse(argv)
     jobs = nil,
     shuffle = false,
     seed = nil,
-    hook = nil,
+    test_hook = nil,
     global_hook = nil,
     coverage = false,
     coverage_file = "luacov.stats.out",
@@ -79,8 +82,8 @@ function M.parse(argv)
     ["--jobs"] = function(v)
       opts.jobs = tonumber(v)
     end,
-    ["--hook"] = function(v)
-      opts.hook = v
+    ["--test-hook"] = function(v)
+      opts.test_hook = v
     end,
     ["--global-hook"] = function(v)
       opts.global_hook = v
@@ -148,8 +151,8 @@ function M.parse(argv)
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter
   end
-  if opts.hook and vim.fn.filereadable(opts.hook) == 0 then
-    return "--hook module not found: " .. opts.hook
+  if opts.test_hook and vim.fn.filereadable(opts.test_hook) == 0 then
+    return "--test-hook module not found: " .. opts.test_hook
   end
   if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
     return "--global-hook module not found: " .. opts.global_hook

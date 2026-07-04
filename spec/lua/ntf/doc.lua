@@ -43,21 +43,22 @@ require("genvdoc").generate(plugin_name, {
       name = "HOOKS",
       body = function()
         return [[
-`--hook=PATH` loads the given Lua module in every worker (via `dofile`). The
-module returns a table with optional `setup` and `teardown` functions that run
-once per worker, outside everything the spec itself defines: `setup` before the
-spec is built, `teardown` after the worker's test has run. They are deliberately
-not named `before_each`/`after_each` — those are per-test spec hooks; `setup`/
-`teardown` bracket the whole worker instead.
+`--test-hook=PATH` loads the given Lua module in every worker (via `dofile`).
+Each test runs in its own worker process, so the module's optional `setup` and
+`teardown` functions run once per test — but outside everything the spec itself
+defines: `setup` before the spec is built, `teardown` after the worker's test
+has run. They are deliberately not named `before_each`/`after_each` — those are
+spec hooks around the test body; `setup`/`teardown` bracket the whole worker
+instead.
 >lua
-  -- hook.lua
+  -- test_hook.lua
   return {
     setup = function() end,
     teardown = function() end,
   }
 <
 >sh
-  ntf --hook=./hook.lua
+  ntf --test-hook=./test_hook.lua
 <
 A relative path resolves against the working directory (the plugin under test).
 An error raised while loading the module or from `setup` is reported as a load
@@ -68,8 +69,8 @@ produced.
 `--global-hook=PATH` takes a module with the same contract but runs it once in
 the launcher process instead of in every worker: `setup` before any spec file is
 loaded, `teardown` after all workers have finished. Use it for state shared by
-the whole run — start a server once, build a fixture once — while `--hook`
-remains the per-worker bracket:
+the whole run — start a server once, build a fixture once — while `--test-hook`
+remains the per-test bracket:
 >sh
   ntf --global-hook=./global_hook.lua
 <
@@ -89,7 +90,7 @@ has no debugger dependency of its own:
   }
 <
 >sh
-  ntf --hook=./debug.lua --jobs=1 --filter='the test name'
+  ntf --test-hook=./debug.lua --jobs=1 --filter='the test name'
 <
 Tests run in parallel worker processes whose stdout ntf captures, so to actually
 attach a debugger keep it to a single worker (`--jobs=1`, and narrow to one test

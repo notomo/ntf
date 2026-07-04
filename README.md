@@ -30,7 +30,7 @@ Options:
   --filter=PATTERN    run only tests whose full name matches the Lua pattern
   --jobs=N            max parallel nvim workers (default: cpu count)
   --shuffle[=SEED]    randomize test order; SEED fixes it (default: time based)
-  --hook=PATH         run a Lua module providing setup/teardown around each worker's spec
+  --test-hook=PATH    run a Lua module providing setup/teardown around each test, in its worker
   --global-hook=PATH  run a Lua module providing setup/teardown once around the whole run, in the launcher process
   --coverage[=FILE]   measure line coverage; write luacov.stats.out (or FILE) and print a summary
   -h, --help          show this help

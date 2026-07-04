@@ -34,7 +34,7 @@ function M.run(root)
   end
 
   -- The `--global-hook` module returns an optional table with `setup`/`teardown`,
-  -- like `--hook` — but it runs once in this launcher process, not per worker:
+  -- like `--test-hook` — but it runs once in this launcher process, not per worker:
   -- `setup` before any spec is loaded (planning below loads the spec files),
   -- `teardown` after all workers have finished.
   local global_hook = {}
@@ -78,7 +78,7 @@ function M.run(root)
     shuffle = opts.shuffle,
     seed = opts.seed,
     timeout = opts.timeout,
-    hook = opts.hook,
+    test_hook = opts.test_hook,
     coverage = opts.coverage,
     on_item = prog and prog.on_item or nil,
     -- Print each worker's captured output the instant it finishes, rather than

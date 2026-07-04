@@ -195,7 +195,7 @@ describe("bin/ntf end-to-end", function()
     assert.match("invalid %-%-timeout value", obj.stderr)
   end)
 
-  it("runs the --hook module's setup before the spec and teardown after it", function()
+  it("runs the --test-hook module's setup before the spec and teardown after it", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "hook.log")
     local path = spec(
       "hooked_spec.lua",
@@ -224,17 +224,17 @@ return {
 ]]):format(log)
     )
 
-    local obj = run({ path }, { "--hook=" .. hook })
+    local obj = run({ path }, { "--test-hook=" .. hook })
 
     assert.equal(0, obj.code)
     assert.same({ "setup", "test", "teardown" }, vim.fn.readfile(log))
   end)
 
-  it("surfaces a --hook teardown error without discarding the worker's results", function()
+  it("surfaces a --test-hook teardown error without discarding the worker's results", function()
     local path = spec("pass_spec.lua", PASSING)
     local hook = spec("hook.lua", [[return { teardown = function() error("teardown boom") end }]])
 
-    local obj = run({ path }, { "--hook=" .. hook })
+    local obj = run({ path }, { "--test-hook=" .. hook })
 
     assert.equal(1, obj.code)
     assert.match("teardown boom", obj.stdout)
@@ -242,28 +242,28 @@ return {
     assert.match("2 passed", obj.stdout)
   end)
 
-  it("surfaces an error from the --hook module's setup as a load error", function()
+  it("surfaces an error from the --test-hook module's setup as a load error", function()
     local path = spec("pass_spec.lua", PASSING)
     local hook = spec("hook.lua", [[return { setup = function() error("setup boom") end }]])
 
-    local obj = run({ path }, { "--hook=" .. hook })
+    local obj = run({ path }, { "--test-hook=" .. hook })
 
     assert.equal(1, obj.code)
     assert.match("setup boom", obj.stdout)
   end)
 
-  it("exits 2 when the --hook module does not exist", function()
+  it("exits 2 when the --test-hook module does not exist", function()
     local path = spec("pass_spec.lua", PASSING)
-    local obj = run({ path }, { "--hook=/no/such/hook.lua" })
+    local obj = run({ path }, { "--test-hook=/no/such/hook.lua" })
 
     assert.equal(2, obj.code)
-    assert.match("%-%-hook module not found", obj.stderr)
+    assert.match("%-%-test%-hook module not found", obj.stderr)
   end)
 
   it("runs the --global-hook module's setup and teardown once around the whole run", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "global_hook.log")
-    -- Two top-level tests become two work items (two workers), so a per-worker
-    -- hook would log twice; the global hook must still log exactly once.
+    -- Two top-level tests become two work items (two workers), so a --test-hook
+    -- would log twice; the global hook must still log exactly once.
     local path = spec(
       "global_hooked_spec.lua",
       ([[
