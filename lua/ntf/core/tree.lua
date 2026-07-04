@@ -2,8 +2,9 @@
 --
 -- Building executes `describe` bodies (to discover nested `describe`/`it`) but
 -- never runs `it` bodies. The same globals are reused at execution time; the
--- only execution-specific globals are `finally` and a runtime `pending()`, which
--- are routed through the mutable hooks installed by `ntf.core.worker.executor`.
+-- only execution-specific globals are `finally`, whose callbacks are collected
+-- within a `collect_finallies` scope, and a runtime `pending()`, recognized by
+-- not being inside a build (empty describe stack).
 
 local M = {}
 
@@ -29,9 +30,8 @@ M.PENDING = "__ntf_pending__"
 -- build state: the stack of describe nodes, top = current (set during build)
 local stack = {} ---@type NtfNode[]
 
--- execution hooks (set by ntf.core.worker.executor while a test body is running)
+-- receives `finally` callbacks while inside a collect_finallies scope
 local finally_collector = nil
-local executing = false
 
 local function current()
   return stack[#stack]
@@ -103,7 +103,7 @@ end
 --- @return NtfNode node
 local function new_pending(name, fn)
   -- declaration form when building; runtime-abort form while a test runs.
-  if executing then
+  if not current() then
     error({ [M.PENDING] = true, message = name }, 0)
   end
   local node = {
@@ -136,14 +136,17 @@ M.finally = function(fn)
   end
 end
 
---- @param collector (fun())[]|nil list to receive finally callbacks, or nil to disable
-function M.set_finally_collector(collector)
-  finally_collector = collector
-end
-
---- @param value boolean whether a test body is currently running
-function M.set_executing(value)
-  executing = value
+--- Run `fn` with a fresh `finally` collector installed, restoring the
+--- previous one afterwards (execute may nest inside a running test).
+--- @param fn fun() must not throw; the caller catches errors inside
+--- @return (fun())[] collected finally callbacks
+function M.collect_finallies(fn)
+  local saved = finally_collector
+  finally_collector = {}
+  fn()
+  local collected = finally_collector
+  finally_collector = saved
+  return collected
 end
 
 --- A terminal unit of work: a test leaf (`it`/`pending`) or a `describe` whose
@@ -167,18 +170,15 @@ function M.build(file_path)
     before_each = {},
     after_each = {},
   }
+  -- A non-empty stack marks "building": declaration-form `pending(...)` is
+  -- recorded as a node instead of aborting as a runtime pending. This holds
+  -- even when a spec builds a tree while a test is running (ntf's own specs do).
   stack = { root }
-
-  -- A spec may itself build a tree while a test is running (ntf's own specs do).
-  -- Force `executing` off during the build so declaration-form `pending(...)` is
-  -- recorded as a node instead of aborting as a runtime pending, then restore.
-  local was_executing = executing
-  executing = false
 
   local chunk, load_err = loadfile(file_path)
   if not chunk then
     root.load_error = load_err
-    executing = was_executing
+    stack = {}
     return root
   end
 
@@ -187,7 +187,6 @@ function M.build(file_path)
     root.load_error = err
   end
   stack = {}
-  executing = was_executing
   return root
 end
 

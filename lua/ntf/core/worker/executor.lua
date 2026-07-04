@@ -114,16 +114,14 @@ function M.execute(root, selected, opts)
     end
 
     local start = vim.uv.hrtime()
-    local finallies = {}
-    tree.set_finally_collector(finallies)
-    tree.set_executing(true)
-
     local status, message, traceback = "passed", nil, nil
 
-    local before_err = run_hooks(before_chain)
-    if before_err then
-      status, message, traceback = "error", before_err.message, before_err.traceback
-    else
+    local finallies = tree.collect_finallies(function()
+      local before_err = run_hooks(before_chain)
+      if before_err then
+        status, message, traceback = "error", before_err.message, before_err.traceback
+        return
+      end
       local ok, err = xpcall(node.fn, handler)
       if not ok then
         if type(err) == "table" and err[tree.PENDING] then
@@ -132,13 +130,10 @@ function M.execute(root, selected, opts)
           status, message, traceback = "failed", err.message, err.traceback
         end
       end
-    end
-
+    end)
     for i = #finallies, 1, -1 do
       pcall(finallies[i])
     end
-    tree.set_finally_collector(nil)
-    tree.set_executing(false)
 
     local after_err = run_hooks(after_chain)
     if after_err and status == "passed" then
