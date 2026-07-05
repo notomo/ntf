@@ -47,12 +47,31 @@ function M.exclude_roots(spec_files, cwd)
   return roots
 end
 
+--- Whether coverage measures `path`, and under which key. Only production files
+--- under `cwd` are measured: any `*_spec.lua` file and anything under one of the
+--- `excludes` test-directory roots are skipped. So in a user's project this is
+--- their own source (the specs and the other test deps live in the excluded test
+--- directory); when ntf self-hosts it is ntf's `lua/`.
+--- @param path string file path (any form)
+--- @param cwd string normalized absolute working directory
+--- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
+--- @return string|false normalized absolute path to record under, or false
+local function measured_path(path, cwd, excludes)
+  path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+  local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. "/"
+  if not under_cwd or path:match("_spec%.lua$") then
+    return false
+  end
+  for _, prefix in ipairs(excludes) do
+    if path:sub(1, #prefix) == prefix then
+      return false
+    end
+  end
+  return path
+end
+
 --- Decide, once per distinct chunk source, whether to measure it and under which
---- path. Only production files under `cwd` are measured: any `*_spec.lua` file
---- and anything under one of the `excludes` test-directory roots are skipped. So
---- in a user's project this is their own source (the specs and the other test
---- deps live in the excluded test directory); when ntf self-hosts it is ntf's
---- `lua/`.
+--- path.
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return fun(source: string): string|false
@@ -64,28 +83,62 @@ local function make_resolver(cwd, excludes)
       return cached
     end
 
-    --- @type string|false
-    local result = false
     -- File chunks are named "@<path>"; anything else (strings, C) is skipped.
     local path = source:match("^@(.*)$")
-    if path then
-      path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
-      local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. "/"
-      local in_test_tree = false
-      for _, prefix in ipairs(excludes) do
-        if path:sub(1, #prefix) == prefix then
-          in_test_tree = true
-          break
-        end
-      end
-      if under_cwd and not in_test_tree and not path:match("_spec%.lua$") then
-        result = path
-      end
-    end
+    local result = path and measured_path(path, cwd, excludes) or false
 
     decided[source] = result
     return result
   end
+end
+
+--- @param path string absolute file path
+--- @return boolean
+local function is_meta_file(path)
+  local f = io.open(path, "r")
+  if not f then
+    return false
+  end
+  local first = f:read("*l")
+  f:close()
+  return first ~= nil and first:match("^%-%-%-?%s*@meta") ~= nil
+end
+
+--- Every Lua file the line hook would measure under `cwd`, whether or not any
+--- test executed it — so never-executed files can appear in the report as 0%
+--- instead of being silently absent. LuaCATS `@meta` files are skipped: they
+--- exist only for the language server and are never run.
+--- @param cwd string working directory (any form)
+--- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
+--- @return string[] normalized absolute paths, sorted
+function M.measurable_files(cwd, excludes)
+  cwd = normalize_dir(cwd)
+  local files = {}
+  for name, node_type in
+    vim.fs.dir(cwd, {
+      depth = math.huge,
+      -- Prune excluded subtrees rather than filtering their (possibly many,
+      -- e.g. cloned test deps) files one by one.
+      skip = function(rel)
+        local prefix = cwd .. "/" .. rel .. "/"
+        for _, exclude in ipairs(excludes) do
+          if prefix:sub(1, #exclude) == exclude then
+            return false
+          end
+        end
+        return true
+      end,
+    })
+  do
+    if node_type == "file" and name:match("%.lua$") then
+      local path = measured_path(cwd .. "/" .. name, cwd, excludes)
+      if path and not is_meta_file(path) then
+        table.insert(files, path)
+      end
+    end
+  end
+  table.sort(files)
+  return files
 end
 
 --- Start collecting. Installs the line hook; pair with `M.stop`.

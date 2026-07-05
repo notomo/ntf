@@ -52,6 +52,23 @@ describe("ntf.core.coverage.report.summary", function()
     assert.match("Coverage: 75.0%% %(3/4 lines%)", text)
   end)
 
+  it("lists a never-executed file at 0%", function()
+    local src = helper.test_data:create_file(
+      "mod.lua",
+      table.concat({
+        "local function f()",
+        "  return 1",
+        "end",
+        "return f",
+      }, "\n")
+    )
+    local merged = { [vim.fs.normalize(src)] = { max = 0, lines = {} } }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    assert.match("mod.lua%s+0.0%% %(0/2%)", text)
+  end)
+
   it("reports n/a when nothing was measured", function()
     local text = report.summary({}, helper.test_data.full_path)
 

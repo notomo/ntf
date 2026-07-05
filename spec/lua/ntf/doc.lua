@@ -163,7 +163,9 @@ It measures every file under the working directory except the test tree: any
 `*_spec.lua` file and the test directory the specs were found in (its top-level
 directory under the working directory — `spec/` by default, but whatever path you
 pass) are excluded, so anything sitting alongside the specs there (such as cloned
-test dependencies) is left out too. It needs no extra install: ntf sets a Lua line
+test dependencies) is left out too. A measured file no test executed still shows
+up, at 0% (LuaCATS meta files are skipped: they never run by definition). It
+needs no extra install: ntf sets a Lua line
 hook in each worker, merges the per-worker counts, prints a short summary, and
 writes a `luacov.stats.out` (override the path with `--coverage=FILE`):]],
           util.help_code_block(coverage_command, { language = "sh" }),

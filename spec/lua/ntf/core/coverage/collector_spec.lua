@@ -84,6 +84,38 @@ describe("ntf.core.coverage.collector.start/stop", function()
   end)
 end)
 
+describe("ntf.core.coverage.collector.measurable_files", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("lists production lua files even if nothing executed them", function()
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
+
+  it("skips spec files and excluded test directories", function()
+    helper.test_data:create_file("lua/mod_spec.lua", "return 1")
+    local spec_file = helper.test_data:create_file("test/x_spec.lua", "return 1")
+    helper.test_data:create_file("test/dep.lua", "return 1")
+    local excludes = collector.exclude_roots({ spec_file }, helper.test_data.full_path)
+
+    local files = collector.measurable_files(helper.test_data.full_path, excludes)
+
+    assert.same({}, files)
+  end)
+
+  it("skips LuaCATS meta files", function()
+    helper.test_data:create_file("lua/meta.lua", "--- @meta\nlocal M = {}\nreturn M")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({}, files)
+  end)
+end)
+
 describe("ntf.core.coverage.collector.exclude_roots", function()
   -- Build the fake paths under a real absolute base so the test holds on Windows
   -- too, where a bare "/repo" would gain a drive letter once made absolute.

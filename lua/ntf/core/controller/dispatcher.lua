@@ -321,6 +321,16 @@ function M.run(items, opts)
     error(fatal, 0)
   end
 
+  -- A file no worker ever loaded produces no hit records; fill it in as a
+  -- zero-hit entry so it shows up in the report instead of being absent.
+  if opts.coverage then
+    for _, path in ipairs(coverage.measurable_files(cwd, coverage_excludes)) do
+      if not merged_coverage[path] then
+        merged_coverage[path] = { max = 0, lines = {} }
+      end
+    end
+  end
+
   return results, merged_coverage
 end
 
