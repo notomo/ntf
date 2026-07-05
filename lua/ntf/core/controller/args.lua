@@ -1,4 +1,3 @@
--- Command line parsing for the controller (`ntf [options] <paths...>`).
 local M = {}
 
 --- @class NtfOptions

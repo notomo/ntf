@@ -1,5 +1,3 @@
--- Renders aggregated results into a balanced human/agent-readable report and
--- computes the process exit code.
 local M = {}
 
 local COLORS = {

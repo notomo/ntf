@@ -10,7 +10,7 @@ local COLORS = {
   reset = "\27[0m",
 }
 
--- status -> { char, color }
+--- @type table<string, { [1]: string, [2]: ("red"|"yellow")? }> status -> mark char and color
 local MARKS = {
   passed = { "." },
   failed = { "F", "red" },

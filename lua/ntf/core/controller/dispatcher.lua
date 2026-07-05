@@ -1,5 +1,3 @@
--- Controller side: turn discovered spec files into work items and run each item
--- in its own `nvim` worker process, with bounded parallelism, then aggregate.
 local tree = require("ntf.core.tree")
 local schedule = require("ntf.core.controller.schedule")
 

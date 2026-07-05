@@ -5,12 +5,15 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local helper = require("ntf.test.helper")
 
---- Write a spec file under the temp data dir and return its absolute path.
+--- @param name string
+--- @param source string
+--- @return string # absolute path under the temp data dir
 local function spec(name, source)
   return helper.test_data:create_file(name, source)
 end
 
---- Run `bin/ntf` against the given paths plus any extra flags.
+--- @param paths string[]
+--- @param extra_flags string[]?
 local function run(paths, extra_flags)
   local args = vim.list_extend(vim.list_extend({}, extra_flags or {}), paths)
   return helper.run_cli(args)

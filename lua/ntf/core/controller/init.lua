@@ -1,6 +1,4 @@
 -- Controller logic, invoked by the `bin/ntf` launcher (a `nvim -l` script).
--- Parses args, discovers spec files, plans work items, runs them in parallel
--- worker processes, prints the report, and exits with the aggregate code.
 local M = {}
 
 --- @param root string ntf repository root (used to locate the worker script)

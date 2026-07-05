@@ -1,7 +1,7 @@
 --- @meta
 
 --- @class NtfAssert
---- @field no NtfAssert negated assertions, e.g. `assert.no.equal(want, got)`
+--- @field no NtfAssert the same assertions with the expectation flipped
 --- @field [string] fun(...) custom assertions registered via `ntf.assert.register*`
 local M = {}
 

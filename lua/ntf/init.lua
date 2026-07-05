@@ -4,9 +4,9 @@ local builder = require("ntf.assert.builder")
 local M = {}
 
 --- @class NtfItOption
---- @field timeout integer? per-process timeout in ms (e.g. `{ timeout = 1000 }`),
----   overriding the `--timeout` default; an exceeded worker is killed and
----   reported as an error.
+--- @field timeout integer? per-process timeout in ms, overriding the
+---   `--timeout` default; an exceeded worker is killed and reported as an
+---   error.
 
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
@@ -79,8 +79,6 @@ function M.is_decorated_coverage(opts)
   return require("ntf.core.coverage.decorate").is_decorated(opts)
 end
 
--- Assertion namespace (`assert.equal`, `assert.same`, `assert.match`, ...).
--- See |ntf-WRITING-SPECS|.
 --- @type NtfAssert
 M.assert = builder.assert
 

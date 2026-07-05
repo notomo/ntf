@@ -298,9 +298,9 @@ STRUCTURE                                                      *ntf-STRUCTURE*
 
 NtfItOption                                                      *NtfItOption*
 
-- {timeout} (integer?) per-process timeout in ms (e.g. `{ timeout = 1000 }`),
-    overriding the `--timeout` default; an exceeded worker is killed and
-    reported as an error.
+- {timeout} (integer?) per-process timeout in ms, overriding the
+    `--timeout` default; an exceeded worker is killed and reported as an
+    error.
 
 NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
 
@@ -316,7 +316,7 @@ NtfIsDecoratedCoverageOption                    *NtfIsDecoratedCoverageOption*
 
 NtfAssert                                                          *NtfAssert*
 
-- {no} (NtfAssert) negated assertions, e.g. `assert.no.equal(want, got)`
+- {no} (NtfAssert) the same assertions with the expectation flipped
 - {[string]} (fun(...)) custom assertions registered via `ntf.assert.register*`
 
 ==============================================================================

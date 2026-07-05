@@ -1,8 +1,7 @@
--- Resolves CLI paths (files or directories) into a sorted list of spec files.
 local M = {}
 
---- @param paths string[]
---- @return string[] absolute *_spec.lua paths
+--- @param paths string[] CLI paths (spec files or directories)
+--- @return string[] # sorted absolute *_spec.lua paths
 function M.specs(paths)
   local files = {}
   local seen = {}
