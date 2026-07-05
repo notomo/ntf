@@ -31,25 +31,16 @@ function M.run(root)
     opts.seed = os.time()
   end
 
-  -- The `--global-hook` module returns an optional table with `setup`/`teardown`,
-  -- like `--test-hook` — but it runs once in this launcher process, not per worker:
-  -- `setup` before any spec is loaded (planning below loads the spec files),
-  -- `teardown` after all workers have finished.
-  local global_hook = {}
-  if opts.global_hook then
-    local ok_setup, err = xpcall(function()
-      local loaded = dofile(opts.global_hook)
-      if type(loaded) == "table" then
-        global_hook = loaded
-      end
-      if global_hook.setup then
-        global_hook.setup()
-      end
-    end, debug.traceback)
-    if not ok_setup then
-      io.stderr:write("--global-hook setup error: " .. tostring(err) .. "\n")
-      os.exit(1)
-    end
+  -- This must stay above plan() below: plan() loads the spec files, and the
+  -- global `setup` is contracted to run before any spec is loaded.
+  local ok_setup, global_hook = xpcall(function()
+    local hook = require("ntf.core.hook").load(opts.global_hook)
+    hook.setup()
+    return hook
+  end, debug.traceback)
+  if not ok_setup then
+    io.stderr:write("--global-hook setup error: " .. tostring(global_hook) .. "\n")
+    os.exit(1)
   end
 
   local runner = require("ntf.core.controller.dispatcher")
@@ -98,11 +89,9 @@ function M.run(root)
   -- the results already produced, so capture it, still print the report, and
   -- only then fail the run.
   local teardown_err
-  if global_hook.teardown then
-    xpcall(global_hook.teardown, function(err)
-      teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
-    end)
-  end
+  xpcall(global_hook.teardown, function(err)
+    teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
+  end)
 
   local text, code = report.build(results, load_errors, opts)
   io.stdout:write(text)

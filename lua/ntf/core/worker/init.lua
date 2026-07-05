@@ -25,33 +25,14 @@ local function main()
 
   require("ntf.core.runtime").setup()
 
-  -- The `--test-hook` module returns an optional table with `setup`/`teardown`. They run
-  -- once at the worker boundary, outside every spec hook: `setup` before the spec is
-  -- built (so it can attach a debugger that steps through the code under test, e.g.
-  -- `require("lldebugger").start()`; ntf has no debugger dependency, this is just an
-  -- injection point), `teardown` after the worker's test has run. A `setup` error is
-  -- caught by the xpcall around main() and surfaced as a load error.
-  local hook = {}
-  if payload.test_hook and payload.test_hook ~= "" then
-    local loaded = dofile(payload.test_hook)
-    if type(loaded) == "table" then
-      hook = loaded
-    end
-  end
+  local hook = require("ntf.core.hook").load(payload.test_hook)
+  hook.setup()
 
-  if hook.setup then
-    hook.setup()
-  end
-
-  -- teardown runs right before each emit. It must not discard the already-computed
-  -- results, but its error still has to be visible, so run it under our own handler
-  -- and return the failure as a synthetic error entry the caller folds into the
-  -- report (a separate emit path could be dropped on the floor, an error here cannot).
+  -- A teardown error must not discard the already-computed results, so it is
+  -- returned as a synthetic error entry the caller folds into the report rather
+  -- than emitted separately (a separate emit path could be dropped on the floor).
   --- @return { message: string, traceback: string? }?
   local function teardown()
-    if not hook.teardown then
-      return nil
-    end
     local captured
     local ok = xpcall(hook.teardown, function(err)
       captured = { message = type(err) == "string" and err or vim.inspect(err), traceback = debug.traceback("", 2) }
