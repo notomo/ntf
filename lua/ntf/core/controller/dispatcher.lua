@@ -1,5 +1,4 @@
 local tree = require("ntf.core.tree")
-local schedule = require("ntf.core.controller.schedule")
 
 local M = {}
 
@@ -87,15 +86,12 @@ function M.plan(files, filter)
       table.insert(load_errors, { file = file, message = tostring(root.load_error) })
     else
       local map = leaf_map(root)
-      for _, item in ipairs(schedule.split(root)) do
-        local node_ids = item.node_ids
-        if filter then
-          node_ids = vim.tbl_filter(function(id)
-            return full_name(map[id] and map[id].names):find(filter) ~= nil
-          end, node_ids)
-        end
-        if #node_ids > 0 then
-          table.insert(items, { file = file, node_ids = node_ids, map = map, timeout = item.timeout })
+      -- Every leaf (`it`/`pending`, or a `describe` whose body errored) runs in
+      -- its own process, so each work item is a single leaf with that leaf's
+      -- own timeout.
+      for leaf in tree.iter_leaves(root) do
+        if not filter or full_name(map[leaf.id].names):find(filter) ~= nil then
+          table.insert(items, { file = file, node_ids = { leaf.id }, map = map, timeout = leaf.timeout })
         end
       end
     end

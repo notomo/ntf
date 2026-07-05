@@ -67,6 +67,22 @@ describe("ntf.core.controller.dispatcher.plan", function()
     assert.equal(0, #items)
   end)
 
+  it("carries an it-level timeout onto its item", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("A", function()
+  it("slow", function() end, { timeout = 1000 })
+  it("normal", function() end)
+end)
+]])
+    local items = runner.plan({ file })
+
+    assert.equal(1000, items[1].timeout)
+    assert.equal(nil, items[2].timeout)
+  end)
+
   it("schedules a describe whose body errored as its own work item", function()
     local file = helper.write_spec([[
 local ntf = require("ntf")
