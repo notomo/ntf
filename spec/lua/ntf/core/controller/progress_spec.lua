@@ -2,7 +2,6 @@ local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local progress = require("ntf.core.controller.progress")
 
--- Collect everything the emitter writes so we can assert the plain stream.
 local function collector()
   local buf = {}
   return buf, function(s)

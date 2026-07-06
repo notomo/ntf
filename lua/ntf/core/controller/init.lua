@@ -1,4 +1,3 @@
--- Controller logic, invoked by the `bin/ntf` launcher (a `nvim -l` script).
 local M = {}
 
 --- @param root string ntf repository root (used to locate the worker script)
@@ -31,8 +30,6 @@ function M.run(root)
     opts.seed = os.time()
   end
 
-  -- This must stay above plan() below: plan() loads the spec files, and the
-  -- global `setup` is contracted to run before any spec is loaded.
   local ok_setup, global_hook = xpcall(function()
     local hook = require("ntf.core.hook").load(opts.global_hook)
     hook.setup()
@@ -58,7 +55,6 @@ function M.run(root)
   end
 
   local report = require("ntf.core.controller.report")
-  -- Resolve once so the streamed OUTPUT blocks and the final report color alike.
   local color = report.resolve_color()
 
   local results, coverage = runner.run(items, {
@@ -70,9 +66,6 @@ function M.run(root)
     test_hook = opts.test_hook,
     coverage = opts.coverage,
     on_item = prog and prog.on_item or nil,
-    -- Print each worker's captured output the instant it finishes, rather than
-    -- holding it for the final report. Close any pending dot line first (on
-    -- stderr) so the block starts on its own line instead of trailing the dots.
     on_output = function(out)
       if prog then
         prog.newline()
@@ -85,9 +78,6 @@ function M.run(root)
     prog.finish()
   end
 
-  -- Global teardown runs whatever the test outcome. Its error must not discard
-  -- the results already produced, so capture it, still print the report, and
-  -- only then fail the run.
   local teardown_err
   xpcall(global_hook.teardown, function(err)
     teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)

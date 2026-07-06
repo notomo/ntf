@@ -1,11 +1,3 @@
--- Builds the test tree from a spec file and owns the busted-compatible globals.
---
--- Building executes `describe` bodies (to discover nested `describe`/`it`) but
--- never runs `it` bodies. The same globals are reused at execution time; the
--- only execution-specific globals are `finally`, whose callbacks are collected
--- within a `collect_finallies` scope, and a runtime `pending()`, recognized by
--- not being inside a build (empty describe stack).
-
 local M = {}
 
 --- @class NtfTrace
@@ -24,13 +16,10 @@ local M = {}
 --- @field fn fun()? test body (it only)
 --- @field load_error any? load/build error captured on this node (root/describe)
 
--- Sentinel carried by errors thrown to abort a running test as "pending".
 M.PENDING = "__ntf_pending__"
 
--- build state: the stack of describe nodes, top = current (set during build)
 local stack = {} ---@type NtfNode[]
 
--- receives `finally` callbacks while inside a collect_finallies scope
 local finally_collector = nil
 
 local function current()
@@ -87,7 +76,6 @@ end
 --- @param opts NtfItOption?
 --- @return NtfNode node
 local function new_it(name, fn, opts)
-  -- `it` always requires a body; declaration-pending uses the explicit `pending`.
   local node = {
     type = "it",
     name = name,
@@ -102,7 +90,6 @@ end
 --- @param fn fun()? optional body (ignored; pending is never executed)
 --- @return NtfNode node
 local function new_pending(name, fn)
-  -- declaration form when building; runtime-abort form while a test runs.
   if not current() then
     error({ [M.PENDING] = true, message = name }, 0)
   end
@@ -121,10 +108,6 @@ local function add_hook(field)
   end
 end
 
--- The busted-style test API. Exposed through `require("ntf")`; specs pull what
--- they need explicitly (`local describe, it = ntf.describe, ntf.it`) instead of
--- relying on injected globals.
--- `it` takes an optional opts table: `it(name, fn, { timeout = 1000 })`
 M.describe = new_describe
 M.it = new_it
 M.pending = new_pending
@@ -149,16 +132,14 @@ function M.collect_finallies(fn)
   return collected
 end
 
---- A terminal unit of work: a test leaf (`it`/`pending`) or a `describe` whose
---- body errored during build. Such a describe is reported as an error in its own
---- right and is never descended into, since its children are unreliable.
+--- A describe whose body errored during build is a leaf too: reported as an error
+--- in its own right and never descended into, since its children are unreliable.
 --- @param node NtfNode
 --- @return boolean
 function M.is_leaf(node)
   return node.type == "it" or node.type == "pending" or node.load_error ~= nil
 end
 
---- Build the test tree for a single spec file.
 --- @param file_path string
 --- @return NtfNode root node (with .children, .load_error)
 function M.build(file_path)
@@ -170,9 +151,6 @@ function M.build(file_path)
     before_each = {},
     after_each = {},
   }
-  -- A non-empty stack marks "building": declaration-form `pending(...)` is
-  -- recorded as a node instead of aborting as a runtime pending. This holds
-  -- even when a spec builds a tree while a test is running (ntf's own specs do).
   stack = { root }
 
   local chunk, load_err = loadfile(file_path)
@@ -190,7 +168,6 @@ function M.build(file_path)
   return root
 end
 
---- Iterate the tree depth-first, yielding every terminal leaf in order.
 --- @param root NtfNode
 --- @return fun():NtfNode|nil
 function M.iter_leaves(root)

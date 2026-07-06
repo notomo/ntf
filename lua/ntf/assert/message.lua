@@ -1,6 +1,3 @@
--- Assertion message store: an assertion sets a fully-formed message by key just
--- before it is evaluated, and the message is looked up by key on failure. No
--- placeholder formatting is needed, so storing the raw string is enough.
 local M = {}
 
 local store = {}

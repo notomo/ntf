@@ -1,7 +1,3 @@
--- A small built-in coverage summary printed after a run. It is deliberately
--- "simple": the denominator (coverable lines) comes from a treesitter analysis
--- of the source, so the percentages are approximate. For authoritative, per-line
--- reports point LuaCov at the emitted `luacov.stats.out`.
 local coverable_lines = require("ntf.core.coverage.source").coverable_lines
 
 local M = {}
@@ -21,7 +17,6 @@ local function read_lines(file)
   return lines
 end
 
---- Coverable/covered line counts for one file from its source and hit counts.
 --- @param source_lines string[]
 --- @param hits table<integer, integer>
 --- @return integer covered, integer coverable

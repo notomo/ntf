@@ -1,8 +1,3 @@
--- Executes a (sub)set of a spec file's test tree in the current process.
---
--- `before_each` runs outer->inner before each test, `after_each` runs
--- inner->outer after each test, and `finally` callbacks run (in reverse) right
--- after the test body.
 local tree = require("ntf.core.tree")
 
 local M = {}
@@ -47,7 +42,6 @@ local function to_text(value)
   return vim.inspect(value)
 end
 
--- Error handler that preserves the pending sentinel and captures a traceback.
 local function handler(err)
   if type(err) == "table" and err[tree.PENDING] then
     return err
@@ -97,9 +91,7 @@ function M.execute(root, selected, opts)
       trace = node.trace,
     }
 
-    -- A describe whose body errored during build: report the error in place of
-    -- running anything underneath it. The message string carries its own
-    -- location, so no traceback is captured.
+    -- The build-error message carries its own location, so no traceback is captured.
     if node.load_error then
       result.status = "error"
       result.message = to_text(node.load_error)

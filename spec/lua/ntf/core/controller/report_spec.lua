@@ -3,7 +3,7 @@ local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local report = require("ntf.core.controller.report")
 
 describe("ntf.core.controller.report.output_block", function()
-  it("labels a whole-file worker by its spec file", function()
+  it("labels output only by its file when the scope has no name", function()
     local out = { file = "spec/a_spec.lua", name = "", output = "hello\nworld\n" }
     local text = report.output_block(out, false)
 

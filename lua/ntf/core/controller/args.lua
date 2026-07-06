@@ -13,8 +13,6 @@ local M = {}
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field help boolean show usage and exit
 
---- Supported flags in display order. Single source of truth shared by `usage()`
---- and the doc generation, so the flag list is never duplicated.
 --- @type { name: string, description: string }[]
 M.flags = {
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
@@ -69,8 +67,6 @@ function M.parse(argv)
     help = false,
   }
 
-  -- Value-taking flags, each storing its value into `opts`. Both the
-  -- `--name=VALUE` and the `--name VALUE` (space-separated) forms are accepted.
   local value_flags = {
     ["--timeout"] = function(v)
       opts.timeout = tonumber(v)
@@ -97,10 +93,6 @@ function M.parse(argv)
     if arg == "-h" or arg == "--help" then
       opts.help = true
     elseif name == "--shuffle" then
-      -- Optional-argument flag: bare `--shuffle` randomizes with a time-based
-      -- seed; `--shuffle=SEED` fixes the order. The value must be `=`-attached,
-      -- never space-separated, so a bare `--shuffle` is never confused with a
-      -- following path. (This is why shuffle and seed are one flag, not two.)
       opts.shuffle = true
       if inline ~= nil then
         opts.seed = tonumber(inline)
@@ -109,9 +101,6 @@ function M.parse(argv)
         end
       end
     elseif name == "--coverage" then
-      -- Optional-argument flag like --shuffle: bare `--coverage` writes the
-      -- default stats file; `--coverage=FILE` overrides the path. The value must
-      -- be `=`-attached so a bare `--coverage` is never confused with a path.
       opts.coverage = true
       if inline ~= nil and inline ~= "" then
         opts.coverage_file = inline

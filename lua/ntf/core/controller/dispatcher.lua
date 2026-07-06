@@ -20,8 +20,6 @@ local M = {}
 local BEGIN = "<<<NTF_JSON>>>"
 local END = "<<<END_NTF_JSON>>>"
 
--- Full display name of a leaf: the describe/it name chain joined with spaces,
--- matching how the report renders it (so --filter matches what users see).
 local function full_name(names)
   return table.concat(
     vim.tbl_filter(function(s)
@@ -31,9 +29,6 @@ local function full_name(names)
   )
 end
 
--- The scope a worker (work item) covers, named by the deepest describe/it chain
--- its leaves share. Each item is a single leaf, so this is that test's full name
--- (the report uses it to label the captured OUTPUT block).
 local function item_scope(item)
   local prefix
   for _, id in ipairs(item.node_ids) do
@@ -72,7 +67,6 @@ local function leaf_map(root)
   return map
 end
 
---- Build the flat list of work items across all files.
 --- @param files string[]
 --- @param filter string|nil Lua pattern; keep only leaves whose full name matches
 --- @return NtfWorkItem[] items, NtfLoadError[] load_errors
@@ -86,9 +80,6 @@ function M.plan(files, filter)
       table.insert(load_errors, { file = file, message = tostring(root.load_error) })
     else
       local map = leaf_map(root)
-      -- Every leaf (`it`/`pending`, or a `describe` whose body errored) runs in
-      -- its own process, so each work item is a single leaf with that leaf's
-      -- own timeout.
       for leaf in tree.iter_leaves(root) do
         if not filter or full_name(map[leaf.id].names):find(filter) ~= nil then
           table.insert(items, { file = file, node_ids = { leaf.id }, map = map, timeout = leaf.timeout })
@@ -136,8 +127,7 @@ local function worker_output(stdout, stderr)
   return table.concat(parts, "\n")
 end
 
--- Turn a finished worker process into a list of result records. `timed_out_ms` is
--- the timeout value when the worker was killed for exceeding it, else nil.
+--- @param timed_out_ms integer? the timeout the worker was killed for exceeding
 local function results_of(item, obj, timed_out_ms)
   local decoded = parse_output(obj.stdout)
 
@@ -148,8 +138,6 @@ local function results_of(item, obj, timed_out_ms)
     return decoded.results
   end
 
-  -- Worker crashed, timed out, or produced no parseable output: synthesize errors
-  -- so the failure is visible instead of silently lost.
   local detail
   if timed_out_ms then
     detail = ("worker timed out after %dms"):format(timed_out_ms)
@@ -178,10 +166,8 @@ end
 --- @field name string the test scope the worker covered (its full describe/it name)
 --- @field output string captured stdout blob
 
---- Run all work items in parallel worker processes and aggregate results.
---- Captured output is handed to `on_output` the moment each worker finishes, so it
---- is reported live rather than held back until the whole run completes. (The cost
---- is that blocks appear in worker-completion order, not deterministic spec order.)
+--- Captured output is handed to `on_output` the moment each worker finishes; the
+--- cost is that blocks appear in worker-completion order, not deterministic spec order.
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
@@ -192,12 +178,8 @@ function M.run(items, opts)
   local total = #items
 
   local results = {}
-  -- Each worker measures only what it ran; summing per-line hits across workers
-  -- yields whole-run coverage. Empty unless opts.coverage is set.
   local coverage = require("ntf.core.coverage.collector")
   local merged_coverage = {}
-  -- The test directories to keep out of coverage, derived from where the specs
-  -- being run actually live (not assumed to be `spec/`).
   local coverage_excludes
   if opts.coverage then
     local spec_files = vim.tbl_map(function(item)
@@ -207,9 +189,6 @@ function M.run(items, opts)
   end
   local started = 0
   local finished = 0
-  -- First internal error raised from a worker callback. The callback body only
-  -- fails on a bug in ntf (never on a failing test), so we abort the whole run
-  -- instead of letting Neovim swallow the error and the wait loop hang.
   local fatal
 
   local function spawn_next()
@@ -219,14 +198,12 @@ function M.run(items, opts)
     started = started + 1
     local item = items[started]
 
-    -- A per-item timeout (from the isolation-unit node) overrides the run default;
-    -- 0 disables the timeout for that item.
     local timeout = item.timeout or opts.timeout
     if timeout == 0 then
       timeout = nil
     end
 
-    -- Launch via `-c "luafile"` (after startup) instead of `-l`: see worker.lua.
+    -- Launch via `-c "luafile"` (after startup) instead of `-l`: see worker/init.lua.
     -- Parameters go through the environment since `arg` is not populated for -c.
     local cmd = {
       vim.v.progpath,
@@ -240,9 +217,6 @@ function M.run(items, opts)
       "-c",
       "luafile " .. worker,
     }
-    -- Everything the worker needs is bundled into one JSON env var. The leading
-    -- underscore and the name mark it as an internal controller->worker channel,
-    -- not a user-facing knob like the NTF_* env vars that args.lua reads.
     local env = {
       _NTF_WORKER_PAYLOAD = vim.json.encode({
         root = opts.root,
@@ -269,8 +243,8 @@ function M.run(items, opts)
         timer:close()
         timer = nil
       end
-      -- Errors here mean an ntf bug, not a test failure; libuv would otherwise
-      -- just log and drop them, so capture the first to re-raise after the wait.
+      -- libuv would just log and drop an error raised here; capture the first
+      -- to re-raise after the wait.
       local ok, err = xpcall(function()
         local item_results = results_of(item, obj, timed_out and timeout or nil)
         vim.list_extend(results, item_results)
@@ -278,8 +252,6 @@ function M.run(items, opts)
           local decoded = parse_output(obj.stdout)
           coverage.merge(merged_coverage, decoded and decoded.coverage)
         end
-        -- A crashed/timed-out worker surfaces its stderr as the error detail
-        -- (results_of), so only emit output when it reported real results.
         if opts.on_output and parse_output(obj.stdout) then
           local blob = worker_output(obj.stdout, obj.stderr)
           if blob ~= "" then
@@ -321,8 +293,6 @@ function M.run(items, opts)
     error(fatal, 0)
   end
 
-  -- A file no worker ever loaded produces no hit records; fill it in as a
-  -- zero-hit entry so it shows up in the report instead of being absent.
   if opts.coverage then
     for _, path in ipairs(coverage.measurable_files(cwd, coverage_excludes)) do
       if not merged_coverage[path] then

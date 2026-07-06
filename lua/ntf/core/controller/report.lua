@@ -40,8 +40,6 @@ local function full_name(result)
   )
 end
 
--- Drop ntf's own runner frames and the [C] error/xpcall noise so the traceback
--- points at the spec code.
 local function clean_traceback(traceback)
   local kept = {}
   for _, line in ipairs(vim.split(traceback or "", "\n", { plain = true })) do
@@ -52,7 +50,6 @@ local function clean_traceback(traceback)
       table.insert(kept, line)
     end
   end
-  -- if nothing but the header remains, it adds no value
   if #kept <= 1 then
     return nil
   end
@@ -69,9 +66,6 @@ local function indent(text, prefix)
   )
 end
 
---- Decide whether to emit ANSI color: an explicit opt wins, otherwise color when
---- stdout is a tty and NO_COLOR is unset. Shared by the final report and the
---- streamed OUTPUT blocks so both agree.
 --- @param opt_color boolean?
 --- @return boolean
 function M.resolve_color(opt_color)
@@ -84,8 +78,8 @@ function M.resolve_color(opt_color)
   return (ok and handle == "tty" and not vim.env.NO_COLOR) or false
 end
 
---- Render one worker's captured output as an `OUTPUT` block. Streamed live as each
---- worker finishes, so the block carries its own trailing blank line as a separator.
+--- Streamed live as each worker finishes, so the block carries its own trailing
+--- blank line as a separator.
 --- @param out NtfWorkerOutput
 --- @param color boolean
 --- @return string
@@ -95,8 +89,6 @@ function M.output_block(out, color)
   -- Vimscript `getcwd()` is forbidden; `vim.uv.cwd()` is the safe equivalent.
   local rel = out.file:gsub("^" .. vim.pesc(vim.uv.cwd() or "") .. "/?", "")
   local lines = {}
-  -- The block is labelled by its file, followed by the test case's full name when
-  -- the worker ran a single case (a whole-file worker has no name).
   local header = paint("dim", "OUTPUT ") .. paint("dim", rel)
   if out.name and out.name ~= "" then
     header = header .. " " .. paint("bold", out.name)

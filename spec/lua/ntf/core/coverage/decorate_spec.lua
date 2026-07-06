@@ -43,6 +43,24 @@ describe("ntf.core.coverage.decorate via ntf.decorate_coverage", function()
     }, signs(bufnr))
   end)
 
+  it("places no sign past the buffer's end when the stats file is stale", function()
+    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+    -- Stats from an older, longer version of the file: hits on lines 6-8, which
+    -- no longer exist in the buffer.
+    local stats = helper.test_data:create_file("luacov.stats.out", ("8:%s\n1 0 1 0 0 1 1 1\n"):format(file))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    ntf.decorate_coverage({ path = stats, buffer = bufnr })
+
+    assert.same({
+      [0] = "NtfCoverageCovered", -- line 1
+      [2] = "NtfCoverageCovered", -- line 3
+      [3] = "NtfCoverageMissed", -- line 4
+    }, signs(bufnr))
+  end)
+
   it("does not flag multi-line closure header lines as missed", function()
     -- LuaJIT attributes the closure-creating instruction to the closing `end`,
     -- so the `function(...)` header lines never get a hit; they must not be

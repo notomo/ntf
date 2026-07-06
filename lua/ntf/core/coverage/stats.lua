@@ -1,10 +1,5 @@
--- Writes merged coverage counts in LuaCov's `luacov.stats.out` format, so the
--- mature LuaCov reporter (or any compatible tool) can render an authoritative
--- report from ntf's data. ntf has no dependency on LuaCov; it only emits the
--- file. The format, per measured file, is two lines:
---   <max>:<path>\n
---   <hits_1> <hits_2> ... <hits_max> \n   (a line never hit is written as 0)
--- LuaCov reads the leading <max> with `read("*n")` and then that many numbers,
+-- Writes merged coverage counts in LuaCov's `luacov.stats.out` format. LuaCov
+-- reads each file's leading <max> with `read("*n")` and then that many numbers,
 -- so trailing spaces and the exact separators are not significant.
 local M = {}
 
@@ -32,9 +27,6 @@ function M.write(path, merged)
   f:close()
 end
 
---- Parse a `luacov.stats.out` file back into the in-memory counts shape (the
---- inverse of `M.write`). Line keys are integers, matching the merged data the
---- collector produces. An unreadable or empty file yields an empty table.
 --- @param path string stats file path
 --- @return table<string, { max: integer, lines: table<integer, integer> }>
 function M.read(path)
@@ -44,8 +36,6 @@ function M.read(path)
   end
 
   local merged = {}
-  -- Each file is two lines: a "<max>:<path>" header, then its space-separated
-  -- counts. Read the header, then consume the following counts line.
   while true do
     local header = f:read("*l")
     if not header then

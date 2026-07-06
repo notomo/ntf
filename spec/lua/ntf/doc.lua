@@ -4,7 +4,6 @@ local util = require("genvdoc.util")
 local args = require("ntf.core.controller.args")
 local plugin_name = vim.env.PLUGIN_NAME
 
--- flags / usage come from core.controller.args so they are never duplicated here
 local usage = args.usage()
 
 -- Every code element in the docs below is backed by something executed here:
@@ -12,12 +11,17 @@ local usage = args.usage()
 -- the same values as a verified run. A snippet that stops working (or names a
 -- removed flag) fails `make doc` instead of shipping.
 
+local exercised_flags = {} --- @type table<string, true> keyed by the `args.flags` entry name
+
 --- @param name string bare flag token, e.g. "--test-hook"
 --- @return string # `name` unchanged, if `args.flags` documents it
 local flag = function(name)
   for _, f in ipairs(args.flags) do
-    if f.name == name or vim.startswith(f.name, name .. "=") or vim.startswith(f.name, name .. "[") then
-      return name
+    for _, alt in ipairs(vim.split(f.name, ", ", { plain = true })) do
+      if alt == name or vim.startswith(alt, name .. "=") or vim.startswith(alt, name .. "[") then
+        exercised_flags[f.name] = true
+        return name
+      end
     end
   end
   error("not a documented flag: " .. name)
@@ -78,6 +82,18 @@ local debug_command = ("ntf %s=./%s %s=1 %s='the test name'"):format(
 local coverage_flag = flag("--coverage")
 run_ntf({ ("%s=%s"):format(coverage_flag, vim.fn.tempname()), example_path })
 local coverage_command = "ntf " .. coverage_flag
+
+-- The flags above appear in documented commands; the rest of the usage block is
+-- backed by these runs, so every documented flag fails `make doc` when it stops
+-- working.
+run_ntf({ flag("--timeout") .. "=60000", example_path })
+run_ntf({ flag("--shuffle") .. "=42", example_path })
+run_ntf({ flag("--help") })
+for _, f in ipairs(args.flags) do
+  if not exercised_flags[f.name] then
+    error("documented flag has no verified run: " .. f.name)
+  end
+end
 
 -- The README setup snippet runs in this very process (ntf is on the runtimepath
 -- here just like in a user config) and must actually make `ntf` resolvable.

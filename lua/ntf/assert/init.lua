@@ -1,7 +1,3 @@
--- `ntf.assert` is the replacement for `vusted.assert`: it exposes the
--- `register` / `register_eq` / `register_same` surface so that `assertlib` and
--- per-plugin test helpers can register custom assertions onto ntf's own assert
--- object.
 local assert = require("ntf.assert.builder").assert
 local message = require("ntf.assert.message")
 

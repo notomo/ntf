@@ -1,7 +1,6 @@
--- Streaming progress for the controller: one character per finished test,
--- written to stderr as workers complete, so a long (or hung) run shows it is
--- alive instead of staying silent until the final report. Plain dots only, no
--- in-place `\r` redraw, so it survives non-tty capture (agents, CI) too.
+-- Streamed to stderr as workers complete, so a long (or hung) run shows it is
+-- alive. Plain dots, no in-place `\r` redraw, so the stream survives non-tty
+-- capture (agents, CI) too.
 local M = {}
 
 local COLORS = {
@@ -41,8 +40,6 @@ function M.new(opts)
     end
   end
 
-  -- Close the current dot line so whatever prints next (a streamed OUTPUT block,
-  -- or the final report) starts at column 0 instead of trailing the dots.
   local function newline()
     if not at_line_start then
       write("\n")

@@ -1,23 +1,16 @@
--- Worker entry point. Launched by the controller as:
---   nvim --clean --headless -c "luafile <this>"
--- with all parameters passed as one internal JSON env var, _NTF_WORKER_PAYLOAD.
---
--- It is run with `-c` (after startup) rather than `-l` on purpose: under `-l`
--- Neovim turns otherwise non-fatal Vim errors (e.g. E348 from `expand()`) into
--- hard errors, which would make many plugins behave differently than they do
--- under a normal session. `-c` keeps the vusted-compatible semantics.
---
--- Builds the spec file's tree, runs the requested leaf ids, and emits a JSON
--- result document delimited by markers (so stray output cannot corrupt it).
+-- The worker runs via `-c "luafile <this>"` (after startup) rather than `-l` on
+-- purpose: under `-l` Neovim turns otherwise non-fatal Vim errors (e.g. E348 from
+-- `expand()`) into hard errors, which would make many plugins behave differently
+-- than they do under a normal session. `-c` keeps the vusted-compatible semantics.
+
 local function emit(payload)
   io.stdout:write("\n<<<NTF_JSON>>>\n")
   io.stdout:write(vim.json.encode(payload))
   io.stdout:write("\n<<<END_NTF_JSON>>>\n")
 end
 
--- All worker parameters arrive as one internal JSON env var set by the controller
--- (see runner.lua). Decoded at module scope so the error handler below can still
--- attribute a failure to its spec file.
+-- Decoded at module scope so the error handler below can still attribute a
+-- failure to its spec file.
 local payload = vim.json.decode(vim.env._NTF_WORKER_PAYLOAD)
 
 local function main()
@@ -28,9 +21,6 @@ local function main()
   local hook = require("ntf.core.hook").load(payload.test_hook)
   hook.setup()
 
-  -- A teardown error must not discard the already-computed results, so it is
-  -- returned as a synthetic error entry the caller folds into the report rather
-  -- than emitted separately (a separate emit path could be dropped on the floor).
   --- @return { message: string, traceback: string? }?
   local function teardown()
     local captured
@@ -56,11 +46,6 @@ local function main()
     }
   end
 
-  -- Start coverage before building the tree so that module-level code of the code
-  -- under test (which runs once, when the spec `require`s it during tree building)
-  -- is counted, not just code reached from inside test bodies. ntf's own machinery
-  -- and the spec files are kept out of the report by path (the excludes and the
-  -- `*_spec.lua` rule in the collector), so timing no longer has to do that.
   local collector
   if payload.coverage then
     collector = require("ntf.core.coverage.collector")

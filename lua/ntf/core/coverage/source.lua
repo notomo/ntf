@@ -1,12 +1,10 @@
--- Source analysis shared by the coverage summary and the buffer decoration:
--- deciding which never-hit lines should still count as coverable (so they show
+-- Decides which never-hit lines should still count as coverable (so they show
 -- as missed). LuaJIT's line hook attributes instructions to lines in ways that
 -- a per-line text heuristic cannot model (a table constructor collapses onto its
 -- opening line, consecutive bare `local`s merge onto the first, a closure's
 -- creation lands on its closing `end`). So the set of coverable lines is derived
 -- from the treesitter syntax tree instead: a line is coverable only when a node
--- that actually receives a hit begins on it. Combined with the recorded hits
--- (the callers union them in), this never pushes a file above 100%.
+-- that actually receives a hit begins on it.
 local M = {}
 
 -- Statement nodes that execute on their own opening line, so a hit lands there.
@@ -64,9 +62,8 @@ local function only_closures(node)
   return false
 end
 
---- The 1-based lines that should count as coverable for `src`.
 --- @param src string the full source text
---- @return table<integer, true>
+--- @return table<integer, true> # coverable lines, 1-based
 function M.coverable_lines(src)
   local root = vim.treesitter.get_string_parser(src, "lua"):parse()[1]:root()
   local lines = {}

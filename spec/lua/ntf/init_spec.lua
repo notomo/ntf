@@ -1,6 +1,3 @@
--- End-to-end tests that launch the real `bin/ntf` (`bin/ntf.bat` on Windows) as
--- a subprocess, exercising the whole CLI path: arg parsing, discovery, planning,
--- parallel worker execution, the rendered report, and the process exit code.
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local helper = require("ntf.test.helper")
@@ -266,7 +263,9 @@ return {
   it("runs the --global-hook module's setup and teardown once around the whole run", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "global_hook.log")
     -- Two top-level tests become two work items (two workers), so a --test-hook
-    -- would log twice; the global hook must still log exactly once.
+    -- would log twice; the global hook must still log exactly once. The spec also
+    -- logs at its top level, which runs on every load: once when the controller
+    -- plans the run and once per worker. Setup must precede even the plan's load.
     local path = spec(
       "global_hooked_spec.lua",
       ([[
@@ -277,6 +276,7 @@ local function append(line)
   f:write(line .. "\n")
   f:close()
 end
+append("load")
 it("passes", function()
   append("test")
 end)
@@ -300,10 +300,10 @@ return {
 ]]):format(log)
     )
 
-    local obj = run({ path }, { "--global-hook=" .. hook })
+    local obj = run({ path }, { "--global-hook=" .. hook, "--jobs=1" })
 
     assert.equal(0, obj.code)
-    assert.same({ "setup", "test", "test", "teardown" }, vim.fn.readfile(log))
+    assert.same({ "setup", "load", "load", "test", "load", "test", "teardown" }, vim.fn.readfile(log))
   end)
 
   it("surfaces a --global-hook teardown error without discarding the results", function()
@@ -395,6 +395,162 @@ return {
     assert.equal(1, hits1)
   end)
 
+  it("lists a production file no test ever executed at 0%", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "lua/mod/unused.lua",
+      table.concat({
+        "local M = {}",
+        "function M.g()",
+        "  return 2",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("lua/mod/unused%.lua%s+0%.0%%", obj.stdout)
+  end)
+
+  it("counts every hot-loop iteration; the JIT must not skip the line hook", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f in a hot loop", function()',
+        "    local total = 0",
+        "    for _ = 1, 1000 do",
+        "      total = total + mod.f()",
+        "    end",
+        "    assert.equal(1000, total)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    -- Exactly 1000 hits of line 3 (`return 1`): the line hook must observe
+    -- every iteration, with none lost to JIT-compiled traces.
+    local lines = vim.fn.readfile(stats_file)
+    local hits3
+    for i, line in ipairs(lines) do
+      if line:match("/lua/mod/init%.lua$") then
+        hits3 = tonumber(vim.split(lines[i + 1], " ")[3])
+      end
+    end
+    assert.equal(1000, hits3)
+  end)
+
+  it("sums per-line hits across workers", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f once", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        '  it("calls f again", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    -- Each test runs in its own worker and calls f once; the merged count of
+    -- line 3 (`return 1`) is the sum over both workers.
+    local lines = vim.fn.readfile(stats_file)
+    local hits3
+    for i, line in ipairs(lines) do
+      if line:match("/lua/mod/init%.lua$") then
+        hits3 = tonumber(vim.split(lines[i + 1], " ")[3])
+      end
+    end
+    assert.equal(2, hits3)
+  end)
+
+  it("does not consume a following path as a bare optional-argument flag's value", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'describe("mod", function()',
+        '  it("passes", function()',
+        "    assert.equal(1, 1)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "--shuffle", "--coverage", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("1 passed", obj.stdout)
+    assert.equal(1, vim.fn.filereadable(vim.fs.joinpath(root, "luacov.stats.out")))
+  end)
+
   it("captures all of a worker's stdout, including native writes", function()
     local path = spec("noisy_spec.lua", NOISY)
     local obj = run({ path })
@@ -413,6 +569,25 @@ return {
 
     assert.equal(0, obj.code)
     assert.match("OUTPUT .* group writes to stdout", obj.stdout)
+  end)
+
+  it("emits no OUTPUT block for a worker that died before reporting", function()
+    local path = spec(
+      "dying_spec.lua",
+      [[
+local ntf = require("ntf")
+local it = ntf.it
+it("dies", function()
+  io.stdout:write("noise before death\n")
+  os.exit(3)
+end)
+]]
+    )
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("ERROR", obj.stdout)
+    assert.no.match("OUTPUT", obj.stdout)
   end)
 
   it("discovers and runs every spec file under a directory path", function()

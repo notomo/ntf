@@ -1,9 +1,3 @@
--- Builds the assert object: the `assert.equal(...)` / `assert.no.X(...)` DSL and
--- `:register`. It reimplements only the luassert behavior the existing specs rely
--- on, with no luarocks dependency. Each assertion has a single spelling and the
--- one negation word `no` (no luassert-style modifier chains). Custom assertions
--- are registered through `:register` (used by `ntf.assert` / assertlib); built-in
--- assertions are pre-registered below.
 local message = require("ntf.assert.message")
 
 local M = {}
@@ -13,7 +7,6 @@ local M = {}
 --- @field positive string? message key used when expected positive
 --- @field negative string? message key used when negated
 
--- the single negation word: `assert.no.X(...)` flips the expectation
 local negations = {
   ["no"] = true,
 }
@@ -36,7 +29,6 @@ local function new_state(registry, positive)
   end
 
   return setmetatable(state, {
-    -- plain `assert(value, message)` like the Lua builtin
     __call = function(_, ...)
       local args = { ... }
       if not args[1] then
@@ -157,7 +149,6 @@ local function register_builtins(registry)
   end)
 end
 
---- Create a fresh assert object with its own registry.
 --- The returned object is a metatable-driven DSL (`assert.equal`, `assert.no.X`,
 --- `:register`), so it is intentionally typed as a plain `table`.
 --- @return table
@@ -167,8 +158,6 @@ function M.new()
   return new_state(registry, true)
 end
 
--- Shared singleton used as the global `assert` during a test run and the target
--- of `ntf.assert` registrations.
 M.assert = M.new()
 
 return M

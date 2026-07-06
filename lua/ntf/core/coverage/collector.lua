@@ -1,14 +1,6 @@
--- Line-coverage collector. Runs inside a worker process: installs a Lua line
--- hook that counts how many times each line of the code under test executes.
---
--- Neovim is LuaJIT, where the JIT compiler does not fire line hooks on compiled
--- traces, so coverage would silently under-count. `jit.off()` forces the
--- interpreter for the whole worker, which is why collection only happens under
--- `--coverage` (it makes the worker slower).
 local M = {}
 
--- The accumulator for the currently running collection, or nil when inactive.
--- Shape: { [abs_path] = { max = integer, lines = { [line] = hits } } }.
+--- @type table<string, { max: integer, lines: table<string, integer> }>?
 local active
 
 --- @param cwd string any form of the working directory
@@ -17,11 +9,6 @@ local function normalize_dir(cwd)
   return (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", ""))
 end
 
---- The test directories to exclude from coverage, derived from where the spec
---- files actually live: each spec file's top-level directory under `cwd`. The
---- test directory is not assumed to be `spec/` — whatever directory the specs
---- were found in is excluded, and so is anything alongside them in it (e.g. the
---- cloned test dependencies the workflow puts under `spec/.shared/packages/...`).
 --- @param spec_files string[] absolute paths of the spec files being run
 --- @param cwd string working directory (any form)
 --- @return string[] absolute dir prefixes (each ending with "/") to exclude
@@ -47,11 +34,6 @@ function M.exclude_roots(spec_files, cwd)
   return roots
 end
 
---- Whether coverage measures `path`, and under which key. Only production files
---- under `cwd` are measured: any `*_spec.lua` file and anything under one of the
---- `excludes` test-directory roots are skipped. So in a user's project this is
---- their own source (the specs and the other test deps live in the excluded test
---- directory); when ntf self-hosts it is ntf's `lua/`.
 --- @param path string file path (any form)
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
@@ -70,8 +52,6 @@ local function measured_path(path, cwd, excludes)
   return path
 end
 
---- Decide, once per distinct chunk source, whether to measure it and under which
---- path.
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return fun(source: string): string|false
@@ -104,10 +84,6 @@ local function is_meta_file(path)
   return first ~= nil and first:match("^%-%-%-?%s*@meta") ~= nil
 end
 
---- Every Lua file the line hook would measure under `cwd`, whether or not any
---- test executed it — so never-executed files can appear in the report as 0%
---- instead of being silently absent. LuaCATS `@meta` files are skipped: they
---- exist only for the language server and are never run.
 --- @param cwd string working directory (any form)
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return string[] normalized absolute paths, sorted
@@ -141,7 +117,6 @@ function M.measurable_files(cwd, excludes)
   return files
 end
 
---- Start collecting. Installs the line hook; pair with `M.stop`.
 --- @param opts { cwd: string, excludes?: string[] }
 function M.start(opts)
   local cwd = normalize_dir(opts.cwd)
@@ -176,8 +151,7 @@ function M.start(opts)
   active = data
 end
 
---- Stop collecting and return the per-file hit counts gathered since `M.start`.
---- @return table<string, { max: integer, lines: table<integer, integer> }>
+--- @return table<string, { max: integer, lines: table<string, integer> }>
 function M.stop()
   debug.sethook()
   local data = active or {}
@@ -185,7 +159,6 @@ function M.stop()
   return data
 end
 
---- Merge a worker's per-file counts into an accumulator (summing hits per line).
 --- Tolerates string line keys, since the counts arrive JSON-decoded from a
 --- worker (`vim.json` turns the integer keys into strings on the way back).
 --- @param into table accumulator (same shape as `M.stop`'s return)
