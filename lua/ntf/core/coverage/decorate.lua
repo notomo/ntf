@@ -1,5 +1,6 @@
 local stats = require("ntf.core.coverage.stats")
 local source = require("ntf.core.coverage.source")
+local highlight_group = require("ntf.core.coverage.highlight_group")
 
 local M = {}
 
@@ -17,9 +18,6 @@ function M.decorate(opts)
   if not enable then
     return
   end
-
-  vim.api.nvim_set_hl(0, "NtfCoverageCovered", { default = true, link = "DiffAdd" })
-  vim.api.nvim_set_hl(0, "NtfCoverageMissed", { default = true, link = "DiffDelete" })
 
   local path = opts.path or "./luacov.stats.out"
   if not vim.uv.fs_stat(path) then
@@ -40,9 +38,9 @@ function M.decorate(opts)
     local hits = entry.lines[i]
     local hl
     if hits and hits > 0 then
-      hl = "NtfCoverageCovered"
+      hl = highlight_group.NtfCoverageCovered
     elseif coverable[i] then
-      hl = "NtfCoverageMissed"
+      hl = highlight_group.NtfCoverageMissed
     end
     if hl then
       vim.api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {

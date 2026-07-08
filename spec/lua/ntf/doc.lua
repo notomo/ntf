@@ -199,6 +199,20 @@ not skipped by the JIT, which makes a `--coverage` run slower than a plain one.]
       end,
     },
     {
+      name = "HIGHLIGHT GROUPS",
+      body = function(ctx)
+        local sections = vim
+          .iter(util.extract_documented_table(("./lua/%s/core/coverage/highlight_group.lua"):format(plugin_name)))
+          :map(function(hl_group)
+            return util.help_tagged(ctx, hl_group.key, "hl-" .. hl_group.key)
+              .. util.indent(hl_group.document, 2)
+              .. "\n"
+          end)
+          :totable()
+        return vim.trim(table.concat(sections, "\n"))
+      end,
+    },
+    {
       name = function(group)
         return "Lua module: " .. group
       end,

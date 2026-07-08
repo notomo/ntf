@@ -132,6 +132,15 @@ Coverage forces the interpreter (`jit.off()`) in each worker so the line hook is
 not skipped by the JIT, which makes a `--coverage` run slower than a plain one.
 
 ==============================================================================
+HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*
+
+NtfCoverageCovered                                     *hl-NtfCoverageCovered*
+  covered lines
+
+NtfCoverageMissed                                       *hl-NtfCoverageMissed*
+  coverable-but-missed lines
+
+==============================================================================
 Lua module: ntf                                                      *ntf-ntf*
 
 describe({name}, {fn})                                        *ntf.describe()*
