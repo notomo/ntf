@@ -1,4 +1,4 @@
-local coverable_lines = require("ntf.core.coverage.source").coverable_lines
+local coverable_lines = require("ntf.core.coverage.lines").coverable
 
 local M = {}
 

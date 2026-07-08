@@ -3,19 +3,13 @@
 -- `expand()`) into hard errors, which would make many plugins behave differently
 -- than they do under a normal session. `-c` keeps the vusted-compatible semantics.
 
-local function emit(payload)
-  io.stdout:write("\n<<<NTF_JSON>>>\n")
-  io.stdout:write(vim.json.encode(payload))
-  io.stdout:write("\n<<<END_NTF_JSON>>>\n")
-end
+local protocol = require("ntf.core.worker.protocol")
 
 -- Decoded at module scope so the error handler below can still attribute a
 -- failure to its spec file.
-local payload = vim.json.decode(vim.env._NTF_WORKER_PAYLOAD)
+local payload = protocol.payload()
 
 local function main()
-  vim.opt.runtimepath:prepend(payload.root)
-
   require("ntf.core.runtime").setup()
 
   local hook = require("ntf.core.hook").load(payload.test_hook)
@@ -67,19 +61,11 @@ local function main()
     if teardown_err then
       message = message .. "\n\nteardown error: " .. teardown_err.message
     end
-    emit({ load_error = message, file = payload.file })
+    protocol.emit({ load_error = message, file = payload.file })
     return 1
   end
 
-  local selected
-  if payload.node_ids and #payload.node_ids > 0 then
-    selected = {}
-    for _, id in ipairs(payload.node_ids) do
-      selected[id] = true
-    end
-  end
-
-  local results = require("ntf.core.worker.executor").execute(root_node, selected, {
+  local results = require("ntf.core.worker.executor").run(root_node, { [payload.node_id] = true }, {
     shuffle = payload.shuffle,
     seed = payload.seed,
   })
@@ -90,9 +76,9 @@ local function main()
     table.insert(results, teardown_result(teardown_err))
   end
   if coverage then
-    emit({ results = results, coverage = coverage })
+    protocol.emit({ results = results, coverage = coverage })
   else
-    emit({ results = results })
+    protocol.emit({ results = results })
   end
 
   for _, result in ipairs(results) do
@@ -105,7 +91,7 @@ end
 
 local ok, result = xpcall(main, debug.traceback)
 if not ok then
-  emit({ load_error = tostring(result), file = payload.file })
+  protocol.emit({ load_error = tostring(result), file = payload.file })
   os.exit(1)
 end
 os.exit(result)

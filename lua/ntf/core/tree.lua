@@ -169,24 +169,40 @@ function M.build(file_path)
 end
 
 --- @param root NtfNode
---- @return fun():NtfNode|nil
+--- @return fun():(NtfNode?, string[]?) # iterator yielding each leaf with its describe/it name chain
 function M.iter_leaves(root)
   local result = {}
-  local function walk(node)
+  local function walk(node, names)
     for _, child in ipairs(node.children or {}) do
+      local child_names = vim.list_extend(vim.list_extend({}, names), { child.name })
       if M.is_leaf(child) then
-        table.insert(result, child)
+        table.insert(result, { node = child, names = child_names })
       else
-        walk(child)
+        walk(child, child_names)
       end
     end
   end
-  walk(root)
+  walk(root, {})
   local i = 0
   return function()
     i = i + 1
-    return result[i]
+    local entry = result[i]
+    if not entry then
+      return nil
+    end
+    return entry.node, entry.names
   end
+end
+
+--- @param names string[] describe/it name chain
+--- @return string
+function M.full_name(names)
+  return table.concat(
+    vim.tbl_filter(function(s)
+      return s ~= nil and s ~= ""
+    end, names or {}),
+    " "
+  )
 end
 
 return M

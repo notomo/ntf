@@ -63,7 +63,7 @@ end
 --- @param selected table<string,boolean>|nil set of leaf ids to run, nil = all
 --- @param opts { shuffle?: boolean, seed?: integer }?
 --- @return NtfResult[] results
-function M.execute(root, selected, opts)
+function M.run(root, selected, opts)
   opts = opts or {}
   local results = {}
 

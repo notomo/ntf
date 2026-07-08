@@ -64,7 +64,7 @@ end
 
 --- @param src string the full source text
 --- @return table<integer, true> # coverable lines, 1-based
-function M.coverable_lines(src)
+function M.coverable(src)
   local root = vim.treesitter.get_string_parser(src, "lua"):parse()[1]:root()
   local lines = {}
   local function walk(node)

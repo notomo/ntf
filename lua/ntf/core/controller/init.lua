@@ -40,8 +40,7 @@ function M.run(root)
     os.exit(1)
   end
 
-  local runner = require("ntf.core.controller.dispatcher")
-  local items, load_errors = runner.plan(files, opts.filter)
+  local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
   local prog
   if vim.uv.guess_handle(2) == "tty" then
@@ -57,7 +56,7 @@ function M.run(root)
   local report = require("ntf.core.controller.report")
   local color = report.resolve_color()
 
-  local results, coverage = runner.run(items, {
+  local results, coverage = require("ntf.core.controller.pool").run(items, {
     root = root,
     jobs = opts.jobs,
     shuffle = opts.shuffle,
@@ -83,7 +82,7 @@ function M.run(root)
     teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
   end)
 
-  local text, code = report.build(results, load_errors, opts)
+  local text, code = report.build(results, load_errors, { color = color, shuffle = opts.shuffle, seed = opts.seed })
   io.stdout:write(text)
 
   if opts.coverage then

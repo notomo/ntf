@@ -1,5 +1,5 @@
 local stats = require("ntf.core.coverage.stats")
-local source = require("ntf.core.coverage.source")
+local coverage_lines = require("ntf.core.coverage.lines")
 local highlight_group = require("ntf.core.coverage.highlight_group")
 
 local M = {}
@@ -33,7 +33,7 @@ function M.decorate(opts)
   end
 
   local buf_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local coverable = source.coverable_lines(table.concat(buf_lines, "\n"))
+  local coverable = coverage_lines.coverable(table.concat(buf_lines, "\n"))
   for i, _ in ipairs(buf_lines) do
     local hits = entry.lines[i]
     local hl

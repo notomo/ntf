@@ -1,3 +1,5 @@
+local tree = require("ntf.core.tree")
+
 local M = {}
 
 local COLORS = {
@@ -32,12 +34,7 @@ local function rel_source(trace)
 end
 
 local function full_name(result)
-  return table.concat(
-    vim.tbl_filter(function(s)
-      return s ~= nil and s ~= ""
-    end, result.names or { result.name }),
-    " "
-  )
+  return tree.full_name(result.names or { result.name })
 end
 
 local function clean_traceback(traceback)
@@ -66,12 +63,8 @@ local function indent(text, prefix)
   )
 end
 
---- @param opt_color boolean?
 --- @return boolean
-function M.resolve_color(opt_color)
-  if opt_color ~= nil then
-    return opt_color
-  end
+function M.resolve_color()
   local ok, handle = pcall(function()
     return vim.uv.guess_handle(1)
   end)
@@ -101,12 +94,12 @@ end
 
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
---- @param opts { color?: boolean, shuffle?: boolean, seed?: integer }
+--- @param opts { color: boolean, shuffle?: boolean, seed?: integer }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)
   load_errors = load_errors or {}
 
-  local paint = painter(M.resolve_color(opts.color))
+  local paint = painter(opts.color)
 
   local counts = { passed = 0, failed = 0, error = 0, pending = 0 }
   local problems = {}
