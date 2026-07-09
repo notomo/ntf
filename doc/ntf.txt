@@ -10,8 +10,8 @@ USAGE                                                              *ntf-USAGE*
     --timeout=MS        kill a worker after MS milliseconds (default: 60000; 0 disables)
     --filter=PATTERN    run only tests whose full name matches the Lua pattern
     --jobs=N            max parallel nvim workers (default: cpu count)
-    --test-hook=PATH    run a Lua module providing setup/teardown around each test, in its worker
-    --global-hook=PATH  run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --test-hook=FILE    run a Lua module providing setup/teardown around each test, in its worker
+    --global-hook=FILE  run a Lua module providing setup/teardown once around the whole run, in the launcher process
     --coverage[=FILE]   measure line coverage; write luacov.stats.out (or FILE) and print a summary
     -h, --help          show this help
 
@@ -51,7 +51,7 @@ WRITING SPECS                                              *ntf-WRITING-SPECS*
 ==============================================================================
 HOOKS                                                              *ntf-HOOKS*
 
-`--test-hook=PATH` loads the given Lua module in every worker (via `dofile`).
+`--test-hook=FILE` loads the given Lua module in every worker (via `dofile`).
 Each test runs in its own worker process, so the module's optional `setup` and
 `teardown` functions run once per test — but outside everything the spec itself
 defines: `setup` before the spec is built, `teardown` after the worker's test
@@ -74,7 +74,7 @@ error. A `teardown` error is reported too — as an error entry alongside the
 worker's results, so it fails the run without discarding the results already
 produced.
 
-`--global-hook=PATH` takes a module with the same contract but runs it once in
+`--global-hook=FILE` takes a module with the same contract but runs it once in
 the launcher process instead of in every worker: `setup` before any spec file is
 loaded, `teardown` after all workers have finished. Use it for state shared by
 the whole run — start a server once, build a fixture once — while `--test-hook`

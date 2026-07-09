@@ -17,11 +17,11 @@ M.flags = {
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   {
-    name = "--test-hook=PATH",
+    name = "--test-hook=FILE",
     description = "run a Lua module providing setup/teardown around each test, in its worker",
   },
   {
-    name = "--global-hook=PATH",
+    name = "--global-hook=FILE",
     description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
   },
   {

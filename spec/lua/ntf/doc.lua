@@ -129,7 +129,7 @@ require("genvdoc").generate(plugin_name, {
       body = function()
         return table.concat({
           [[
-`--test-hook=PATH` loads the given Lua module in every worker (via `dofile`).
+`--test-hook=FILE` loads the given Lua module in every worker (via `dofile`).
 Each test runs in its own worker process, so the module's optional `setup` and
 `teardown` functions run once per test — but outside everything the spec itself
 defines: `setup` before the spec is built, `teardown` after the worker's test
@@ -145,7 +145,7 @@ error. A `teardown` error is reported too — as an error entry alongside the
 worker's results, so it fails the run without discarding the results already
 produced.
 
-`--global-hook=PATH` takes a module with the same contract but runs it once in
+`--global-hook=FILE` takes a module with the same contract but runs it once in
 the launcher process instead of in every worker: `setup` before any spec file is
 loaded, `teardown` after all workers have finished. Use it for state shared by
 the whole run — start a server once, build a fixture once — while `--test-hook`
