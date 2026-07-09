@@ -36,7 +36,7 @@ end)
 
 describe("ntf.core.worker.protocol.env -> payload", function()
   it("round-trips the payload through the worker's environment", function()
-    local sent = { file = "/x_spec.lua", node_id = "1.1", shuffle = false, coverage = false, cwd = "/tmp" }
+    local sent = { file = "/x_spec.lua", node_id = "1.1", coverage = false, cwd = "/tmp" }
     for name, value in pairs(protocol.env(sent)) do
       vim.env[name] = value
     end

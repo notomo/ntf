@@ -26,10 +26,6 @@ function M.run(root)
     os.exit(2)
   end
 
-  if opts.shuffle and not opts.seed then
-    opts.seed = os.time()
-  end
-
   local ok_setup, global_hook = xpcall(function()
     local hook = require("ntf.core.hook").load(opts.global_hook)
     hook.setup()
@@ -59,8 +55,6 @@ function M.run(root)
   local results, coverage = require("ntf.core.controller.pool").run(items, {
     root = root,
     jobs = opts.jobs,
-    shuffle = opts.shuffle,
-    seed = opts.seed,
     timeout = opts.timeout,
     test_hook = opts.test_hook,
     coverage = opts.coverage,
@@ -82,7 +76,7 @@ function M.run(root)
     teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
   end)
 
-  local text, code = report.build(results, load_errors, { color = color, shuffle = opts.shuffle, seed = opts.seed })
+  local text, code = report.build(results, load_errors, { color = color })
   io.stdout:write(text)
 
   if opts.coverage then

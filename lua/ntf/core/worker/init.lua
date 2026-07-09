@@ -65,10 +65,7 @@ local function main()
     return 1
   end
 
-  local results = require("ntf.core.worker.executor").run(root_node, { [payload.node_id] = true }, {
-    shuffle = payload.shuffle,
-    seed = payload.seed,
-  })
+  local results = require("ntf.core.worker.executor").run(root_node, { [payload.node_id] = true })
 
   local coverage = collector and collector.stop() or nil
   local teardown_err = teardown()

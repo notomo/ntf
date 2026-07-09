@@ -94,7 +94,7 @@ end
 
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
---- @param opts { color: boolean, shuffle?: boolean, seed?: integer }
+--- @param opts { color: boolean }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)
   load_errors = load_errors or {}
@@ -148,9 +148,6 @@ function M.build(results, load_errors, opts)
     table.insert(parts, paint("yellow", ("%d pending"):format(counts.pending)))
   end
   table.insert(lines, ("%d tests: %s"):format(total, table.concat(parts, "  ")))
-  if opts.shuffle and opts.seed then
-    table.insert(lines, paint("dim", "seed: " .. tostring(opts.seed)))
-  end
 
   local code = (counts.failed > 0 or counts.error > 0 or #load_errors > 0) and 1 or 0
   return table.concat(lines, "\n") .. "\n", code

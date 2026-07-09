@@ -6,7 +6,7 @@ local M = {}
 --- Captured output is handed to `on_output` the moment each worker finishes; the
 --- cost is that blocks appear in worker-completion order, not deterministic spec order.
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, shuffle?: boolean, seed?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
 function M.run(items, opts)
   local cwd = vim.fn.getcwd()
@@ -37,8 +37,6 @@ function M.run(items, opts)
       root = opts.root,
       cwd = cwd,
       timeout = opts.timeout,
-      shuffle = opts.shuffle,
-      seed = opts.seed,
       test_hook = opts.test_hook,
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,

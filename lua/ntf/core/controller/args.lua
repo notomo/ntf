@@ -5,8 +5,6 @@ local M = {}
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
---- @field shuffle boolean randomize test order
---- @field seed integer? seed fixing the shuffle order (set only when shuffle is true)
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field coverage boolean measure line coverage of the code under test
@@ -18,7 +16,6 @@ M.flags = {
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
-  { name = "--shuffle[=SEED]", description = "randomize test order; SEED fixes it (default: time based)" },
   {
     name = "--test-hook=PATH",
     description = "run a Lua module providing setup/teardown around each test, in its worker",
@@ -58,8 +55,6 @@ function M.parse(argv)
     timeout = 60000,
     filter = nil,
     jobs = nil,
-    shuffle = false,
-    seed = nil,
     test_hook = nil,
     global_hook = nil,
     coverage = false,
@@ -92,14 +87,6 @@ function M.parse(argv)
     name = name or arg
     if arg == "-h" or arg == "--help" then
       opts.help = true
-    elseif name == "--shuffle" then
-      opts.shuffle = true
-      if inline ~= nil then
-        opts.seed = tonumber(inline)
-        if opts.seed == nil then
-          return "invalid --shuffle seed (expected an integer): " .. inline .. "\n\n" .. usage()
-        end
-      end
     elseif name == "--coverage" then
       opts.coverage = true
       if inline ~= nil and inline ~= "" then

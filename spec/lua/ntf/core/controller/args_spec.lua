@@ -72,35 +72,6 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("invalid %-%-timeout value", err)
   end)
 
-  it("enables shuffle without a seed for bare --shuffle", function()
-    local opts = args.parse({ "--shuffle", "spec" })
-
-    assert.equal(true, opts.shuffle)
-    assert.equal(nil, opts.seed)
-    assert.equal("spec", opts.paths[1])
-  end)
-
-  it("fixes the shuffle order with --shuffle=SEED", function()
-    local opts = args.parse({ "--shuffle=42", "spec" })
-
-    assert.equal(true, opts.shuffle)
-    assert.equal(42, opts.seed)
-  end)
-
-  it("does not treat a following path as the shuffle seed", function()
-    local opts = args.parse({ "--shuffle", "42" })
-
-    assert.equal(true, opts.shuffle)
-    assert.equal(nil, opts.seed)
-    assert.equal("42", opts.paths[1])
-  end)
-
-  it("rejects a non-numeric --shuffle seed", function()
-    local err = args.parse({ "--shuffle=soon", "spec" })
-
-    assert.match("invalid %-%-shuffle seed", err)
-  end)
-
   it("leaves coverage off by default", function()
     local opts = args.parse({ "spec" })
 

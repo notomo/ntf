@@ -26,15 +26,6 @@ local function append(list, value)
   return out
 end
 
-local function shuffled(list)
-  local out = vim.list_extend({}, list)
-  for i = #out, 2, -1 do
-    local j = math.random(i)
-    out[i], out[j] = out[j], out[i]
-  end
-  return out
-end
-
 local function to_text(value)
   if value == nil or type(value) == "string" then
     return value
@@ -61,15 +52,9 @@ end
 
 --- @param root NtfNode tree root from ntf.core.tree
 --- @param selected table<string,boolean>|nil set of leaf ids to run, nil = all
---- @param opts { shuffle?: boolean, seed?: integer }?
 --- @return NtfResult[] results
-function M.run(root, selected, opts)
-  opts = opts or {}
+function M.run(root, selected)
   local results = {}
-
-  if opts.shuffle and opts.seed then
-    math.randomseed(opts.seed)
-  end
 
   local function has_selected(node)
     if tree.is_leaf(node) then
@@ -147,12 +132,7 @@ function M.run(root, selected, opts)
     local child_before = extend(before_chain, node.before_each or {})
     local child_after = extend(node.after_each or {}, after_chain)
 
-    local children = node.children or {}
-    if opts.shuffle then
-      children = shuffled(children)
-    end
-
-    for _, child in ipairs(children) do
+    for _, child in ipairs(node.children or {}) do
       local child_names = append(names, child.name)
       if child.type == "describe" and not child.load_error then
         descend(child, child_names, child_before, child_after)

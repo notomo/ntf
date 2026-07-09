@@ -544,7 +544,7 @@ return {
       }, "\n")
     )
 
-    local obj = helper.run_cli({ "--shuffle", "--coverage", "spec" }, root)
+    local obj = helper.run_cli({ "--coverage", "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("1 passed", obj.stdout)

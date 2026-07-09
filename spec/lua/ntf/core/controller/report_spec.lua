@@ -150,16 +150,6 @@ describe("ntf.core.controller.report.build", function()
     assert.match("FAIL solo", text)
   end)
 
-  it("appends the seed line only when shuffling with a seed", function()
-    local results = { { status = "passed", names = { "a" } } }
-
-    local shuffled = report.build(results, {}, { color = false, shuffle = true, seed = 42 })
-    assert.match("seed: 42", shuffled)
-
-    local plain = report.build(results, {}, { color = false })
-    assert.no.match("seed:", plain)
-  end)
-
   it("wraps output in ANSI color codes when color is enabled", function()
     local results = {
       { status = "failed", names = { "a" }, message = "x" },

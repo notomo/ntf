@@ -87,7 +87,6 @@ local coverage_command = "ntf " .. coverage_flag
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
 run_ntf({ flag("--timeout") .. "=60000", example_path })
-run_ntf({ flag("--shuffle") .. "=42", example_path })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
   if not exercised_flags[f.name] then

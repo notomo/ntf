@@ -50,7 +50,7 @@ local function results_of(item, obj, timed_out_ms)
 end
 
 --- @param item NtfWorkItem
---- @param opts { root: string, cwd: string, timeout: integer?, shuffle?: boolean, seed?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[] }
+--- @param opts { root: string, cwd: string, timeout: integer?, test_hook?: string, coverage?: boolean, coverage_excludes?: string[] }
 --- @param on_done fun(outcome: NtfWorkerOutcome) called from the process-exit callback (a fast event context)
 function M.launch(item, opts, on_done)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
@@ -80,8 +80,6 @@ function M.launch(item, opts, on_done)
   local env = protocol.env({
     file = item.file,
     node_id = item.node_id,
-    shuffle = opts.shuffle or false,
-    seed = opts.seed,
     test_hook = opts.test_hook,
     coverage = opts.coverage or false,
     coverage_excludes = opts.coverage_excludes,

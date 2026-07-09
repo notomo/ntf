@@ -47,7 +47,7 @@ describe("ntf.core.worker.executor.run", function()
 
   it("reports pass / fail / pending statuses", function()
     local root = tree.build(helper.write_spec(source))
-    local results = executor.run(root, nil, {})
+    local results = executor.run(root, nil)
 
     assert.equal(3, #results)
     assert.equal("passed", results[1].status)
@@ -58,7 +58,7 @@ describe("ntf.core.worker.executor.run", function()
 
   it("runs before_each/after_each/finally per test", function()
     local root = tree.build(helper.write_spec(source))
-    executor.run(root, nil, {})
+    executor.run(root, nil)
 
     -- the third test calls pending() inside its body, so its before/after_each
     -- hooks still run (runtime pending != declaration pending)
@@ -78,7 +78,7 @@ describe("ntf.core.worker.executor.run", function()
 
   it("runs only the selected leaf ids", function()
     local root = tree.build(helper.write_spec(source))
-    local results = executor.run(root, { ["1.1"] = true }, {})
+    local results = executor.run(root, { ["1.1"] = true })
 
     assert.equal(1, #results)
     assert.equal("passes", results[1].name)
@@ -105,7 +105,7 @@ describe("ntf.core.worker.executor.run describe-body errors", function()
 
   it("reports the errored describe and skips its children, but runs siblings", function()
     local root = tree.build(helper.write_spec(broken_describe_source))
-    local results = executor.run(root, nil, {})
+    local results = executor.run(root, nil)
 
     assert.equal(2, #results)
 

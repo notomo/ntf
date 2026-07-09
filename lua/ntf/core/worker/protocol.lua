@@ -5,8 +5,6 @@ local M = {}
 --- @class NtfWorkerPayload parameters for one worker process
 --- @field file string spec file path
 --- @field node_id string leaf id to run
---- @field shuffle boolean
---- @field seed integer?
 --- @field test_hook string? Lua module path providing setup/teardown
 --- @field coverage boolean
 --- @field coverage_excludes string[]? absolute dir prefixes to exclude
