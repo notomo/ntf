@@ -75,7 +75,7 @@ function M.launch(item, opts, on_done)
     "--cmd",
     ("lua vim.opt.runtimepath:prepend(%q)"):format(opts.root),
     "-c",
-    "luafile " .. worker,
+    ("lua vim.cmd.luafile({ args = { %q }, magic = { file = false } })"):format(worker),
   }
   local env = protocol.env({
     file = item.file,
