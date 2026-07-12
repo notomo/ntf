@@ -186,25 +186,6 @@ finally({fn})                                                  *ntf.finally()*
   Parameters: ~
     {fn} (fun()) callback body
 
-decorate_coverage({opts})                            *ntf.decorate_coverage()*
-  Decorate a buffer's sign column with per-line test coverage read from a
-  `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
-  marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
-  with `NtfCoverageMissed`.
-
-  Parameters: ~
-    {opts} (NtfDecorateCoverageOption?) |NtfDecorateCoverageOption|
-
-is_decorated_coverage({opts})                    *ntf.is_decorated_coverage()*
-  Whether `decorate_coverage` is currently drawing on the buffer. Intended for
-  a toggle mapping paired with `decorate_coverage`.
-
-  Parameters: ~
-    {opts} (NtfIsDecoratedCoverageOption?) |NtfIsDecoratedCoverageOption|
-
-  Return: ~
-    (boolean) 
-
 ==============================================================================
 Lua module: ntf.assert                                        *ntf-ntf.assert*
 
@@ -282,6 +263,28 @@ register_same({name}, {get_actual})               *ntf.assert.register_same()*
     {get_actual} (function) maps the leading args to the actual value (last arg is the expected)
 
 ==============================================================================
+Lua module: ntf.coverage                                    *ntf-ntf.coverage*
+
+decorate({opts})                                     *ntf.coverage.decorate()*
+  Decorate a buffer's sign column with per-line test coverage read from a
+  `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
+  marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
+  with `NtfCoverageMissed`.
+
+  Parameters: ~
+    {opts} (NtfCoverageDecorateOption?) |NtfCoverageDecorateOption|
+
+is_decorated({opts})                             *ntf.coverage.is_decorated()*
+  Whether `decorate` is currently drawing on the buffer. Intended for a
+  toggle mapping paired with `decorate`.
+
+  Parameters: ~
+    {opts} (NtfCoverageIsDecoratedOption?) |NtfCoverageIsDecoratedOption|
+
+  Return: ~
+    (boolean) 
+
+==============================================================================
 Lua module: ntf.helper                                        *ntf-ntf.helper*
 
 find_plugin_root({plugin_name})                *ntf.helper.find_plugin_root()*
@@ -312,7 +315,7 @@ NtfItOption                                                      *NtfItOption*
     `--timeout` default; an exceeded worker is killed and reported as an
     error.
 
-NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
+NtfCoverageDecorateOption                          *NtfCoverageDecorateOption*
 
 - {enable} (boolean?) when `false`, clear the decoration instead of drawing
     it (default `true`).
@@ -320,7 +323,7 @@ NtfDecorateCoverageOption                          *NtfDecorateCoverageOption*
     `"./luacov.stats.out"`).
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
-NtfIsDecoratedCoverageOption                    *NtfIsDecoratedCoverageOption*
+NtfCoverageIsDecoratedOption                    *NtfCoverageIsDecoratedOption*
 
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 

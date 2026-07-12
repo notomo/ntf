@@ -52,33 +52,6 @@ function M.finally(fn)
   return tree.finally(fn)
 end
 
---- @class NtfDecorateCoverageOption
---- @field enable boolean? when `false`, clear the decoration instead of drawing
----   it (default `true`).
---- @field path string? `luacov.stats.out` file to read (default
----   `"./luacov.stats.out"`).
---- @field buffer integer? target buffer (default `0`, the current buffer).
-
---- Decorate a buffer's sign column with per-line test coverage read from a
---- `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
---- marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
---- with `NtfCoverageMissed`.
---- @param opts NtfDecorateCoverageOption?: |NtfDecorateCoverageOption|
-function M.decorate_coverage(opts)
-  return require("ntf.core.coverage.decorate").decorate(opts)
-end
-
---- @class NtfIsDecoratedCoverageOption
---- @field buffer integer? target buffer (default `0`, the current buffer).
-
---- Whether `decorate_coverage` is currently drawing on the buffer. Intended for
---- a toggle mapping paired with `decorate_coverage`.
---- @param opts NtfIsDecoratedCoverageOption?: |NtfIsDecoratedCoverageOption|
---- @return boolean
-function M.is_decorated_coverage(opts)
-  return require("ntf.core.coverage.decorate").is_decorated(opts)
-end
-
 --- @type NtfAssert
 M.assert = builder.assert
 

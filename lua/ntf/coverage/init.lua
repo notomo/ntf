@@ -1,6 +1,6 @@
 local stats = require("ntf.core.coverage.stats")
 local coverage_lines = require("ntf.core.coverage.lines")
-local highlight_group = require("ntf.core.coverage.highlight_group")
+local highlight_group = require("ntf.coverage.highlight_group")
 
 local M = {}
 
@@ -8,7 +8,18 @@ local ns = vim.api.nvim_create_namespace("ntf.coverage")
 
 local SIGN = "▌"
 
---- @param opts { enable: boolean?, path: string?, buffer: integer? }?
+--- @class NtfCoverageDecorateOption
+--- @field enable boolean? when `false`, clear the decoration instead of drawing
+---   it (default `true`).
+--- @field path string? `luacov.stats.out` file to read (default
+---   `"./luacov.stats.out"`).
+--- @field buffer integer? target buffer (default `0`, the current buffer).
+
+--- Decorate a buffer's sign column with per-line test coverage read from a
+--- `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
+--- marked with the `NtfCoverageCovered` highlight, coverable-but-missed lines
+--- with `NtfCoverageMissed`.
+--- @param opts NtfCoverageDecorateOption?: |NtfCoverageDecorateOption|
 function M.decorate(opts)
   opts = opts or {}
   local bufnr = opts.buffer or 0
@@ -51,7 +62,12 @@ function M.decorate(opts)
   end
 end
 
---- @param opts { buffer: integer? }?
+--- @class NtfCoverageIsDecoratedOption
+--- @field buffer integer? target buffer (default `0`, the current buffer).
+
+--- Whether `decorate` is currently drawing on the buffer. Intended for a
+--- toggle mapping paired with `decorate`.
+--- @param opts NtfCoverageIsDecoratedOption?: |NtfCoverageIsDecoratedOption|
 --- @return boolean
 function M.is_decorated(opts)
   opts = opts or {}
