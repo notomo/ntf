@@ -12,6 +12,8 @@ local M = {}
 --- @field results NtfResult[]
 --- @field coverage table? per-file line hit counts (when coverage was measured)
 --- @field output NtfWorkerOutput? captured user output, when there was any
+--- @field timed_out boolean? the worker was killed for exceeding its timeout
+--- @field mutation_applied boolean? the mutated module was loaded (mutation runs only)
 
 --- @param item NtfWorkItem
 --- @param obj { code: integer, stdout: string?, stderr: string? } vim.system result
@@ -48,7 +50,7 @@ local function results_of(item, obj, timed_out_ms)
 end
 
 --- @param item NtfWorkItem
---- @param opts { root: string, cwd: string, timeout: integer?, test_hook?: string, coverage?: boolean, coverage_excludes?: string[] }
+--- @param opts { root: string, cwd: string, timeout: integer?, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
 --- @param on_done fun(outcome: NtfWorkerOutcome) called from the process-exit callback (a fast event context)
 function M.launch(item, opts, on_done)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
@@ -81,6 +83,7 @@ function M.launch(item, opts, on_done)
     test_hook = opts.test_hook,
     coverage = opts.coverage or false,
     coverage_excludes = opts.coverage_excludes,
+    mutation = opts.mutation,
     cwd = opts.cwd,
   })
 
@@ -100,6 +103,10 @@ function M.launch(item, opts, on_done)
     local outcome = {
       results = results_of(item, obj, timed_out and timeout or nil),
       coverage = decoded and decoded.coverage or nil,
+      timed_out = timed_out or nil,
+      -- Not `or nil`: a worker that never loaded the mutated module reports
+      -- `false`, and the controller must be able to tell that from "no report".
+      mutation_applied = decoded and decoded.mutation_applied,
     }
     if decoded then
       local blob = protocol.captured_output(obj.stdout, obj.stderr)

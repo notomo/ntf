@@ -40,6 +40,11 @@ local function main()
     }
   end
 
+  local applied
+  if payload.mutation then
+    applied = require("ntf.core.worker.mutate").install(payload.mutation, payload.cwd)
+  end
+
   local collector
   if payload.coverage then
     collector = require("ntf.core.coverage.collector")
@@ -72,11 +77,11 @@ local function main()
   if teardown_err then
     table.insert(results, teardown_result(teardown_err))
   end
-  if coverage then
-    protocol.emit({ results = results, coverage = coverage })
-  else
-    protocol.emit({ results = results })
+  local mutation_applied
+  if applied then
+    mutation_applied = applied()
   end
+  protocol.emit({ results = results, coverage = coverage, mutation_applied = mutation_applied })
 
   for _, result in ipairs(results) do
     if result.status == "failed" or result.status == "error" then

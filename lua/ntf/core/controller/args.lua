@@ -9,6 +9,10 @@ local M = {}
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
+--- @field mutation boolean mutation-test the covered code after a passing run
+--- @field mutation_path string? restrict the mutated files to this file or directory
+--- @field mutation_threshold number? minimum mutation score, in percent
+--- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
 
 --- @type { name: string, description: string }[]
@@ -28,6 +32,12 @@ M.flags = {
     name = "--coverage[=FILE]",
     description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
   },
+  {
+    name = "--mutation[=PATH]",
+    description = "mutation-test the covered code (only under PATH, if given) once the tests pass",
+  },
+  { name = "--mutation-threshold=N", description = "exit non-zero when the mutation score is below N percent" },
+  { name = "--mutation-results=FILE", description = "mutation results output path (default: ntf-mutation.json)" },
   { name = "-h, --help", description = "show this help" },
 }
 
@@ -59,6 +69,10 @@ function M.parse(argv)
     global_hook = nil,
     coverage = false,
     coverage_file = "luacov.stats.out",
+    mutation = false,
+    mutation_path = nil,
+    mutation_threshold = nil,
+    mutation_results = "ntf-mutation.json",
     help = false,
   }
 
@@ -78,6 +92,12 @@ function M.parse(argv)
     ["--global-hook"] = function(v)
       opts.global_hook = v
     end,
+    ["--mutation-threshold"] = function(v)
+      opts.mutation_threshold = tonumber(v)
+    end,
+    ["--mutation-results"] = function(v)
+      opts.mutation_results = v
+    end,
   }
 
   local i = 1
@@ -91,6 +111,11 @@ function M.parse(argv)
       opts.coverage = true
       if inline ~= nil and inline ~= "" then
         opts.coverage_file = inline
+      end
+    elseif name == "--mutation" then
+      opts.mutation = true
+      if inline ~= nil and inline ~= "" then
+        opts.mutation_path = inline
       end
     elseif value_flags[name] then
       local v = inline
@@ -131,6 +156,22 @@ function M.parse(argv)
   end
   if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
     return "--global-hook module not found: " .. opts.global_hook
+  end
+  if not opts.mutation and (opts.mutation_threshold or opts.mutation_results ~= "ntf-mutation.json") then
+    return "--mutation-threshold and --mutation-results require --mutation"
+  end
+  if
+    opts.mutation_threshold
+    and (type(opts.mutation_threshold) ~= "number" or opts.mutation_threshold < 0 or opts.mutation_threshold > 100)
+  then
+    return "invalid --mutation-threshold value (expected a percentage in 0..100)"
+  end
+  if
+    opts.mutation_path
+    and vim.fn.filereadable(opts.mutation_path) == 0
+    and vim.fn.isdirectory(opts.mutation_path) == 0
+  then
+    return "--mutation path not found: " .. opts.mutation_path
   end
 
   return opts

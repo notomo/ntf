@@ -6,7 +6,7 @@ local M = {}
 --- Captured output is handed to `on_output` the moment each worker finishes; the
 --- cost is that blocks appear in worker-completion order, not deterministic spec order.
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
 function M.run(items, opts)
   local cwd = vim.fn.getcwd()
@@ -15,12 +15,12 @@ function M.run(items, opts)
 
   local results = {}
   local merged_coverage = {}
-  local coverage_excludes
+  local coverage_excludes = {}
   if opts.coverage then
     local spec_files = vim.tbl_map(function(item)
       return item.file
     end, items)
-    coverage_excludes = collector.exclude_roots(spec_files, cwd)
+    coverage_excludes = opts.coverage_excludes or collector.exclude_roots(spec_files, cwd)
   end
   local started = 0
   local finished = 0
@@ -31,7 +31,8 @@ function M.run(items, opts)
       return
     end
     started = started + 1
-    local item = items[started]
+    local item_index = started
+    local item = items[item_index]
 
     driver.launch(item, {
       root = opts.root,
@@ -47,6 +48,9 @@ function M.run(items, opts)
         vim.list_extend(results, outcome.results)
         if opts.coverage then
           collector.merge(merged_coverage, outcome.coverage)
+          if opts.on_item_coverage then
+            opts.on_item_coverage(item_index, outcome.coverage)
+          end
         end
         if opts.on_output and outcome.output then
           opts.on_output(outcome.output)

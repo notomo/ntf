@@ -11,9 +11,13 @@ test: requireall FORCE
 	bin\ntf.bat
 coverage: deps FORCE
 	bin\ntf.bat --coverage=spec\.shared\luacov.stats.out
+mutation: deps FORCE
+	bin\ntf.bat --mutation=spec\.shared\ntf-mutation.json
 else
 test: requireall FORCE
 	./bin/ntf
 coverage: deps FORCE
 	./bin/ntf --coverage=spec/.shared/luacov.stats.out
+mutation: deps FORCE
+	./bin/ntf --mutation --mutation-file=spec/.shared/ntf-mutation.json
 endif

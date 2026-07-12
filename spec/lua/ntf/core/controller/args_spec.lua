@@ -135,6 +135,52 @@ describe("ntf.core.controller.args.parse", function()
     end)
   end)
 
+  describe("--mutation", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("is off by default", function()
+      local opts = args.parse({ "spec" })
+
+      assert.is_false(opts.mutation)
+      assert.equal("ntf-mutation.json", opts.mutation_results)
+    end)
+
+    it("takes an optional path to restrict the mutated files", function()
+      local dir = helper.test_data:create_dir("lua")
+
+      local opts = args.parse({ "--mutation=" .. dir, "spec" })
+
+      assert.is_true(opts.mutation)
+      assert.equal(dir, opts.mutation_path)
+    end)
+
+    it("reads the threshold and the results file", function()
+      local opts = args.parse({ "--mutation", "--mutation-threshold=80", "--mutation-results=out.json", "spec" })
+
+      assert.equal(80, opts.mutation_threshold)
+      assert.equal("out.json", opts.mutation_results)
+    end)
+
+    it("errors when the --mutation path does not exist", function()
+      local err = args.parse({ "--mutation=/no/such/dir", "spec" })
+
+      assert.match("%-%-mutation path not found", err)
+    end)
+
+    it("errors when the threshold is not a percentage", function()
+      local err = args.parse({ "--mutation", "--mutation-threshold=101", "spec" })
+
+      assert.match("invalid %-%-mutation%-threshold value", err)
+    end)
+
+    it("errors when the mutation flags are given without --mutation", function()
+      local err = args.parse({ "--mutation-threshold=80", "spec" })
+
+      assert.match("require %-%-mutation", err)
+    end)
+  end)
+
   describe("with no paths", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

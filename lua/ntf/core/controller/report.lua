@@ -11,7 +11,9 @@ local COLORS = {
   reset = "\27[0m",
 }
 
-local function painter(enabled)
+--- @param enabled boolean
+--- @return fun(color: string, text: string): string
+function M.painter(enabled)
   return function(color, text)
     if not enabled then
       return text
@@ -19,6 +21,7 @@ local function painter(enabled)
     return (COLORS[color] or "") .. text .. COLORS.reset
   end
 end
+local painter = M.painter
 
 local function rel_source(trace)
   if not trace or not trace.source then

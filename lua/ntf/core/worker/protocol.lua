@@ -1,16 +1,21 @@
 local M = {}
 
+--- @class NtfWorkerMutation : NtfMutantSplice one mutation to splice into the module under test
+--- @field path string normalized absolute path of the file to mutate
+
 --- @class NtfWorkerPayload parameters for one worker process
 --- @field file string spec file path
 --- @field node_id string leaf id to run
 --- @field test_hook string? Lua module path providing setup/teardown
 --- @field coverage boolean
 --- @field coverage_excludes string[]? absolute dir prefixes to exclude
+--- @field mutation NtfWorkerMutation? apply this mutation when the module is required
 --- @field cwd string working directory shared with the controller
 
 --- @class NtfWorkerResult the block a worker emits as its last stdout write
 --- @field results NtfResult[]? per-leaf results (absent when the spec failed to load)
 --- @field coverage table? per-file line hit counts (when coverage was measured)
+--- @field mutation_applied boolean? whether the mutated module was actually loaded (mutation runs only)
 --- @field load_error string? load failure message
 --- @field file string? spec file path (set alongside load_error)
 

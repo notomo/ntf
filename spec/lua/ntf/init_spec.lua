@@ -628,3 +628,163 @@ end)
     assert.match("4 passed", obj.stdout)
   end)
 end)
+
+local MUTATION_MODULE = table.concat({
+  "local M = {}",
+  "function M.is_positive(n)",
+  "  return n > 0",
+  "end",
+  "function M.min(a, b)",
+  "  if a < b then",
+  "    return a",
+  "  end",
+  "  return b",
+  "end",
+  "return M",
+}, "\n")
+
+--- Pins the `is_positive` boundary (so its mutants die) but not the `min` one,
+--- which leaves `a < b` -> `a <= b` alive: min(1, 2) is 1 either way.
+local MUTATION_SPEC = table.concat({
+  'local ntf = require("ntf")',
+  "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+  'local mod = require("mod")',
+  'describe("mod", function()',
+  '  it("detects positives at the boundary", function()',
+  "    assert.is_false(mod.is_positive(0))",
+  "    assert.is_true(mod.is_positive(1))",
+  "  end)",
+  '  it("takes the min", function()',
+  "    assert.equal(1, mod.min(1, 2))",
+  "  end)",
+  "end)",
+}, "\n")
+
+--- @return string root, string results_file
+local function mutation_project()
+  local root = helper.test_data.full_path
+  helper.test_data:create_file("lua/mod.lua", MUTATION_MODULE)
+  helper.test_data:create_file("spec/mod_spec.lua", MUTATION_SPEC)
+  return root, vim.fs.joinpath(root, "ntf-mutation.json")
+end
+
+describe("ntf --mutation", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("reports the mutants a passing suite fails to detect", function()
+    local root, results_file = mutation_project()
+
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("2 tests: 2 passed", obj.stdout)
+    assert.match("Mutation: %d+%.%d%%", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.survived)
+    assert.equal(0, results.counts.not_applied)
+    -- The mutants on `n > 0` die: the spec pins that boundary.
+    assert.equal(2, results.counts.killed)
+  end)
+
+  it("reports a mutant no test reaches as uncovered", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("NO COVERAGE lua/dead%.lua:", obj.stdout)
+  end)
+
+  it("mutates only the files under the --mutation path", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+
+    local obj = helper.run_cli({ "--mutation=lua/mod.lua", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("dead%.lua", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
+  end)
+
+  it("exits non-zero when the score is below --mutation-threshold", function()
+    local root, results_file = mutation_project()
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-threshold=100", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("below the %-%-mutation%-threshold", obj.stderr)
+  end)
+
+  it("exits zero when the score meets --mutation-threshold", function()
+    local root, results_file = mutation_project()
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-threshold=0", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+  end)
+
+  it("counts a mutant that hangs the tests as detected", function()
+    local root = helper.test_data.full_path
+    local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
+    -- `i = i + 1` becomes `i = i - 1`, and the loop never ends.
+    helper.test_data:create_file(
+      "lua/loop.lua",
+      table.concat({
+        "local M = {}",
+        "function M.count(n)",
+        "  local i = 0",
+        "  while i < n do",
+        "    i = i + 1",
+        "  end",
+        "  return i",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/loop_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        'ntf.it("counts up to n", function()',
+        '  ntf.assert.equal(3, require("loop").count(3))',
+        "end)",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "--timeout=2000", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("1 timeout", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.timeout)
+  end)
+
+  it("skips the mutation run when the tests fail", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "spec/failing_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        'ntf.it("fails", function()',
+        "  ntf.assert.equal(1, 2)",
+        "end)",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("mutation run skipped", obj.stderr)
+    assert.no.match("Mutation:", obj.stdout)
+    assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+end)

@@ -27,11 +27,14 @@ local flag = function(name)
   error("not a documented flag: " .. name)
 end
 
+local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
+
 --- @param cli_args string[]
---- @param env table<string,string>? extra environment, merged into the inherited one
-local run_ntf = function(cli_args, env)
-  local cmd = vim.list_extend({ "./bin/ntf" }, cli_args)
-  local result = vim.system(cmd, { env = env }):wait()
+--- @param opts { env: table<string,string>?, cwd: string? }? env is merged into the inherited one
+local run_ntf = function(cli_args, opts)
+  opts = opts or {}
+  local cmd = vim.list_extend({ ntf_script }, cli_args)
+  local result = vim.system(cmd, { env = opts.env, cwd = opts.cwd }):wait()
   if result.code ~= 0 then
     error(("failed to run: %s\n%s"):format(table.concat(cmd, " "), result.stdout .. result.stderr))
   end
@@ -39,20 +42,23 @@ end
 
 -- The "writing specs" snippet is reused by both the vimdoc chapter and the
 -- README. A spec is not directly `dofile`-able (it needs ntf's build context),
--- so verify it by running it through the real CLI.
+-- so verify it by running it through the real CLI. The CLI only accepts
+-- `*_spec.lua` paths, so the run goes through a copy under that name.
 local example_path = ("./spec/lua/%s/example.lua"):format(plugin_name)
-run_ntf({ example_path })
+local example_spec = vim.fn.tempname() .. "_spec.lua"
+vim.fn.writefile(vim.fn.readfile(example_path), example_spec)
+run_ntf({ example_spec })
 
 local doc_dir = ("./spec/lua/%s/doc"):format(plugin_name)
 
 -- Documented hook commands show a user-local path; the flag token and the file
 -- basename are shared with the verified run so they cannot diverge.
 local test_hook_path = doc_dir .. "/test_hook.lua"
-run_ntf({ ("%s=%s"):format(flag("--test-hook"), test_hook_path), example_path })
+run_ntf({ ("%s=%s"):format(flag("--test-hook"), test_hook_path), example_spec })
 local test_hook_command = ("ntf %s=./%s"):format(flag("--test-hook"), vim.fs.basename(test_hook_path))
 
 local global_hook_path = doc_dir .. "/global_hook.lua"
-run_ntf({ ("%s=%s"):format(flag("--global-hook"), global_hook_path), example_path })
+run_ntf({ ("%s=%s"):format(flag("--global-hook"), global_hook_path), example_spec })
 local global_hook_command = ("ntf %s=./%s"):format(flag("--global-hook"), vim.fs.basename(global_hook_path))
 
 -- The debugger snippet requires lldebugger, which ntf does not depend on;
@@ -68,8 +74,8 @@ run_ntf({
   ("%s=%s"):format(flag("--test-hook"), debug_hook_path),
   flag("--jobs") .. "=1",
   flag("--filter") .. "=does something",
-  example_path,
-}, { LUA_PATH = stub_dir .. "/?.lua;;" })
+  example_spec,
+}, { env = { LUA_PATH = stub_dir .. "/?.lua;;" } })
 local debug_command = ("ntf %s=./%s %s=1 %s='the test name'"):format(
   flag("--test-hook"),
   vim.fs.basename(debug_hook_path),
@@ -77,16 +83,48 @@ local debug_command = ("ntf %s=./%s %s=1 %s='the test name'"):format(
   flag("--filter")
 )
 
+-- The coverage and mutation runs measure (and mutate) the whole project they are
+-- pointed at, which for ntf itself would be the entire code base. A throwaway
+-- project keeps those verified runs quick and self-contained.
+local project_dir = vim.fn.tempname()
+vim.fn.mkdir(vim.fs.joinpath(project_dir, "lua"), "p")
+vim.fn.mkdir(vim.fs.joinpath(project_dir, "spec"), "p")
+vim.fn.writefile({
+  "local M = {}",
+  "function M.is_positive(n)",
+  "  return n > 0",
+  "end",
+  "return M",
+}, vim.fs.joinpath(project_dir, "lua/mymod.lua"))
+vim.fn.writefile({
+  'local ntf = require("ntf")',
+  'ntf.it("is false at the boundary", function()',
+  '  ntf.assert.is_false(require("mymod").is_positive(0))',
+  "end)",
+}, vim.fs.joinpath(project_dir, "spec/mymod_spec.lua"))
+
 -- The documented coverage command is bare; the verified run redirects the stats
 -- file to a temp path to avoid littering the working tree.
 local coverage_flag = flag("--coverage")
-run_ntf({ ("%s=%s"):format(coverage_flag, vim.fn.tempname()), example_path })
+run_ntf({ ("%s=%s"):format(coverage_flag, vim.fn.tempname()), "spec" }, { cwd = project_dir })
 local coverage_command = "ntf " .. coverage_flag
+
+-- A threshold of 0 always passes, so the run exercises the whole pipeline
+-- without pinning a score here.
+local mutation_flag = flag("--mutation")
+run_ntf({
+  ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
+  ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
+  flag("--mutation-threshold") .. "=0",
+  "spec",
+}, { cwd = project_dir })
+local mutation_command = "ntf " .. mutation_flag
+local mutation_threshold_command = ("ntf %s %s=80"):format(mutation_flag, flag("--mutation-threshold"))
 
 -- The flags above appear in documented commands; the rest of the usage block is
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
-run_ntf({ flag("--timeout") .. "=60000", example_path })
+run_ntf({ flag("--timeout") .. "=60000", example_spec })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
   if not exercised_flags[f.name] then
@@ -107,6 +145,7 @@ require("genvdoc").generate(plugin_name, {
     patterns = {
       ("lua/%s/init.lua"):format(plugin_name),
       ("lua/%s/coverage/init.lua"):format(plugin_name),
+      ("lua/%s/mutation/init.lua"):format(plugin_name),
       ("lua/%s/helper.lua"):format(plugin_name),
       ("lua/%s/assert/meta.lua"):format(plugin_name),
       ("lua/%s/assert/init.lua"):format(plugin_name),
@@ -199,10 +238,57 @@ not skipped by the JIT, which makes a `--coverage` run slower than a plain one.]
       end,
     },
     {
+      name = "MUTATION TESTING",
+      body = function()
+        return table.concat({
+          [[
+`--mutation` measures how much of the covered code your tests actually pin down.
+It first runs the specs as usual (a mutant means nothing against a failing suite,
+so the run stops there if a test fails), then makes one small change at a time to
+the code under test — swapping `==` for `~=`, `and` for `or`, `+` for `-`, `<` for
+`<=`, flipping a boolean literal, dropping a `not`, bumping a number — and runs
+the tests again. A mutant that makes a test fail is detected; one that leaves the
+whole suite green is a hole in the tests, and is reported with the change it got
+away with:]],
+          util.help_code_block(mutation_command, { language = "sh" }),
+          [[
+Only the mutants a test can reach are run, using the same line coverage as
+`--coverage` (which `--mutation` therefore always collects): a mutant on a line no
+test executes is reported as uncovered rather than run. A mutant is run against
+its covering tests one at a time, cheapest first, and the run stops at the first
+test that detects it — in the same one-process-per-test isolation as a normal run.
+A test that hangs on a mutant (an infinite loop) is killed and counts as detected.
+
+The score is the share of detected mutants, counting an uncovered one as
+undetected. `--mutation-threshold=N` turns that into a gate, exiting non-zero when
+the score is below N percent:]],
+          util.help_code_block(mutation_threshold_command, { language = "sh" }),
+          [[
+`--mutation=PATH` restricts the mutated files to one file or directory, which is
+how you keep a run short: mutating everything means running the suite once per
+mutant. The full result — every mutant, its position, and what it became — is
+written to `ntf-mutation.json` (override with `--mutation-results=FILE`), which
+|ntf.mutation.decorate()| reads back to mark the survivors in a buffer.
+
+Two limits are worth knowing. A mutant is spliced in when the module is
+`require`d, so a file the specs load through `dofile`/`loadfile` instead keeps
+its original source and is reported as not applied — never as a survivor. And
+some mutants are equivalent to the code they replace, which no test can detect,
+so a perfect score is not the goal.]],
+        }, "\n")
+      end,
+    },
+    {
       name = "HIGHLIGHT GROUPS",
       body = function(ctx)
+        local files = {
+          ("./lua/%s/coverage/highlight_group.lua"):format(plugin_name),
+          ("./lua/%s/mutation/highlight_group.lua"):format(plugin_name),
+        }
         local sections = vim
-          .iter(util.extract_documented_table(("./lua/%s/coverage/highlight_group.lua"):format(plugin_name)))
+          .iter(files)
+          :map(util.extract_documented_table)
+          :flatten()
           :map(function(hl_group)
             return util.help_tagged(ctx, hl_group.key, "hl-" .. hl_group.key)
               .. util.indent(hl_group.document, 2)

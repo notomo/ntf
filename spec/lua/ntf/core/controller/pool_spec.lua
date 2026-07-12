@@ -31,4 +31,32 @@ end)
     assert.is_false(ok)
     assert.match("boom in callback", err)
   end)
+
+  it("hands each worker's own coverage to on_item_coverage", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("runs", function() end)
+  ntf.it("runs too", function() end)
+end)
+]])
+    local items = work.plan({ file })
+
+    local calls = {}
+    pool.run(items, {
+      root = helper.root,
+      coverage = true,
+      on_item_coverage = function(item_index, coverage)
+        table.insert(calls, { item_index = item_index, measured = coverage ~= nil })
+      end,
+    })
+    table.sort(calls, function(a, b)
+      return a.item_index < b.item_index
+    end)
+
+    assert.same({
+      { item_index = 1, measured = true },
+      { item_index = 2, measured = true },
+    }, calls)
+  end)
 end)

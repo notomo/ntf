@@ -7,13 +7,16 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --timeout=MS        kill a worker after MS milliseconds (default: 60000; 0 disables)
-    --filter=PATTERN    run only tests whose full name matches the Lua pattern
-    --jobs=N            max parallel nvim workers (default: cpu count)
-    --test-hook=FILE    run a Lua module providing setup/teardown around each test, in its worker
-    --global-hook=FILE  run a Lua module providing setup/teardown once around the whole run, in the launcher process
-    --coverage[=FILE]   measure line coverage; write luacov.stats.out (or FILE) and print a summary
-    -h, --help          show this help
+    --timeout=MS             kill a worker after MS milliseconds (default: 60000; 0 disables)
+    --filter=PATTERN         run only tests whose full name matches the Lua pattern
+    --jobs=N                 max parallel nvim workers (default: cpu count)
+    --test-hook=FILE         run a Lua module providing setup/teardown around each test, in its worker
+    --global-hook=FILE       run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --coverage[=FILE]        measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    --mutation[=PATH]        mutation-test the covered code (only under PATH, if given) once the tests pass
+    --mutation-threshold=N   exit non-zero when the mutation score is below N percent
+    --mutation-results=FILE  mutation results output path (default: ntf-mutation.json)
+    -h, --help               show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
 <
@@ -131,6 +134,45 @@ Coverage forces the interpreter (`jit.off()`) in each worker so the line hook is
 not skipped by the JIT, which makes a `--coverage` run slower than a plain one.
 
 ==============================================================================
+MUTATION TESTING                                        *ntf-MUTATION-TESTING*
+
+`--mutation` measures how much of the covered code your tests actually pin down.
+It first runs the specs as usual (a mutant means nothing against a failing suite,
+so the run stops there if a test fails), then makes one small change at a time to
+the code under test — swapping `==` for `~=`, `and` for `or`, `+` for `-`, `<` for
+`<=`, flipping a boolean literal, dropping a `not`, bumping a number — and runs
+the tests again. A mutant that makes a test fail is detected; one that leaves the
+whole suite green is a hole in the tests, and is reported with the change it got
+away with:
+>sh
+  ntf --mutation
+<
+Only the mutants a test can reach are run, using the same line coverage as
+`--coverage` (which `--mutation` therefore always collects): a mutant on a line no
+test executes is reported as uncovered rather than run. A mutant is run against
+its covering tests one at a time, cheapest first, and the run stops at the first
+test that detects it — in the same one-process-per-test isolation as a normal run.
+A test that hangs on a mutant (an infinite loop) is killed and counts as detected.
+
+The score is the share of detected mutants, counting an uncovered one as
+undetected. `--mutation-threshold=N` turns that into a gate, exiting non-zero when
+the score is below N percent:
+>sh
+  ntf --mutation --mutation-threshold=80
+<
+`--mutation=PATH` restricts the mutated files to one file or directory, which is
+how you keep a run short: mutating everything means running the suite once per
+mutant. The full result — every mutant, its position, and what it became — is
+written to `ntf-mutation.json` (override with `--mutation-results=FILE`), which
+|ntf.mutation.decorate()| reads back to mark the survivors in a buffer.
+
+Two limits are worth knowing. A mutant is spliced in when the module is
+`require`d, so a file the specs load through `dofile`/`loadfile` instead keeps
+its original source and is reported as not applied — never as a survivor. And
+some mutants are equivalent to the code they replace, which no test can detect,
+so a perfect score is not the goal.
+
+==============================================================================
 HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*
 
 NtfCoverageCovered                                     *hl-NtfCoverageCovered*
@@ -138,6 +180,9 @@ NtfCoverageCovered                                     *hl-NtfCoverageCovered*
 
 NtfCoverageMissed                                       *hl-NtfCoverageMissed*
   coverable-but-missed lines
+
+NtfMutationSurvived                                   *hl-NtfMutationSurvived*
+  lines with a mutant no test detected
 
 ==============================================================================
 Lua module: ntf                                                      *ntf-ntf*
@@ -307,6 +352,28 @@ get_module_root({module_name})                  *ntf.helper.get_module_root()*
     (string) root module name
 
 ==============================================================================
+Lua module: ntf.mutation                                    *ntf-ntf.mutation*
+
+decorate({opts})                                     *ntf.mutation.decorate()*
+  Mark a buffer's surviving mutants, read from an `ntf-mutation.json` (as
+  written by `ntf --mutation`): each line a mutant got away with is signed with
+  the `NtfMutationSurvived` highlight and shows the change it survived as
+  virtual text. Detected mutants are not drawn: they say nothing about the tests.
+
+  Parameters: ~
+    {opts} (NtfMutationDecorateOption?) |NtfMutationDecorateOption|
+
+is_decorated({opts})                             *ntf.mutation.is_decorated()*
+  Whether `decorate` is currently drawing on the buffer. Intended for a
+  toggle mapping paired with `decorate`.
+
+  Parameters: ~
+    {opts} (NtfMutationIsDecoratedOption?) |NtfMutationIsDecoratedOption|
+
+  Return: ~
+    (boolean) 
+
+==============================================================================
 STRUCTURE                                                      *ntf-STRUCTURE*
 
 NtfItOption                                                      *NtfItOption*
@@ -324,6 +391,18 @@ NtfCoverageDecorateOption                          *NtfCoverageDecorateOption*
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfCoverageIsDecoratedOption                    *NtfCoverageIsDecoratedOption*
+
+- {buffer} (integer?) target buffer (default `0`, the current buffer).
+
+NtfMutationDecorateOption                          *NtfMutationDecorateOption*
+
+- {enable} (boolean?) when `false`, clear the decoration instead of drawing
+    it (default `true`).
+- {path} (string?) mutation results file to read (default
+    `"./ntf-mutation.json"`).
+- {buffer} (integer?) target buffer (default `0`, the current buffer).
+
+NtfMutationIsDecoratedOption                    *NtfMutationIsDecoratedOption*
 
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
