@@ -53,6 +53,13 @@ describe("ntf.core.tree.build", function()
     assert.truthy(root.load_error)
   end)
 
+  it("captures a syntax error that keeps the file from even loading", function()
+    local root = tree.build(helper.write_spec([[describe((]]))
+
+    assert.truthy(root.load_error)
+    assert.same({}, root.children)
+  end)
+
   it("captures an error thrown inside a describe body on that describe node", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")

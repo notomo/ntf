@@ -114,6 +114,17 @@ describe("ntf.core.coverage.collector.measurable_files", function()
 
     assert.same({}, files)
   end)
+
+  it("still lists a lua file whose contents the meta check cannot read", function()
+    local file = helper.test_data:create_file("lua/locked.lua", "return 1")
+    -- Mode 0 strips read permission on POSIX; on Windows it only makes the file
+    -- read-only, so there the meta check simply takes the readable path.
+    vim.uv.fs_chmod(file, 0)
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
 end)
 
 describe("ntf.core.coverage.collector.exclude_roots", function()

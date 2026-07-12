@@ -1,5 +1,5 @@
 local ntf = require("ntf")
-local describe, it, assert = ntf.describe, ntf.it, ntf.assert
+local describe, it, finally, assert = ntf.describe, ntf.it, ntf.finally, ntf.assert
 local report = require("ntf.core.controller.report")
 
 describe("ntf.core.controller.report.output_block", function()
@@ -97,6 +97,16 @@ describe("ntf.core.controller.report.build", function()
     assert.match("\n  %?", text)
   end)
 
+  it("shows only the source when a trace has no line", function()
+    local results = {
+      { status = "failed", names = { "no line" }, message = "x", trace = { source = "@spec/x_spec.lua" } },
+    }
+    local text = report.build(results, {}, { color = false })
+
+    assert.match("spec/x_spec%.lua", text)
+    assert.no.match("x_spec%.lua:", text)
+  end)
+
   it("includes a traceback with ntf's own frames stripped out", function()
     local traceback = table.concat({
       "stack traceback:",
@@ -157,5 +167,36 @@ describe("ntf.core.controller.report.build", function()
     local text = report.build(results, {}, { color = true })
 
     assert.match("\27%[", text)
+  end)
+end)
+
+describe("ntf.core.controller.report.resolve_color", function()
+  local function fake_tty()
+    local saved = vim.uv.guess_handle
+    finally(function()
+      vim.uv.guess_handle = saved
+    end)
+    vim.uv.guess_handle = function()
+      return "tty"
+    end
+  end
+
+  it("is false when stdout is not a tty", function()
+    -- under the test runner a worker's stdout is a pipe to the controller
+    assert.is_false(report.resolve_color())
+  end)
+
+  it("is true on a tty when NO_COLOR is unset", function()
+    fake_tty()
+    vim.env.NO_COLOR = nil
+
+    assert.is_true(report.resolve_color())
+  end)
+
+  it("is false when NO_COLOR is set even on a tty", function()
+    fake_tty()
+    vim.env.NO_COLOR = "1"
+
+    assert.is_false(report.resolve_color())
   end)
 end)

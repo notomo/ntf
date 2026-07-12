@@ -89,6 +89,17 @@ describe("group", function()
 end)
 ]]
 
+local SLOW = [[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("takes its time", function()
+    vim.wait(200)
+  end)
+end)
+]]
+
 describe("bin/ntf end-to-end", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -201,6 +212,16 @@ describe("bin/ntf end-to-end", function()
 
     assert.equal(2, obj.code)
     assert.match("invalid %-%-timeout value", obj.stderr)
+  end)
+
+  it("disables the worker timeout with --timeout=0", function()
+    -- 0 must mean "no timer at all": a literal 0ms timer would kill the worker
+    -- before this slow-but-finite test could pass.
+    local path = spec("slow_spec.lua", SLOW)
+    local obj = run({ path }, { "--timeout=0" })
+
+    assert.equal(0, obj.code)
+    assert.match("1 passed", obj.stdout)
   end)
 
   it("runs the --test-hook module's setup before the spec and teardown after it", function()

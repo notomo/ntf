@@ -31,6 +31,12 @@ describe("ntf.core.worker.protocol emit -> parse", function()
     assert.is_nil(protocol.parse("just user output"))
     assert.is_nil(protocol.parse(nil))
   end)
+
+  it("returns nil when the block between the markers is not JSON", function()
+    local corrupted = emitted({ results = {} }):gsub("{.*}", "{ not json")
+
+    assert.is_nil(protocol.parse(corrupted))
+  end)
 end)
 
 describe("ntf.core.worker.protocol.env -> payload", function()
