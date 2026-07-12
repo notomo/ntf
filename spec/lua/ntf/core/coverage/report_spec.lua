@@ -74,4 +74,16 @@ describe("ntf.core.coverage.report.summary", function()
 
     assert.match("Coverage: n/a", text)
   end)
+
+  it("lists a file whose path is too long for a format width", function()
+    -- `string.format` rejects a width beyond 99, which a deep enough path would
+    -- otherwise reach.
+    local name = ("d"):rep(120) .. ".lua"
+    local src = helper.test_data:create_file(name, "return 1")
+    local merged = { [vim.fs.normalize(src)] = { max = 1, lines = { [1] = 1 } } }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    assert.match(name .. "%s+100.0%% %(1/1%)", text)
+  end)
 end)

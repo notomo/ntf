@@ -76,8 +76,11 @@ function M.summary(merged, cwd)
       total_coverable
     )
     for _, row in ipairs(rows) do
-      lines[#lines + 1] = ("  %-" .. (width + 2) .. "s%5.1f%% (%d/%d)"):format(
-        row.name,
+      -- Padded here rather than with a `%-Ns` width, which `string.format`
+      -- rejects beyond 99: a deep enough path would crash the summary.
+      local name = row.name .. (" "):rep(width + 2 - #row.name)
+      lines[#lines + 1] = ("  %s%5.1f%% (%d/%d)"):format(
+        name,
         100 * row.covered / row.coverable,
         row.covered,
         row.coverable
