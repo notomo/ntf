@@ -20,6 +20,9 @@ function M.specs(paths)
         add(file)
       end
     elseif vim.fn.filereadable(path) == 1 then
+      if not path:match("_spec%.lua$") then
+        error("not a *_spec.lua file: " .. path, 0)
+      end
       add(path)
     else
       error("path not found: " .. path, 0)
