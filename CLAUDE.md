@@ -21,10 +21,12 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   that, then `make doc`; never hand-edit the outputs.
 - `spec/.shared/` is cloned from notomo/workflow (gitignored); `make` clones it on
   first run.
-- Express structure with LuaCATS (`@class/@field/@param/@return/@type`). A comment
-  exists only to explain non-obvious "why", written carefully; never to restate
-  what code does. Exception: `---` descriptions on the public API (the files
-  genvdoc reads in `spec/lua/ntf/doc.lua`) are the doc source — keep them.
+- Express structure with LuaCATS (`@class/@field/@param/@return/@type`). Commit
+  messages carry the "why"; a code comment exists only for the non-obvious "why
+  not" (rejected alternatives, constraints), written carefully; never to restate
+  what code does. Exception: doc-source comments — `---` descriptions on the
+  public API, comments genvdoc extracts (e.g. `coverage/highlight_group.lua`),
+  and comments in snippets `spec/lua/ntf/doc.lua` renders — keep them.
 - Every code/command element in the generated docs must be backed by something
   `spec/lua/ntf/doc.lua` executes during `make doc` (runnable snippet files in
   `spec/lua/ntf/doc/`, commands assembled from verified runs); no unverified

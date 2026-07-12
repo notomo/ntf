@@ -2,7 +2,6 @@ local ntf = require("ntf")
 local describe, it, finally, assert = ntf.describe, ntf.it, ntf.finally, ntf.assert
 local protocol = require("ntf.core.worker.protocol")
 
--- Run `emit` with stdout captured, returning what it wrote.
 local function emitted(result)
   local written = {}
   local saved = io.stdout

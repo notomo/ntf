@@ -1,5 +1,3 @@
--- The controller-side view of one worker: launch the process for a work item
--- and interpret whatever comes back (results, coverage, captured output).
 local tree = require("ntf.core.tree")
 local protocol = require("ntf.core.worker.protocol")
 

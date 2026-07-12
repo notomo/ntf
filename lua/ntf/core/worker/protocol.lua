@@ -1,5 +1,3 @@
--- The controller<->worker contract: how a work item's parameters reach the
--- worker process, and how the worker's results come back on stdout.
 local M = {}
 
 --- @class NtfWorkerPayload parameters for one worker process

@@ -17,7 +17,6 @@ describe("string", function()
 end)
 ]]
 
--- Flatten every planned item back into the leaf id it would run.
 local function planned_ids(items)
   return vim.tbl_map(function(item)
     return item.node_id
