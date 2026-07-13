@@ -13,8 +13,8 @@ local M = {}
 --- @field end_row integer 1-based end line
 --- @field end_col integer 0-based end column, exclusive
 
--- The operator of a `binary_expression` is an anonymous child whose node type is
--- the operator text itself.
+-- Keyed by node type rather than by `get_node_text`: the grammar names an
+-- anonymous operator token by its own text.
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },
