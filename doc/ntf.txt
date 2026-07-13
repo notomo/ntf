@@ -12,6 +12,7 @@ USAGE                                                              *ntf-USAGE*
     --jobs=N                 max parallel nvim workers (default: cpu count)
     --test-hook=FILE         run a Lua module providing setup/teardown around each test, in its worker
     --global-hook=FILE       run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --exclude-code=PATH      leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
     --coverage[=FILE]        measure line coverage; write luacov.stats.out (or FILE) and print a summary
     --mutation[=PATH]        mutation-test the covered code (only under PATH, if given) once the tests pass
     --mutation-threshold=N   exit non-zero when the mutation score is below N percent
@@ -122,6 +123,13 @@ hook in each worker, merges the per-worker counts, prints a short summary, and
 writes a `luacov.stats.out` (override the path with `--coverage=FILE`):
 >sh
   ntf --coverage
+<
+Not everything under the working directory is code you hold your tests to —
+vendored third-party files, your own test helpers. `--exclude-code=PATH` leaves a
+file or directory out of the code under test; repeat it for each one. It applies
+to `--mutation` as well, since that measures the same code:
+>sh
+  ntf --coverage --exclude-code=lua/vendor --exclude-code=lua/mymod/test
 <
 The built-in summary is intentionally simple (its line classification is a
 heuristic). For an authoritative or HTML report, point LuaCov — which ntf does

@@ -7,6 +7,7 @@ local M = {}
 --- @field jobs integer? max parallel workers
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
+--- @field exclude_code string[] files or directories to leave out of the code under test
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field mutation boolean mutation-test the covered code after a passing run
@@ -27,6 +28,10 @@ M.flags = {
   {
     name = "--global-hook=FILE",
     description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
+  },
+  {
+    name = "--exclude-code=PATH",
+    description = "leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)",
   },
   {
     name = "--coverage[=FILE]",
@@ -67,6 +72,7 @@ function M.parse(argv)
     jobs = nil,
     test_hook = nil,
     global_hook = nil,
+    exclude_code = {},
     coverage = false,
     coverage_file = "luacov.stats.out",
     mutation = false,
@@ -91,6 +97,9 @@ function M.parse(argv)
     end,
     ["--global-hook"] = function(v)
       opts.global_hook = v
+    end,
+    ["--exclude-code"] = function(v)
+      table.insert(opts.exclude_code, v)
     end,
     ["--mutation-threshold"] = function(v)
       opts.mutation_threshold = tonumber(v)
@@ -156,6 +165,14 @@ function M.parse(argv)
   end
   if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
     return "--global-hook module not found: " .. opts.global_hook
+  end
+  if #opts.exclude_code > 0 and not (opts.coverage or opts.mutation) then
+    return "--exclude-code requires --coverage or --mutation"
+  end
+  for _, path in ipairs(opts.exclude_code) do
+    if vim.fn.filereadable(path) == 0 and vim.fn.isdirectory(path) == 0 then
+      return "--exclude-code path not found: " .. path
+    end
   end
   if not opts.mutation and (opts.mutation_threshold or opts.mutation_results ~= "ntf-mutation.json") then
     return "--mutation-threshold and --mutation-results require --mutation"

@@ -97,7 +97,9 @@ function M.run(root)
   local cwd = vim.fn.getcwd()
   -- The mutation run needs the same exclusion set as the coverage it is built on,
   -- so it is decided here rather than inside the pool.
-  local coverage_excludes = require("ntf.core.coverage.collector").exclude_roots(files, cwd)
+  local collector = require("ntf.core.coverage.collector")
+  local coverage_excludes =
+    vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
   local coverage_map = require("ntf.core.mutation.coverage_map").new()
 
   local results, coverage = require("ntf.core.controller.pool").run(items, {

@@ -34,6 +34,21 @@ function M.exclude_roots(spec_files, cwd)
   return roots
 end
 
+--- @param paths string[] files or directories (any form)
+--- @return string[] absolute prefixes: a directory keeps its trailing slash, so
+--- it cannot also match a sibling whose name merely starts with it
+function M.exclude_paths(paths)
+  local prefixes = {}
+  for _, path in ipairs(paths) do
+    local abs = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    if vim.fn.isdirectory(path) == 1 then
+      abs = abs:gsub("/$", "") .. "/"
+    end
+    table.insert(prefixes, abs)
+  end
+  return prefixes
+end
+
 --- @param path string file path (any form)
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip

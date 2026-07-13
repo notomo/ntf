@@ -31,6 +31,7 @@ Options:
   --jobs=N                 max parallel nvim workers (default: cpu count)
   --test-hook=FILE         run a Lua module providing setup/teardown around each test, in its worker
   --global-hook=FILE       run a Lua module providing setup/teardown once around the whole run, in the launcher process
+  --exclude-code=PATH      leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
   --coverage[=FILE]        measure line coverage; write luacov.stats.out (or FILE) and print a summary
   --mutation[=PATH]        mutation-test the covered code (only under PATH, if given) once the tests pass
   --mutation-threshold=N   exit non-zero when the mutation score is below N percent

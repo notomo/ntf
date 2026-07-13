@@ -102,12 +102,32 @@ vim.fn.writefile({
   '  ntf.assert.is_false(require("mymod").is_positive(0))',
   "end)",
 }, vim.fs.joinpath(project_dir, "spec/mymod_spec.lua"))
+vim.fn.mkdir(vim.fs.joinpath(project_dir, "lua/vendor"), "p")
+vim.fn.writefile({
+  "local M = {}",
+  "function M.f()",
+  "  return 1",
+  "end",
+  "return M",
+}, vim.fs.joinpath(project_dir, "lua/vendor/dep.lua"))
 
 -- The documented coverage command is bare; the verified run redirects the stats
 -- file to a temp path to avoid littering the working tree.
 local coverage_flag = flag("--coverage")
 run_ntf({ ("%s=%s"):format(coverage_flag, vim.fn.tempname()), "spec" }, { cwd = project_dir })
 local coverage_command = "ntf " .. coverage_flag
+
+local exclude_code_flag = flag("--exclude-code")
+run_ntf({
+  ("%s=%s"):format(coverage_flag, vim.fn.tempname()),
+  ("%s=%s"):format(exclude_code_flag, "lua/vendor"),
+  "spec",
+}, { cwd = project_dir })
+local exclude_code_command = ("ntf %s %s=lua/vendor %s=lua/mymod/test"):format(
+  coverage_flag,
+  exclude_code_flag,
+  exclude_code_flag
+)
 
 -- A threshold of 0 always passes, so the run exercises the whole pipeline
 -- without pinning a score here.
@@ -224,6 +244,12 @@ needs no extra install: ntf sets a Lua line
 hook in each worker, merges the per-worker counts, prints a short summary, and
 writes a `luacov.stats.out` (override the path with `--coverage=FILE`):]],
           util.help_code_block(coverage_command, { language = "sh" }),
+          [[
+Not everything under the working directory is code you hold your tests to —
+vendored third-party files, your own test helpers. `--exclude-code=PATH` leaves a
+file or directory out of the code under test; repeat it for each one. It applies
+to `--mutation` as well, since that measures the same code:]],
+          util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
 The built-in summary is intentionally simple (its line classification is a
 heuristic). For an authoritative or HTML report, point LuaCov — which ntf does

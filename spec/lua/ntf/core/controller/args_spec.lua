@@ -135,6 +135,34 @@ describe("ntf.core.controller.args.parse", function()
     end)
   end)
 
+  describe("--exclude-code", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("collects every occurrence", function()
+      local vendor = helper.test_data:create_dir("lua/vendor")
+      local test = helper.test_data:create_dir("lua/test")
+
+      local opts = args.parse({ "--coverage", "--exclude-code=" .. vendor, "--exclude-code=" .. test, "spec" })
+
+      assert.same({ vendor, test }, opts.exclude_code)
+    end)
+
+    it("errors when the path does not exist", function()
+      local err = args.parse({ "--coverage", "--exclude-code=/no/such/dir", "spec" })
+
+      assert.match("%-%-exclude%-code path not found", err)
+    end)
+
+    it("errors without something to exclude the code from", function()
+      local vendor = helper.test_data:create_dir("lua/vendor")
+
+      local err = args.parse({ "--exclude-code=" .. vendor, "spec" })
+
+      assert.match("%-%-exclude%-code requires %-%-coverage or %-%-mutation", err)
+    end)
+  end)
+
   describe("--mutation", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

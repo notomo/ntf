@@ -467,6 +467,53 @@ return {
     assert.match("lua/mod/unused%.lua%s+0%.0%%", obj.stdout)
   end)
 
+  it("measures nothing under an --exclude-code path", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return require('vendor.dep').g()",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    -- Excluded although the tests do run it: the point is that it is not the code
+    -- under test.
+    helper.test_data:create_file(
+      "lua/vendor/dep.lua",
+      table.concat({
+        "local M = {}",
+        "function M.g()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "--exclude-code=lua/vendor", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("lua/mod/init%.lua", obj.stdout)
+    assert.no.match("vendor", obj.stdout)
+    assert.no.match("vendor", table.concat(vim.fn.readfile(stats_file), "\n"))
+  end)
+
   it("counts every hot-loop iteration; the JIT must not skip the line hook", function()
     local root = helper.test_data.full_path
     helper.test_data:create_file(
@@ -707,6 +754,20 @@ describe("ntf --mutation", function()
 
     assert.equal(0, obj.code)
     assert.no.match("dead%.lua", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
+  end)
+
+  it("mutates nothing under an --exclude-code path", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/vendor/dep.lua", MUTATION_MODULE)
+
+    local obj =
+      helper.run_cli({ "--mutation", "--exclude-code=lua/vendor", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("vendor", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))

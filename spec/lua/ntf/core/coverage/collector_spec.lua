@@ -153,3 +153,30 @@ describe("ntf.core.coverage.collector.exclude_roots", function()
     assert.same({}, roots)
   end)
 end)
+
+describe("ntf.core.coverage.collector.exclude_paths", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("keeps a directory's trailing slash, so a sibling with the same prefix is not excluded", function()
+    local dir = helper.test_data:create_dir("lua/vendor")
+    helper.test_data:create_file("lua/vendored.lua", "return 1")
+
+    local prefixes = collector.exclude_paths({ dir })
+
+    assert.same({ vim.fs.normalize(dir) .. "/" }, prefixes)
+
+    local files = collector.measurable_files(helper.test_data.full_path, prefixes)
+    assert.same({ vim.fs.normalize(helper.test_data:path("lua/vendored.lua")) }, files)
+  end)
+
+  it("excludes a single file", function()
+    local file = helper.test_data:create_file("lua/skipped.lua", "return 1")
+    helper.test_data:create_file("lua/kept.lua", "return 1")
+
+    local prefixes = collector.exclude_paths({ file })
+
+    local files = collector.measurable_files(helper.test_data.full_path, prefixes)
+    assert.same({ vim.fs.normalize(helper.test_data:path("lua/kept.lua")) }, files)
+  end)
+end)
