@@ -792,6 +792,85 @@ describe("ntf --mutation", function()
     assert.equal(0, obj.code)
   end)
 
+  it("leaves a mutant listed in --mutation-baseline out of the score as equivalent", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({
+        version = 1,
+        entries = {
+          {
+            path = "lua/mod.lua",
+            col = 7,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(0, obj.code)
+    assert.match("Mutation: 100%.0%%", obj.stdout)
+    assert.match("1 equivalent", obj.stdout)
+    assert.no.match("SURVIVED", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.equivalent)
+    assert.equal(0, results.counts.survived)
+  end)
+
+  it("exits non-zero when a --mutation-baseline entry matches nothing", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({
+        version = 1,
+        entries = {
+          {
+            path = "lua/mod.lua",
+            col = 7,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a <= b then",
+            rationale = "stale: the marked line has changed",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(1, obj.code)
+    assert.match("LOST BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
+    assert.match("1 %-%-mutation%-baseline entry matched no mutant", obj.stderr)
+  end)
+
+  it("rejects an invalid --mutation-baseline before running the tests", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(2, obj.code)
+    assert.match("entries%[1%]", obj.stderr)
+    assert.no.match("passed", obj.stdout)
+  end)
+
   it("counts a mutant that hangs the tests as detected", function()
     local root = helper.test_data.full_path
     local results_file = vim.fs.joinpath(root, "ntf-mutation.json")

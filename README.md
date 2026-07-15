@@ -26,17 +26,18 @@ end
 Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
-  --timeout=MS             kill a worker after MS milliseconds (default: 60000; 0 disables)
-  --filter=PATTERN         run only tests whose full name matches the Lua pattern
-  --jobs=N                 max parallel nvim workers (default: cpu count)
-  --test-hook=FILE         run a Lua module providing setup/teardown around each test, in its worker
-  --global-hook=FILE       run a Lua module providing setup/teardown once around the whole run, in the launcher process
-  --exclude-code=PATH      leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
-  --coverage[=FILE]        measure line coverage; write luacov.stats.out (or FILE) and print a summary
-  --mutation[=PATH]        mutation-test the covered code (only under PATH, if given) once the tests pass
-  --mutation-threshold=N   exit non-zero when the mutation score is below N percent
-  --mutation-results=FILE  mutation results output path (default: ntf-mutation.json)
-  -h, --help               show this help
+  --timeout=MS              kill a worker after MS milliseconds (default: 60000; 0 disables)
+  --filter=PATTERN          run only tests whose full name matches the Lua pattern
+  --jobs=N                  max parallel nvim workers (default: cpu count)
+  --test-hook=FILE          run a Lua module providing setup/teardown around each test, in its worker
+  --global-hook=FILE        run a Lua module providing setup/teardown once around the whole run, in the launcher process
+  --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
+  --coverage[=FILE]         measure line coverage; write luacov.stats.out (or FILE) and print a summary
+  --mutation[=PATH]         mutation-test the covered code (only under PATH, if given) once the tests pass
+  --mutation-threshold=N    exit non-zero when the mutation score is below N percent
+  --mutation-baseline=FILE  leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
+  --mutation-results=FILE   mutation results output path (default: ntf-mutation.json)
+  -h, --help                show this help
 
 With no paths, runs the *_spec.lua files under ./spec.
 ```

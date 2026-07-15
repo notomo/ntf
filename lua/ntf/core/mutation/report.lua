@@ -16,6 +16,7 @@ local COUNT_LABELS = {
   { status = "survived", label = "survived", color = "red" },
   { status = "no_coverage", label = "no coverage", color = "yellow" },
   { status = "not_applied", label = "not applied", color = "yellow" },
+  { status = "equivalent", label = "equivalent", color = "green" },
 }
 
 --- @param file string absolute path
@@ -71,6 +72,20 @@ function M.summary(summary, cwd, opts)
         )
       )
     end
+  end
+
+  for _, entry in ipairs(summary.lost or {}) do
+    table.insert(
+      lines,
+      ("%s %s %s: %s -> %s at %q"):format(
+        paint("red", "LOST BASELINE"),
+        entry.path,
+        entry.operator,
+        entry.original,
+        entry.replacement,
+        entry.line
+      )
+    )
   end
 
   return table.concat(lines, "\n") .. "\n"

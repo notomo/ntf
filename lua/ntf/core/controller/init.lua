@@ -2,7 +2,7 @@ local M = {}
 
 --- Runs the mutants and reports them, once the tests have passed.
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
 function M.mutate(opts, ctx)
   local progress = require("ntf.core.controller.progress").mutation({
@@ -19,6 +19,7 @@ function M.mutate(opts, ctx)
     cwd = ctx.cwd,
     items = ctx.items,
     baseline_results = ctx.results,
+    baseline = ctx.baseline,
     coverage_map = ctx.coverage_map,
     coverage_excludes = ctx.coverage_excludes,
     on_start = progress.on_start,
@@ -29,6 +30,14 @@ function M.mutate(opts, ctx)
   require("ntf.core.mutation.results").write(opts.mutation_results, summary)
   io.stdout:write("\n" .. require("ntf.core.mutation.report").summary(summary, ctx.cwd, { color = ctx.color }))
 
+  local code = 0
+  if #summary.lost > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("%d --mutation-baseline entr%s matched no mutant\n"):format(#summary.lost, #summary.lost == 1 and "y" or "ies")
+    )
+    code = 1
+  end
   if opts.mutation_threshold and summary.score and summary.score < opts.mutation_threshold then
     io.stdout:flush()
     io.stderr:write(
@@ -37,9 +46,9 @@ function M.mutate(opts, ctx)
         opts.mutation_threshold
       )
     )
-    return 1
+    code = 1
   end
-  return 0
+  return code
 end
 
 --- @param root string ntf repository root (used to locate the worker script)
@@ -57,6 +66,19 @@ function M.run(root)
   end
 
   require("ntf.core.runtime").setup()
+
+  -- The baseline is loaded (and rejected) up front rather than in the mutation
+  -- phase: a malformed file should fail like any other bad flag, not after the
+  -- whole suite has run.
+  local mutation_baseline --- @type NtfMutationBaselineEntry[]?
+  if opts.mutation_baseline then
+    local loaded = require("ntf.core.mutation.baseline").load(opts.mutation_baseline)
+    if type(loaded) == "string" then
+      io.stderr:write(loaded .. "\n")
+      os.exit(2)
+    end
+    mutation_baseline = loaded
+  end
 
   local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths)
   if not ok then
@@ -149,6 +171,7 @@ function M.run(root)
       cwd = cwd,
       items = items,
       results = results,
+      baseline = mutation_baseline,
       coverage_map = coverage_map,
       coverage_excludes = coverage_excludes,
       color = color,

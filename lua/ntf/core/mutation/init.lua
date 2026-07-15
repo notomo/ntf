@@ -1,5 +1,6 @@
 local operators = require("ntf.core.mutation.operators")
 local runner = require("ntf.core.mutation.runner")
+local baseline = require("ntf.core.mutation.baseline")
 local collector = require("ntf.core.coverage.collector")
 
 local M = {}
@@ -9,13 +10,14 @@ local M = {}
 
 --- @class NtfMutationRecord
 --- @field mutant NtfMutant
---- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"
+--- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"
 --- @field killed_by string? full name of the test that detected the mutant
 
 --- @class NtfMutationSummary
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status
 --- @field score number? percent detected; nil when nothing was scoreable
+--- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 
 --- @param path string any form of a path
 --- @return string
@@ -70,6 +72,8 @@ local function score_of(summary_counts)
   -- A mutant no test reaches is undetected, not excluded: that is exactly what a
   -- coverage hole costs. A mutant that was never actually loaded, on the other
   -- hand, says nothing about the tests, so it stays out of the score.
+  -- A baseline-equivalent mutant is undetectable by definition, so it also
+  -- stays out.
   local scoreable = detected + summary_counts.survived + summary_counts.no_coverage
   if scoreable == 0 then
     return nil
@@ -78,11 +82,12 @@ local function score_of(summary_counts)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
 function M.run(opts, ctx)
   local cwd = normalize(ctx.cwd)
   local durations = baseline_durations(ctx.baseline_results)
+  local matcher = baseline.matcher(ctx.baseline or {})
 
   --- @type NtfMutationRecord[]
   local records = {}
@@ -93,6 +98,8 @@ function M.run(opts, ctx)
 
   for _, file in ipairs(target_files(cwd, ctx.coverage_excludes, opts.mutation_path)) do
     local src = read_file(file) or ""
+    local src_lines = vim.split(src, "\n", { plain = true })
+    local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
     for _, site in ipairs(operators.enumerate(src)) do
       -- A mutant that does not compile would make every covering test error out
       -- and so count as detected, inflating the score. The operators are meant to
@@ -102,25 +109,29 @@ function M.run(opts, ctx)
         --- @type NtfMutant
         local mutant = vim.tbl_extend("force", site, { path = file })
 
-        local rows = {}
-        for row = mutant.row, mutant.end_row do
-          table.insert(rows, row)
-        end
+        if matcher.match(relative_path, src_lines[site.row] or "", site) then
+          table.insert(records, { mutant = mutant, status = "equivalent" })
+        else
+          local rows = {}
+          for row = mutant.row, mutant.end_row do
+            table.insert(rows, row)
+          end
 
-        table.insert(records, { mutant = mutant, status = "no_coverage" })
+          table.insert(records, { mutant = mutant, status = "no_coverage" })
 
-        local item_indexes = ctx.coverage_map.item_indexes(file, rows)
-        if #item_indexes > 0 then
-          local trials = vim.tbl_map(function(item_index)
-            local item = ctx.items[item_index]
-            return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
-          end, item_indexes)
-          table.sort(trials, function(a, b)
-            return a.baseline_ms < b.baseline_ms
-          end)
+          local item_indexes = ctx.coverage_map.item_indexes(file, rows)
+          if #item_indexes > 0 then
+            local trials = vim.tbl_map(function(item_index)
+              local item = ctx.items[item_index]
+              return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
+            end, item_indexes)
+            table.sort(trials, function(a, b)
+              return a.baseline_ms < b.baseline_ms
+            end)
 
-          table.insert(tasks, { mutant = mutant, trials = trials })
-          table.insert(task_records, #records)
+            table.insert(tasks, { mutant = mutant, trials = trials })
+            table.insert(task_records, #records)
+          end
         end
       end
     end
@@ -144,12 +155,12 @@ function M.run(opts, ctx)
     record.killed_by = outcome.killed_by
   end
 
-  local counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 }
+  local counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 }
   for _, record in ipairs(records) do
     counts[record.status] = counts[record.status] + 1
   end
 
-  return { records = records, counts = counts, score = score_of(counts) }
+  return { records = records, counts = counts, score = score_of(counts), lost = matcher.lost() }
 end
 
 return M

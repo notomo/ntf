@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "lua/ntf/core/controller/args.lua",
+      "col": 16,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "  local width = 0",
+      "rationale": "every flag name is longer than one character, so the seed never survives math.max"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 7,
+      "operator": "perturb-number",
+      "original": "20",
+      "replacement": "21",
+      "line": "  end, 20)",
+      "rationale": "the vim.wait poll interval changes scheduling granularity only; the awaited condition is unchanged"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 11,
+      "operator": "perturb-number",
+      "original": "10",
+      "replacement": "11",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the deadline only matters once the pool has already hung; detecting a shift means hanging the suite for ten minutes"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 16,
+      "operator": "perturb-number",
+      "original": "60",
+      "replacement": "61",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the deadline only matters once the pool has already hung; detecting a shift means hanging the suite for ten minutes"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 21,
+      "operator": "perturb-number",
+      "original": "1000",
+      "replacement": "1001",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the deadline only matters once the pool has already hung; detecting a shift means hanging the suite for ten minutes"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 45,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "      or line:find(\"in function 'error'\", 1, true)",
+      "rationale": "the needle \"in function 'error'\" has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 46,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "      or line:find(\"in function 'xpcall'\", 1, true)",
+      "rationale": "the needle \"in function 'xpcall'\" has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 43,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    local drop = line:find(\"/lua/ntf/\", 1, true)",
+      "rationale": "the needle \"/lua/ntf/\" has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 67,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  for _, line in ipairs(vim.split(traceback or \"\", \"\\n\", { plain = true })) do",
+      "rationale": "the separator \"\\n\" has no pattern-magic characters, so pattern and plain splits agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 54,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local lines = vim.split(text or \"\", \"\\n\", { plain = true })",
+      "rationale": "the separator \"\\n\" has no pattern-magic characters, so pattern and plain splits agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/mutation/operators.lua",
+      "col": 26,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "      return a.start_byte < b.start_byte",
+      "rationale": "only reached when the start bytes differ, so <= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/mutation/results.lua",
+      "col": 21,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "        return a.col < b.col",
+      "rationale": "only reached when the cols differ, so <= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/mutation/results.lua",
+      "col": 21,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "        return a.row < b.row",
+      "rationale": "only reached when the rows differ, so <= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "col": 27,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "      timer:start(timeout, 0, function()",
+      "rationale": "the timer needs to fire once; a 1ms repeat only re-kills an already killed worker"
+    },
+    {
+      "path": "lua/ntf/core/worker/executor.lua",
+      "col": 50,
+      "operator": "perturb-number",
+      "original": "1e9",
+      "replacement": "1000000001",
+      "line": "    result.duration = (vim.uv.hrtime() - start) / 1e9",
+      "rationale": "shifts the reported duration by one part per billion, far below timer noise"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 48,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local from = stdout and stdout:find(BEGIN, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 37,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local from = stdout:find(BEGIN, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 33,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local to = stdout:find(END, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 59,
+      "operator": "flip-boolean",
+      "original": "false",
+      "replacement": "true",
+      "line": "  local file = vim.api.nvim_get_runtime_file(root_pattern, false)[1]",
+      "rationale": "with all=true only [1] is taken, which is exactly the all=false result"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 57,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  return vim.split(_adjust_sep(file), \"/lua/\", { plain = true })[1]",
+      "rationale": "the separator \"/lua/\" has no pattern-magic characters, so pattern and plain splits agree on every input"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 63,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  return vim.split(module_name:gsub(\"%.\", \"/\"), \"/\", { plain = true })[1]",
+      "rationale": "the separator \"/\" has no pattern-magic characters, so pattern and plain splits agree on every input"
+    }
+  ]
+}

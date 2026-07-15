@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "lua/mymod.lua",
+      "col": 13,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "  return n > 0",
+      "rationale": "the callers never pass 1, so the shifted boundary is unobservable"
+    }
+  ]
+}

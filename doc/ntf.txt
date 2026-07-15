@@ -7,17 +7,18 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --timeout=MS             kill a worker after MS milliseconds (default: 60000; 0 disables)
-    --filter=PATTERN         run only tests whose full name matches the Lua pattern
-    --jobs=N                 max parallel nvim workers (default: cpu count)
-    --test-hook=FILE         run a Lua module providing setup/teardown around each test, in its worker
-    --global-hook=FILE       run a Lua module providing setup/teardown once around the whole run, in the launcher process
-    --exclude-code=PATH      leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
-    --coverage[=FILE]        measure line coverage; write luacov.stats.out (or FILE) and print a summary
-    --mutation[=PATH]        mutation-test the covered code (only under PATH, if given) once the tests pass
-    --mutation-threshold=N   exit non-zero when the mutation score is below N percent
-    --mutation-results=FILE  mutation results output path (default: ntf-mutation.json)
-    -h, --help               show this help
+    --timeout=MS              kill a worker after MS milliseconds (default: 60000; 0 disables)
+    --filter=PATTERN          run only tests whose full name matches the Lua pattern
+    --jobs=N                  max parallel nvim workers (default: cpu count)
+    --test-hook=FILE          run a Lua module providing setup/teardown around each test, in its worker
+    --global-hook=FILE        run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
+    --coverage[=FILE]         measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    --mutation[=PATH]         mutation-test the covered code (only under PATH, if given) once the tests pass
+    --mutation-threshold=N    exit non-zero when the mutation score is below N percent
+    --mutation-baseline=FILE  leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
+    --mutation-results=FILE   mutation results output path (default: ntf-mutation.json)
+    -h, --help                show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
 <
@@ -177,8 +178,38 @@ written to `ntf-mutation.json` (override with `--mutation-results=FILE`), which
 Two limits are worth knowing. A mutant is spliced in when the module is
 `require`d, so a file the specs load through `dofile`/`loadfile` instead keeps
 its original source and is reported as not applied — never as a survivor. And
-some mutants are equivalent to the code they replace, which no test can detect,
-so a perfect score is not the goal.
+some mutants are equivalent to the code they replace, which no test can detect.
+Rather than re-reviewing those survivors on every run, record each one — with
+the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:
+>json
+  {
+    "version": 1,
+    "entries": [
+      {
+        "path": "lua/mymod.lua",
+        "col": 13,
+        "operator": "perturb-number",
+        "original": "0",
+        "replacement": "1",
+        "line": "  return n > 0",
+        "rationale": "the callers never pass 1, so the shifted boundary is unobservable"
+      }
+    ]
+  }
+<
+>sh
+  ntf --mutation --mutation-baseline=spec/mutation_baseline.json
+<
+A listed mutant is reported as equivalent and leaves the score, which can then
+reach 100 and be held there with `--mutation-threshold`. An entry is copied from
+the survivor's record in the results file (`path` relative to the working
+directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
+the mutated `line`; ntf only reads the file, so keep it in the repository and
+edit it by hand. An entry names its mutant by the line's text rather than its
+number: it keeps matching while the code merely moves, and when the marked line
+itself changes the run fails, listing the entry as LOST — the judgement has to
+be made again, by fixing the entry or deleting it. The `rationale` is required;
+it is what that later judgement starts from.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*

@@ -13,6 +13,7 @@ local M = {}
 --- @field mutation boolean mutation-test the covered code after a passing run
 --- @field mutation_path string? restrict the mutated files to this file or directory
 --- @field mutation_threshold number? minimum mutation score, in percent
+--- @field mutation_baseline string? known-equivalent mutants file (JSON)
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
 
@@ -42,6 +43,10 @@ M.flags = {
     description = "mutation-test the covered code (only under PATH, if given) once the tests pass",
   },
   { name = "--mutation-threshold=N", description = "exit non-zero when the mutation score is below N percent" },
+  {
+    name = "--mutation-baseline=FILE",
+    description = "leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing",
+  },
   { name = "--mutation-results=FILE", description = "mutation results output path (default: ntf-mutation.json)" },
   { name = "-h, --help", description = "show this help" },
 }
@@ -78,6 +83,7 @@ function M.parse(argv)
     mutation = false,
     mutation_path = nil,
     mutation_threshold = nil,
+    mutation_baseline = nil,
     mutation_results = "ntf-mutation.json",
     help = false,
   }
@@ -103,6 +109,9 @@ function M.parse(argv)
     end,
     ["--mutation-threshold"] = function(v)
       opts.mutation_threshold = tonumber(v)
+    end,
+    ["--mutation-baseline"] = function(v)
+      opts.mutation_baseline = v
     end,
     ["--mutation-results"] = function(v)
       opts.mutation_results = v
@@ -174,8 +183,11 @@ function M.parse(argv)
       return "--exclude-code path not found: " .. path
     end
   end
-  if not opts.mutation and (opts.mutation_threshold or opts.mutation_results ~= "ntf-mutation.json") then
-    return "--mutation-threshold and --mutation-results require --mutation"
+  if
+    not opts.mutation
+    and (opts.mutation_threshold or opts.mutation_baseline or opts.mutation_results ~= "ntf-mutation.json")
+  then
+    return "--mutation-threshold, --mutation-baseline, and --mutation-results require --mutation"
   end
   if
     opts.mutation_threshold
@@ -189,6 +201,9 @@ function M.parse(argv)
     and vim.fn.isdirectory(opts.mutation_path) == 0
   then
     return "--mutation path not found: " .. opts.mutation_path
+  end
+  if opts.mutation_baseline and vim.fn.filereadable(opts.mutation_baseline) == 0 then
+    return "--mutation-baseline file not found: " .. opts.mutation_baseline
   end
 
   return opts

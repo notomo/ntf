@@ -42,7 +42,7 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 3, "survived"),
         record(abs("lua/b.lua"), 4, "no_coverage"),
       },
-      counts = { killed = 1, timeout = 1, survived = 1, no_coverage = 1, not_applied = 0 },
+      counts = { killed = 1, timeout = 1, survived = 1, no_coverage = 1, not_applied = 0, equivalent = 0 },
       score = 50,
     }
 
@@ -61,7 +61,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("shows a path relative to the working directory, however that was spelled", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "survived"), record("/other/b.lua", 2, "survived") },
-      counts = { killed = 0, timeout = 0, survived = 2, no_coverage = 0, not_applied = 0 },
+      counts = { killed = 0, timeout = 0, survived = 2, no_coverage = 0, not_applied = 0, equivalent = 0 },
       score = 0,
     }
 
@@ -72,10 +72,37 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("SURVIVED /other/b%.lua:2", text)
   end)
 
+  it("counts the equivalents apart and lists the lost baseline entries", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "equivalent") },
+      counts = { killed = 1, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 1 },
+      score = 100,
+      lost = {
+        {
+          path = "lua/b.lua",
+          col = 3,
+          operator = "flip-boolean",
+          original = "true",
+          replacement = "false",
+          line = "  local x = true",
+          rationale = "unused",
+        },
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
+    assert.match("1 equivalent", text)
+    -- An equivalent mutant is settled; only the lost judgement needs attention.
+    assert.no.match("lua/a%.lua:2", text)
+    assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
+  end)
+
   it("reports n/a when there is no mutant to score", function()
     local summary = {
       records = {},
-      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
       score = nil,
     }
 

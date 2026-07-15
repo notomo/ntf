@@ -202,6 +202,20 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("invalid %-%-mutation%-threshold value", err)
     end)
 
+    it("reads the baseline file path", function()
+      local file = helper.test_data:create_file("baseline.json", "{}")
+
+      local opts = args.parse({ "--mutation", "--mutation-baseline=" .. file, "spec" })
+
+      assert.equal(file, opts.mutation_baseline)
+    end)
+
+    it("errors when the --mutation-baseline file does not exist", function()
+      local err = args.parse({ "--mutation", "--mutation-baseline=/no/such.json", "spec" })
+
+      assert.match("%-%-mutation%-baseline file not found", err)
+    end)
+
     it("errors when the mutation flags are given without --mutation", function()
       local err = args.parse({ "--mutation-threshold=80", "spec" })
 

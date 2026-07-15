@@ -141,6 +141,23 @@ run_ntf({
 local mutation_command = "ntf " .. mutation_flag
 local mutation_threshold_command = ("ntf %s %s=80"):format(mutation_flag, flag("--mutation-threshold"))
 
+-- The documented baseline lists mymod's one surviving mutant, so the threshold
+-- of 100 passes only if the equivalence marking actually applied.
+local mutation_baseline_path = doc_dir .. "/mutation_baseline.json"
+vim.fn.writefile(vim.fn.readfile(mutation_baseline_path), vim.fs.joinpath(project_dir, "spec/mutation_baseline.json"))
+local mutation_baseline_flag = flag("--mutation-baseline")
+run_ntf({
+  ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
+  ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
+  ("%s=%s"):format(mutation_baseline_flag, "spec/mutation_baseline.json"),
+  flag("--mutation-threshold") .. "=100",
+  "spec",
+}, { cwd = project_dir })
+local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):format(
+  mutation_flag,
+  mutation_baseline_flag
+)
+
 -- The flags above appear in documented commands; the rest of the usage block is
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
@@ -299,8 +316,22 @@ written to `ntf-mutation.json` (override with `--mutation-results=FILE`), which
 Two limits are worth knowing. A mutant is spliced in when the module is
 `require`d, so a file the specs load through `dofile`/`loadfile` instead keeps
 its original source and is reported as not applied — never as a survivor. And
-some mutants are equivalent to the code they replace, which no test can detect,
-so a perfect score is not the goal.]],
+some mutants are equivalent to the code they replace, which no test can detect.
+Rather than re-reviewing those survivors on every run, record each one — with
+the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:]],
+          util.help_code_block_from_file(mutation_baseline_path, { language = "json" }),
+          util.help_code_block(mutation_baseline_command, { language = "sh" }),
+          [[
+A listed mutant is reported as equivalent and leaves the score, which can then
+reach 100 and be held there with `--mutation-threshold`. An entry is copied from
+the survivor's record in the results file (`path` relative to the working
+directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
+the mutated `line`; ntf only reads the file, so keep it in the repository and
+edit it by hand. An entry names its mutant by the line's text rather than its
+number: it keeps matching while the code merely moves, and when the marked line
+itself changes the run fails, listing the entry as LOST — the judgement has to
+be made again, by fixing the entry or deleting it. The `rationale` is required;
+it is what that later judgement starts from.]],
         }, "\n")
       end,
     },
