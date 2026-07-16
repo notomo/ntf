@@ -70,4 +70,10 @@ describe("ntf.core.coverage.stats.read", function()
 
     assert.same({}, stats.read(out))
   end)
+
+  it("skips a trailing header whose counts line never got written", function()
+    local out = helper.test_data:create_file("luacov.stats.out", "3:/x.lua\n")
+
+    assert.same({}, stats.read(out))
+  end)
 end)

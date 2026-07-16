@@ -101,6 +101,49 @@ describe("ntf.core.controller.args.parse", function()
     assert.equal("spec", opts.paths[1])
   end)
 
+  it("parses -h and --help into opts.help", function()
+    assert.is_true(args.parse({ "-h" }).help)
+    assert.is_true(args.parse({ "--help" }).help)
+  end)
+
+  it("rejects an unknown option", function()
+    local err = args.parse({ "-x", "spec" })
+
+    assert.match("unknown option: %-x", err)
+  end)
+
+  it("aligns the longest flag name two spaces from its description in usage", function()
+    local longest = args.flags[1]
+    for _, flag in ipairs(args.flags) do
+      if #flag.name > #longest.name then
+        longest = flag
+      end
+    end
+
+    local lines = vim.split(args.usage(), "\n", { plain = true })
+
+    assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(longest.name, longest.description)))
+  end)
+
+  describe("--test-hook", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("parses --test-hook into opts.test_hook", function()
+      local path = helper.test_data:create_file("test_hook.lua", "return {}")
+
+      local opts = args.parse({ "--test-hook=" .. path, "spec" })
+
+      assert.equal(path, opts.test_hook)
+    end)
+
+    it("errors when the --test-hook module does not exist", function()
+      local err = args.parse({ "--test-hook=/no/such/hook.lua", "spec" })
+
+      assert.match("%-%-test%-hook module not found", err)
+    end)
+  end)
+
   describe("--global-hook", function()
     before_each(helper.before_each)
     after_each(helper.after_each)
@@ -202,6 +245,24 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("invalid %-%-mutation%-threshold value", err)
     end)
 
+    it("errors when the threshold is negative", function()
+      local err = args.parse({ "--mutation", "--mutation-threshold=-1", "spec" })
+
+      assert.match("invalid %-%-mutation%-threshold value", err)
+    end)
+
+    it("accepts the 0 and 100 threshold boundaries", function()
+      assert.equal(0, args.parse({ "--mutation", "--mutation-threshold=0", "spec" }).mutation_threshold)
+      assert.equal(100, args.parse({ "--mutation", "--mutation-threshold=100", "spec" }).mutation_threshold)
+    end)
+
+    it("treats --mutation= with an empty value as bare --mutation", function()
+      local opts = args.parse({ "--mutation=", "spec" })
+
+      assert.is_true(opts.mutation)
+      assert.is_nil(opts.mutation_path)
+    end)
+
     it("reads the baseline file path", function()
       local file = helper.test_data:create_file("baseline.json", "{}")
 
@@ -218,6 +279,20 @@ describe("ntf.core.controller.args.parse", function()
 
     it("errors when the mutation flags are given without --mutation", function()
       local err = args.parse({ "--mutation-threshold=80", "spec" })
+
+      assert.match("require %-%-mutation", err)
+    end)
+
+    it("errors when --mutation-baseline alone is given without --mutation", function()
+      local file = helper.test_data:create_file("baseline.json", "{}")
+
+      local err = args.parse({ "--mutation-baseline=" .. file, "spec" })
+
+      assert.match("require %-%-mutation", err)
+    end)
+
+    it("errors when --mutation-results alone is given without --mutation", function()
+      local err = args.parse({ "--mutation-results=out.json", "spec" })
 
       assert.match("require %-%-mutation", err)
     end)

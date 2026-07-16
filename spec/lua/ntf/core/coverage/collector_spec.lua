@@ -107,6 +107,15 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({}, files)
   end)
 
+  it("lists only lua files", function()
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    helper.test_data:create_file("lua/notes.txt", "just text")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
+
   it("skips LuaCATS meta files", function()
     helper.test_data:create_file("lua/meta.lua", "--- @meta\nlocal M = {}\nreturn M")
 

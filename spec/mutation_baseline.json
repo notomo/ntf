@@ -11,6 +11,87 @@
       "rationale": "every flag name is longer than one character, so the seed never survives math.max"
     },
     {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 25,
+      "operator": "swap-relational",
+      "original": "==",
+      "replacement": "~=",
+      "line": "  local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. \"/\"",
+      "rationale": "only an out-of-cwd path from the line hook reaches the difference, and hook execution is invisible to the outer run's coverage, so no covering test can exist"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 24,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "          if prefix:sub(1, #exclude) == exclude then",
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 19,
+      "operator": "flip-boolean",
+      "original": "false",
+      "replacement": "true",
+      "line": "            return false",
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 23,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "      target = { max = 0, lines = {} }",
+      "rationale": "workers create an entry only after recording a line, so entry.max is at least 1 and the seed never survives math.max"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 61,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "    target.max = math.max(target.max, tonumber(entry.max) or 0)",
+      "rationale": "entry.max arrives as a number (or its JSON string form), so tonumber always succeeds and the fallback is never read"
+    },
+    {
+      "path": "lua/ntf/core/coverage/lines.lua",
+      "col": 19,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "      return total > 0 and total == closures",
+      "rationale": "the grammar's expression_list always contains at least one expression, so total is never 0"
+    },
+    {
+      "path": "lua/ntf/core/coverage/stats.lua",
+      "col": 12,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "  if #out > 0 then",
+      "rationale": "out grows by two lines per file, so its length is never 1"
+    },
+    {
+      "path": "lua/ntf/core/mutation/coverage_map.lua",
+      "col": 30,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "          items[item_index] = true",
+      "rationale": "item_indexes iterates the keys with pairs, so the stored boolean is never read"
+    },
+    {
+      "path": "lua/ntf/core/mutation/coverage_map.lua",
+      "col": 27,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "        seen[item_index] = true",
+      "rationale": "tbl_keys collects the keys, so the stored boolean is never read"
+    },
+    {
       "path": "lua/ntf/core/mutation/operators.lua",
       "col": 26,
       "operator": "swap-relational",
