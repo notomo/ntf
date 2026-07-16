@@ -38,6 +38,33 @@
       "rationale": "only reached when the rows differ, so <= behaves identically"
     },
     {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 29,
+      "operator": "swap-logical",
+      "original": "or",
+      "replacement": "and",
+      "line": "  info = debug.getinfo(level or 3, \"Sl\")",
+      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 32,
+      "operator": "perturb-number",
+      "original": "3",
+      "replacement": "4",
+      "line": "  info = debug.getinfo(level or 3, \"Sl\")",
+      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 50,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "    error({ [M.PENDING] = true, message = name }, 0)",
+      "rationale": "Lua prepends position info only to string error values, and this one is a table, so the level argument is never used"
+    },
+    {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 48,
       "operator": "flip-boolean",
@@ -63,6 +90,24 @@
       "replacement": "false",
       "line": "  local to = stdout:find(END, 1, true)",
       "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 30,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local to = stdout:find(END, 1, true)",
+      "rationale": "starting the search at byte 2 only misses a match at byte 1, and the END marker always follows an emitted BEGIN block, so it can never sit there"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 46,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local json = stdout:sub(from + #BEGIN, to - 1)",
+      "rationale": "emit writes a newline between the JSON and the END marker, so the shorter slice sheds only whitespace that vim.json.decode ignores"
     }
   ]
 }

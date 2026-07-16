@@ -37,6 +37,18 @@ describe("ntf.core.worker.protocol emit -> parse", function()
 
     assert.is_nil(protocol.parse(corrupted))
   end)
+
+  it("parses a result block that sits at the first byte of the stdout", function()
+    local stdout = emitted({ results = { { id = "1.1", status = "passed" } } }):sub(2)
+
+    assert.equal("1.1", protocol.parse(stdout).results[1].id)
+  end)
+
+  it("returns nil when the worker died before writing the end marker", function()
+    local truncated = emitted({ results = {} }):gsub("\n[^\n]+\n$", "")
+
+    assert.is_nil(protocol.parse(truncated))
+  end)
 end)
 
 describe("ntf.core.worker.protocol.env -> payload", function()
@@ -61,5 +73,15 @@ describe("ntf.core.worker.protocol.captured_output", function()
 
   it("is empty when the worker wrote nothing of its own", function()
     assert.equal("", protocol.captured_output(emitted({ results = {} }), ""))
+  end)
+
+  it("is empty when the result block sits at the first byte of the stdout", function()
+    assert.equal("", protocol.captured_output(emitted({ results = {} }):sub(2), ""))
+  end)
+
+  it("keeps the user's own trailing newline, dropping only emit's separator", function()
+    local stdout = "written to stdout\n" .. emitted({ results = {} })
+
+    assert.equal("written to stdout\n", protocol.captured_output(stdout, ""))
   end)
 end)

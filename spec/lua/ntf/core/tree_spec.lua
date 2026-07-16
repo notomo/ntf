@@ -41,6 +41,14 @@ describe("ntf.core.tree.build", function()
     assert.equal("pending two", pending_node.name)
   end)
 
+  it("records the line a body-less pending() was declared on", function()
+    local path = helper.write_spec(source)
+    local root = tree.build(path)
+    local pending_node = root.children[1].children[2]
+    assert.equal("@" .. path, pending_node.trace.source)
+    assert.equal(6, pending_node.trace.line)
+  end)
+
   it("records an it-level timeout opt-in", function()
     local root = tree.build(helper.write_spec(source))
     local timed_it = root.children[1].children[4]
@@ -75,6 +83,13 @@ end)
     assert.is_nil(root.load_error)
     local outer = root.children[1]
     assert.match("broken describe body", tostring(outer.load_error))
+  end)
+end)
+
+describe("ntf.core.tree.full_name", function()
+  it("joins names with a space, dropping empty segments", function()
+    assert.equal("outer inner three", tree.full_name({ "outer", "", "inner", "three" }))
+    assert.equal("", tree.full_name({}))
   end)
 end)
 

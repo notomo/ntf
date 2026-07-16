@@ -7,6 +7,12 @@ describe("ntf.assert", function()
     return not ok
   end
 
+  local function failure(fn)
+    local ok, err = pcall(fn)
+    assert.is_false(ok)
+    return err
+  end
+
   it("supports equal / same", function()
     assert.equal(1, 1)
     assert.same({ a = 1, b = { 2 } }, { a = 1, b = { 2 } })
@@ -29,6 +35,100 @@ describe("ntf.assert", function()
     end))
   end)
 
+  it("truthy accepts everything but nil and false", function()
+    assert.truthy(true)
+    assert.truthy(0)
+    assert.truthy("")
+    assert.is_true(fails(function()
+      assert.truthy(false)
+    end))
+    assert.is_true(fails(function()
+      assert.truthy(nil)
+    end))
+  end)
+
+  it("falsy accepts only nil and false", function()
+    assert.falsy(false)
+    assert.falsy(nil)
+    assert.is_true(fails(function()
+      assert.falsy(1)
+    end))
+    assert.is_true(fails(function()
+      assert.falsy(0)
+    end))
+  end)
+
+  it("reports the failing values in the failure message", function()
+    assert.match(
+      "expected to be equal.\nleft : 1\nright: 2",
+      failure(function()
+        assert.equal(1, 2)
+      end)
+    )
+    assert.match(
+      "expected to be not equal, but both are: 1",
+      failure(function()
+        assert.no.equal(1, 1)
+      end)
+    )
+  end)
+
+  it("reports the got value for truthy / falsy failures", function()
+    assert.match(
+      "expected a truthy value, but got: false",
+      failure(function()
+        assert.truthy(false)
+      end)
+    )
+    assert.match(
+      "expected a falsy value, but got: 1",
+      failure(function()
+        assert.no.truthy(1)
+      end)
+    )
+    assert.match(
+      "expected a falsy value, but got: 1",
+      failure(function()
+        assert.falsy(1)
+      end)
+    )
+    assert.match(
+      "expected a truthy value, but got: false",
+      failure(function()
+        assert.no.falsy(false)
+      end)
+    )
+  end)
+
+  it("reports the got value for is_true / is_false / is_nil failures", function()
+    assert.match(
+      "expected true, but got: false",
+      failure(function()
+        assert.is_true(false)
+      end)
+    )
+    assert.match(
+      "expected false, but got: true",
+      failure(function()
+        assert.is_false(true)
+      end)
+    )
+    assert.match(
+      "expected nil, but got: 1",
+      failure(function()
+        assert.is_nil(1)
+      end)
+    )
+  end)
+
+  it("points the failure at the assertion call site", function()
+    local function failing()
+      assert.equal(1, 2)
+    end
+    local line = debug.getinfo(failing, "S").linedefined + 1
+    assert.match("init_spec%.lua:" .. line .. ": expected to be equal", failure(failing))
+  end)
+
   it("supports match", function()
     assert.match("b.d", "abcd")
     assert.is_true(fails(function()
@@ -49,6 +149,14 @@ describe("ntf.assert", function()
     assert.is_true(fails(function()
       assert(false, "boom")
     end))
+  end)
+
+  it("callable form reports the given message at the caller's line", function()
+    local function failing()
+      assert(false, "boom")
+    end
+    local line = debug.getinfo(failing, "S").linedefined + 1
+    assert.match("init_spec%.lua:" .. line .. ": boom$", failure(failing))
   end)
 
   it("can register a custom assertion via ntf.assert.register", function()
@@ -76,6 +184,20 @@ describe("ntf.assert", function()
     assert.is_true(fails(function()
       assert.spec_double(3, 7)
     end))
+  end)
+
+  it("register_eq hands only the leading args to get_actual", function()
+    require("ntf.assert").register_eq("spec_arg_count", function(...)
+      return select("#", ...)
+    end)
+    assert.spec_arg_count("a", "b", 2)
+  end)
+
+  it("register_same hands only the leading args to get_actual", function()
+    require("ntf.assert").register_same("spec_arg_count_same", function(...)
+      return { count = select("#", ...) }
+    end)
+    assert.spec_arg_count_same("a", "b", { count = 2 })
   end)
 
   it("registers deep-equality asserts via ntf.assert.register_same", function()

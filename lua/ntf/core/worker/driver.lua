@@ -22,7 +22,10 @@ local M = {}
 local function results_of(item, obj, timed_out_ms)
   local decoded = protocol.parse(obj.stdout)
 
-  if decoded and decoded.results then
+  -- An empty list is an error rather than a clean pass: the worker runs exactly
+  -- one requested node, so reporting nothing means the node was never found in
+  -- the rebuilt tree (e.g. a mutant broke the id scheme), not that it passed.
+  if decoded and decoded.results and #decoded.results > 0 then
     for _, result in ipairs(decoded.results) do
       result.file = item.file
     end
@@ -35,6 +38,7 @@ local function results_of(item, obj, timed_out_ms)
   else
     detail = (obj.stderr ~= "" and obj.stderr)
       or (decoded and decoded.load_error)
+      or (decoded and decoded.results and "worker reported no result for the requested test")
       or ("worker exited with code " .. tostring(obj.code))
   end
   return {
