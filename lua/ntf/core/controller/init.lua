@@ -102,6 +102,11 @@ function M.run(root)
 
   local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
+  local schedule = require("ntf.core.controller.schedule")
+  local schedule_cache_path = opts.schedule_cache or schedule.default_path()
+  local schedule_cache = schedule.load(schedule_cache_path)
+  items = schedule.order(items, schedule_cache, vim.fn.getcwd())
+
   local prog
   if vim.uv.guess_handle(2) == "tty" then
     prog = require("ntf.core.controller.progress").new({
@@ -144,6 +149,8 @@ function M.run(root)
   if prog then
     prog.finish()
   end
+
+  schedule.save(schedule_cache_path, schedule_cache, results, cwd)
 
   local teardown_err
   xpcall(global_hook.teardown, function(err)

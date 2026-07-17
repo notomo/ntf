@@ -29,6 +29,7 @@ Options:
   --timeout=MS              kill a worker after MS milliseconds (default: 60000; 0 disables)
   --filter=PATTERN          run only tests whose full name matches the Lua pattern
   --jobs=N                  max parallel nvim workers (default: cpu count)
+  --schedule-cache=FILE     per-test duration cache used to run the slowest tests first (default: under the nvim cache dir)
   --test-hook=FILE          run a Lua module providing setup/teardown around each test, in its worker
   --global-hook=FILE        run a Lua module providing setup/teardown once around the whole run, in the launcher process
   --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)

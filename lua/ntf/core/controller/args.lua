@@ -5,6 +5,7 @@ local M = {}
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
+--- @field schedule_cache string? per-test duration cache path (nil = under the nvim cache dir)
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field exclude_code string[] files or directories to leave out of the code under test
@@ -22,6 +23,10 @@ M.flags = {
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
+  {
+    name = "--schedule-cache=FILE",
+    description = "per-test duration cache used to run the slowest tests first (default: under the nvim cache dir)",
+  },
   {
     name = "--test-hook=FILE",
     description = "run a Lua module providing setup/teardown around each test, in its worker",
@@ -75,6 +80,7 @@ function M.parse(argv)
     timeout = 60000,
     filter = nil,
     jobs = nil,
+    schedule_cache = nil,
     test_hook = nil,
     global_hook = nil,
     exclude_code = {},
@@ -97,6 +103,9 @@ function M.parse(argv)
     end,
     ["--jobs"] = function(v)
       opts.jobs = tonumber(v)
+    end,
+    ["--schedule-cache"] = function(v)
+      opts.schedule_cache = v
     end,
     ["--test-hook"] = function(v)
       opts.test_hook = v

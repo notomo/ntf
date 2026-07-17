@@ -29,12 +29,17 @@ end
 
 local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
 
+-- The verified runs share one throwaway cache home: some run in random temp
+-- cwds, whose default schedule caches would otherwise pile up in the real one.
+local cache_home = vim.fn.tempname()
+
 --- @param cli_args string[]
 --- @param opts { env: table<string,string>?, cwd: string? }? env is merged into the inherited one
 local run_ntf = function(cli_args, opts)
   opts = opts or {}
   local cmd = vim.list_extend({ ntf_script }, cli_args)
-  local result = vim.system(cmd, { env = opts.env, cwd = opts.cwd }):wait()
+  local env = vim.tbl_extend("force", { XDG_CACHE_HOME = cache_home }, opts.env or {})
+  local result = vim.system(cmd, { env = env, cwd = opts.cwd }):wait()
   if result.code ~= 0 then
     error(("failed to run: %s\n%s"):format(table.concat(cmd, " "), result.stdout .. result.stderr))
   end
@@ -162,6 +167,7 @@ local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):form
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
 run_ntf({ flag("--timeout") .. "=60000", example_spec })
+run_ntf({ ("%s=%s"):format(flag("--schedule-cache"), vim.fn.tempname()), example_spec })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
   if not exercised_flags[f.name] then

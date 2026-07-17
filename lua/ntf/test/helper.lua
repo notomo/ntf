@@ -30,7 +30,8 @@ function helper.run_cli(args, cwd)
   -- A .bat cannot be spawned directly by libuv; route it through cmd.exe.
   local cmd = is_win and { "cmd.exe", "/c", script } or { script }
   cmd = vim.list_extend(cmd, args)
-  return vim.system(cmd, { text = true, cwd = cwd or root }):wait(60000)
+  local env = { XDG_CACHE_HOME = helper.test_data:path("xdg_cache") }
+  return vim.system(cmd, { text = true, cwd = cwd or root, env = env }):wait(60000)
 end
 
 return helper

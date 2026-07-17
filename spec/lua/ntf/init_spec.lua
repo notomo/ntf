@@ -224,6 +224,27 @@ describe("bin/ntf end-to-end", function()
     assert.match("1 passed", obj.stdout)
   end)
 
+  it("records each test's duration in the --schedule-cache file, merging across runs", function()
+    spec("pass_spec.lua", PASSING)
+    local cache_file = helper.test_data:path("schedule.json")
+    local root = helper.test_data.full_path
+
+    local obj = helper.run_cli({ "--schedule-cache=" .. cache_file, "pass_spec.lua" }, root)
+
+    assert.equal(0, obj.code)
+    local by_name = vim.json.decode(table.concat(vim.fn.readfile(cache_file), "\n")).files["pass_spec.lua"]
+    assert.is_true(by_name["group adds"].ms > 0)
+    assert.equal("passed", by_name["group adds"].status)
+    assert.is_true(by_name["group also passes"].ms > 0)
+
+    local filtered = helper.run_cli({ "--schedule-cache=" .. cache_file, "--filter=adds", "pass_spec.lua" }, root)
+
+    assert.equal(0, filtered.code)
+    by_name = vim.json.decode(table.concat(vim.fn.readfile(cache_file), "\n")).files["pass_spec.lua"]
+    assert.is_true(by_name["group adds"].ms > 0)
+    assert.is_true(by_name["group also passes"].ms > 0)
+  end)
+
   it("runs the --test-hook module's setup before the spec and teardown after it", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "hook.log")
     local path = spec(
@@ -899,7 +920,7 @@ describe("ntf --mutation", function()
       }, "\n")
     )
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "--timeout=2000", "spec" }, root)
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "--timeout=1000", "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("1 timeout", obj.stdout)
