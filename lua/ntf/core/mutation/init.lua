@@ -53,6 +53,43 @@ local function target_files(cwd, excludes, mutation_path)
   end, files)
 end
 
+--- @param cwd string normalized absolute working directory
+--- @param excludes string[] absolute dir prefixes to skip
+--- @param mutation_path string? restrict to this file or directory
+--- @return { mutant: NtfMutant, relative_path: string, line_text: string }[]
+local function enumerate_mutants(cwd, excludes, mutation_path)
+  local entries = {}
+  for _, file in ipairs(target_files(cwd, excludes, mutation_path)) do
+    local src = read_file(file) or ""
+    local src_lines = vim.split(src, "\n", { plain = true })
+    local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
+    for _, site in ipairs(operators.enumerate(src)) do
+      -- A mutant that does not compile would make every covering test error out
+      -- and so count as detected, inflating the score. The operators are meant to
+      -- keep the source valid; this only guards against a grammar surprise.
+      local mutated = operators.apply(src, site)
+      if mutated and loadstring(mutated, "@" .. file) then
+        table.insert(entries, {
+          mutant = vim.tbl_extend("force", site, { path = file }),
+          relative_path = relative_path,
+          line_text = src_lines[site.row] or "",
+        })
+      end
+    end
+  end
+  return entries
+end
+
+--- @param mutant NtfMutant
+--- @return integer[]
+local function rows_of(mutant)
+  local rows = {}
+  for row = mutant.row, mutant.end_row do
+    table.insert(rows, row)
+  end
+  return rows
+end
+
 --- @param results NtfResult[]
 --- @return table<string, number> # "<file>\0<id>" -> duration in ms
 local function baseline_durations(results)
@@ -96,43 +133,26 @@ function M.run(opts, ctx)
   --- @type integer[] index into records, parallel to tasks
   local task_records = {}
 
-  for _, file in ipairs(target_files(cwd, ctx.coverage_excludes, opts.mutation_path)) do
-    local src = read_file(file) or ""
-    local src_lines = vim.split(src, "\n", { plain = true })
-    local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
-    for _, site in ipairs(operators.enumerate(src)) do
-      -- A mutant that does not compile would make every covering test error out
-      -- and so count as detected, inflating the score. The operators are meant to
-      -- keep the source valid; this only guards against a grammar surprise.
-      local mutated = operators.apply(src, site)
-      if mutated and loadstring(mutated, "@" .. file) then
-        --- @type NtfMutant
-        local mutant = vim.tbl_extend("force", site, { path = file })
+  for _, entry in ipairs(enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_path)) do
+    local mutant = entry.mutant
 
-        if matcher.match(relative_path, src_lines[site.row] or "", site) then
-          table.insert(records, { mutant = mutant, status = "equivalent" })
-        else
-          local rows = {}
-          for row = mutant.row, mutant.end_row do
-            table.insert(rows, row)
-          end
+    if matcher.match(entry.relative_path, entry.line_text, mutant) then
+      table.insert(records, { mutant = mutant, status = "equivalent" })
+    else
+      table.insert(records, { mutant = mutant, status = "no_coverage" })
 
-          table.insert(records, { mutant = mutant, status = "no_coverage" })
+      local item_indexes = ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant))
+      if #item_indexes > 0 then
+        local trials = vim.tbl_map(function(item_index)
+          local item = ctx.items[item_index]
+          return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
+        end, item_indexes)
+        table.sort(trials, function(a, b)
+          return a.baseline_ms < b.baseline_ms
+        end)
 
-          local item_indexes = ctx.coverage_map.item_indexes(file, rows)
-          if #item_indexes > 0 then
-            local trials = vim.tbl_map(function(item_index)
-              local item = ctx.items[item_index]
-              return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
-            end, item_indexes)
-            table.sort(trials, function(a, b)
-              return a.baseline_ms < b.baseline_ms
-            end)
-
-            table.insert(tasks, { mutant = mutant, trials = trials })
-            table.insert(task_records, #records)
-          end
-        end
+        table.insert(tasks, { mutant = mutant, trials = trials })
+        table.insert(task_records, #records)
       end
     end
   end
@@ -161,6 +181,30 @@ function M.run(opts, ctx)
   end
 
   return { records = records, counts = counts, score = score_of(counts), lost = matcher.lost() }
+end
+
+--- @class NtfMutantListEntry
+--- @field mutant NtfMutant
+--- @field relative_path string cwd-relative path of the mutated file
+--- @field covered_count integer number of tests covering the mutated lines
+--- @field equivalent boolean matched by the --mutation-baseline
+
+--- @param opts NtfOptions
+--- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
+--- @return NtfMutantListEntry[]
+function M.list(opts, ctx)
+  local cwd = normalize(ctx.cwd)
+  local matcher = baseline.matcher(ctx.baseline or {})
+
+  return vim.tbl_map(function(entry)
+    local mutant = entry.mutant
+    return {
+      mutant = mutant,
+      relative_path = entry.relative_path,
+      covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
+      equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
+    }
+  end, enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_path))
 end
 
 return M

@@ -4,6 +4,7 @@ local M = {}
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
+--- @field list boolean list the tests instead of reporting a run
 --- @field jobs integer? max parallel workers
 --- @field schedule_cache string? per-test duration cache path (nil = under the nvim cache dir)
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
@@ -22,6 +23,10 @@ local M = {}
 M.flags = {
   { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
   { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
+  {
+    name = "--list",
+    description = "list the tests without running them (with --mutation, run the tests and list the mutants with coverage)",
+  },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   {
     name = "--schedule-cache=FILE",
@@ -79,6 +84,7 @@ function M.parse(argv)
     paths = {},
     timeout = 60000,
     filter = nil,
+    list = false,
     jobs = nil,
     schedule_cache = nil,
     test_hook = nil,
@@ -134,6 +140,8 @@ function M.parse(argv)
     name = name or arg
     if arg == "-h" or arg == "--help" then
       opts.help = true
+    elseif arg == "--list" then
+      opts.list = true
     elseif name == "--coverage" then
       opts.coverage = true
       if inline ~= nil and inline ~= "" then

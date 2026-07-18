@@ -949,3 +949,75 @@ describe("ntf --mutation", function()
     assert.equal(0, vim.fn.filereadable(results_file))
   end)
 end)
+
+describe("ntf --list", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("lists every test as path:line: full name", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "--list" })
+
+    assert.equal(0, obj.code)
+    assert.match("pass_spec%.lua:%d+: group adds\n", obj.stdout)
+    assert.match("pass_spec%.lua:%d+: group also passes\n", obj.stdout)
+    assert.no.match("passed", obj.stdout)
+  end)
+
+  it("exits 0 for a failing spec because the test bodies never run", function()
+    local path = spec("fail_spec.lua", FAILING)
+    local obj = run({ path }, { "--list" })
+
+    assert.equal(0, obj.code)
+    assert.match("fail_spec%.lua:%d+: group explodes\n", obj.stdout)
+    assert.no.match("FAIL", obj.stdout)
+  end)
+
+  it("lists only the tests matching --filter", function()
+    local path = spec("filter_spec.lua", FILTERABLE)
+    local obj = run({ path }, { "--list", "--filter=keep me" })
+
+    assert.equal(0, obj.code)
+    assert.match("keep me", obj.stdout)
+    assert.no.match("drop me", obj.stdout)
+  end)
+
+  it("reports a LOAD ERROR on stderr and exits 1, still listing the loadable tests", function()
+    spec("broken_spec.lua", LOAD_ERROR)
+    spec("pass_spec.lua", PASSING)
+    local obj = run({ helper.test_data.full_path }, { "--list" })
+
+    assert.equal(1, obj.code)
+    assert.match("pass_spec%.lua:%d+: group adds\n", obj.stdout)
+    assert.match("LOAD ERROR", obj.stderr)
+    assert.match("top%-level boom", obj.stderr)
+    assert.no.match("LOAD ERROR", obj.stdout)
+  end)
+
+  it("runs the tests and lists the mutants with their coverage under --mutation", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+
+    local obj = helper.run_cli({ "--list", "--mutation", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("spec/mod_spec%.lua:%d+: mod detects positives at the boundary\n", obj.stdout)
+    assert.match("lua/mod%.lua:6:%d+: swap%-relational: < %-> <= %(covered by 1 test%)\n", obj.stdout)
+    assert.match("lua/dead%.lua:%d+:%d+: [%w-]+: .* %(no coverage%)\n", obj.stdout)
+    assert.no.match("Mutation:", obj.stdout)
+    assert.no.match("passed", obj.stdout)
+    assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+
+  it("skips the mutant list when the tests fail", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/fail_spec.lua", FAILING)
+
+    local obj = helper.run_cli({ "--list", "--mutation", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("mutation list skipped", obj.stderr)
+    assert.match("FAIL", obj.stdout)
+    assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+end)

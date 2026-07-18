@@ -51,6 +51,16 @@ function M.mutate(opts, ctx)
   return code
 end
 
+--- @param teardown fun()
+--- @return string? # error message with traceback, nil on success
+local function teardown_error(teardown)
+  local err
+  xpcall(teardown, function(e)
+    err = tostring(e) .. "\n" .. debug.traceback("", 2)
+  end)
+  return err
+end
+
 --- @param root string ntf repository root (used to locate the worker script)
 function M.run(root)
   local args = require("ntf.core.controller.args")
@@ -102,6 +112,24 @@ function M.run(root)
 
   local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
+  if opts.list and not opts.mutation then
+    local list = require("ntf.core.controller.list")
+    io.stdout:write(list.tests(items))
+    io.stderr:write(list.load_errors(load_errors))
+
+    local code = #load_errors > 0 and 1 or 0
+    local list_teardown_err = teardown_error(global_hook.teardown)
+    if list_teardown_err then
+      io.stderr:write("--global-hook teardown error: " .. list_teardown_err .. "\n")
+      code = code ~= 0 and code or 1
+    end
+    os.exit(code)
+  end
+  -- The listing keeps the declaration order even though the run below dispatches
+  -- in schedule order: the reordering is a run-time optimization, and a stable
+  -- listing is what grep/diff consumers need.
+  local planned_items = items
+
   local schedule = require("ntf.core.controller.schedule")
   local schedule_cache_path = opts.schedule_cache or schedule.default_path()
   local schedule_cache = schedule.load(schedule_cache_path)
@@ -138,13 +166,13 @@ function M.run(root)
     coverage_excludes = coverage_excludes,
     on_item = prog and prog.on_item or nil,
     on_item_coverage = opts.mutation and coverage_map.add or nil,
-    on_output = function(out)
+    on_output = not opts.list and function(out)
       if prog then
         prog.newline()
       end
       io.stdout:write(report.output_block(out, color))
       io.stdout:flush()
-    end,
+    end or nil,
   })
   if prog then
     prog.finish()
@@ -152,15 +180,14 @@ function M.run(root)
 
   schedule.save(schedule_cache_path, schedule_cache, results, cwd)
 
-  local teardown_err
-  xpcall(global_hook.teardown, function(err)
-    teardown_err = tostring(err) .. "\n" .. debug.traceback("", 2)
-  end)
+  local teardown_err = teardown_error(global_hook.teardown)
 
   local text, code = report.build(results, load_errors, { color = color })
-  io.stdout:write(text)
+  if not opts.list then
+    io.stdout:write(text)
+  end
 
-  if opts.coverage then
+  if opts.coverage and not opts.list then
     require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
     io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, cwd))
   end
@@ -169,20 +196,36 @@ function M.run(root)
     -- A mutant is only meaningful against a suite that passes: against a failing
     -- one, every mutant would look detected.
     if code ~= 0 then
+      if opts.list then
+        io.stdout:write(text)
+      end
       io.stdout:flush()
-      io.stderr:write("mutation run skipped: the tests must pass first\n")
+      io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(opts.list and "list" or "run"))
       os.exit(code)
     end
-    code = M.mutate(opts, {
-      root = root,
-      cwd = cwd,
-      items = items,
-      results = results,
-      baseline = mutation_baseline,
-      coverage_map = coverage_map,
-      coverage_excludes = coverage_excludes,
-      color = color,
-    })
+    if opts.list then
+      local list = require("ntf.core.controller.list")
+      local tests_text = list.tests(planned_items)
+      local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
+        cwd = cwd,
+        baseline = mutation_baseline,
+        coverage_map = coverage_map,
+        coverage_excludes = coverage_excludes,
+      }))
+      local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
+      io.stdout:write(tests_text .. separator .. mutants_text)
+    else
+      code = M.mutate(opts, {
+        root = root,
+        cwd = cwd,
+        items = items,
+        results = results,
+        baseline = mutation_baseline,
+        coverage_map = coverage_map,
+        coverage_excludes = coverage_excludes,
+        color = color,
+      })
+    end
   end
 
   if teardown_err then

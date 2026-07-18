@@ -23,7 +23,9 @@ function M.painter(enabled)
 end
 local painter = M.painter
 
-local function rel_source(trace)
+--- @param trace NtfTrace?
+--- @return string # cwd-relative "path:line"
+function M.rel_source(trace)
   if not trace or not trace.source then
     return "?"
   end
@@ -35,6 +37,7 @@ local function rel_source(trace)
   end
   return source
 end
+local rel_source = M.rel_source
 
 local function full_name(result)
   return tree.full_name(result.names or { result.name })
@@ -64,6 +67,18 @@ local function indent(text, prefix)
     end, lines),
     "\n"
   )
+end
+
+--- @param load_error NtfLoadError
+--- @param paint fun(color: string, text: string): string
+--- @return string[] # lines ending with a blank separator
+function M.load_error_block(load_error, paint)
+  local rel = load_error.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
+  return {
+    paint("red", "LOAD ERROR ") .. rel,
+    indent(load_error.message, "    "),
+    "",
+  }
 end
 
 --- @return boolean
@@ -117,10 +132,7 @@ function M.build(results, load_errors, opts)
   local lines = {}
 
   for _, load_error in ipairs(load_errors) do
-    local rel = load_error.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
-    table.insert(lines, paint("red", "LOAD ERROR ") .. rel)
-    table.insert(lines, indent(load_error.message, "    "))
-    table.insert(lines, "")
+    vim.list_extend(lines, M.load_error_block(load_error, paint))
   end
 
   for _, result in ipairs(problems) do

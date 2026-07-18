@@ -101,6 +101,19 @@ describe("ntf.core.controller.args.parse", function()
     assert.equal("spec", opts.paths[1])
   end)
 
+  it("leaves listing off by default", function()
+    local opts = args.parse({ "spec" })
+
+    assert.is_false(opts.list)
+  end)
+
+  it("parses --list into opts.list", function()
+    local opts = args.parse({ "--list", "spec" })
+
+    assert.is_true(opts.list)
+    assert.equal("spec", opts.paths[1])
+  end)
+
   it("parses -h and --help into opts.help", function()
     assert.is_true(args.parse({ "-h" }).help)
     assert.is_true(args.parse({ "--help" }).help)

@@ -163,6 +163,10 @@ local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):form
   mutation_baseline_flag
 )
 
+local list_flag = flag("--list")
+run_ntf({ list_flag, example_spec })
+run_ntf({ list_flag, ("%s=%s"):format(mutation_flag, "lua/mymod.lua"), "spec" }, { cwd = project_dir })
+
 -- The flags above appear in documented commands; the rest of the usage block is
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
