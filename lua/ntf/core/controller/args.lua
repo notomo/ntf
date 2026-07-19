@@ -6,7 +6,6 @@ local M = {}
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field list boolean list the tests instead of reporting a run
 --- @field jobs integer? max parallel workers
---- @field schedule_cache string? per-test duration cache path (nil = under the nvim cache dir)
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field exclude_code string[] files or directories to leave out of the code under test
@@ -28,10 +27,6 @@ M.flags = {
     description = "list the tests without running them (with --mutation, run the tests and list the mutants with coverage)",
   },
   { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
-  {
-    name = "--schedule-cache=FILE",
-    description = "per-test duration cache used to run the slowest tests first (default: under the nvim cache dir)",
-  },
   {
     name = "--test-hook=FILE",
     description = "run a Lua module providing setup/teardown around each test, in its worker",
@@ -86,7 +81,6 @@ function M.parse(argv)
     filter = nil,
     list = false,
     jobs = nil,
-    schedule_cache = nil,
     test_hook = nil,
     global_hook = nil,
     exclude_code = {},
@@ -109,9 +103,6 @@ function M.parse(argv)
     end,
     ["--jobs"] = function(v)
       opts.jobs = tonumber(v)
-    end,
-    ["--schedule-cache"] = function(v)
-      opts.schedule_cache = v
     end,
     ["--test-hook"] = function(v)
       opts.test_hook = v

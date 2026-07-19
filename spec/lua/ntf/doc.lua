@@ -171,7 +171,6 @@ run_ntf({ list_flag, ("%s=%s"):format(mutation_flag, "lua/mymod.lua"), "spec" },
 -- backed by these runs, so every documented flag fails `make doc` when it stops
 -- working.
 run_ntf({ flag("--timeout") .. "=60000", example_spec })
-run_ntf({ ("%s=%s"):format(flag("--schedule-cache"), vim.fn.tempname()), example_spec })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
   if not exercised_flags[f.name] then
