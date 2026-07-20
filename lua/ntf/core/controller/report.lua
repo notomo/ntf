@@ -23,15 +23,24 @@ function M.painter(enabled)
 end
 local painter = M.painter
 
+--- @param path string
+--- @param cwd string?
+--- @return string
+local function strip_cwd(path, cwd)
+  path = vim.fs.normalize(path)
+  if not cwd then
+    return path
+  end
+  return (path:gsub("^" .. vim.pesc(vim.fs.normalize(cwd)) .. "/?", ""))
+end
+
 --- @param trace NtfTrace?
 --- @return string # cwd-relative "path:line"
 function M.rel_source(trace)
   if not trace or not trace.source then
     return "?"
   end
-  local source = trace.source:gsub("^@", "")
-  local cwd = vim.fn.getcwd()
-  source = source:gsub("^" .. vim.pesc(cwd) .. "/?", "")
+  local source = strip_cwd((trace.source:gsub("^@", "")), vim.fn.getcwd())
   if trace.line then
     return ("%s:%d"):format(source, trace.line)
   end
@@ -73,7 +82,7 @@ end
 --- @param paint fun(color: string, text: string): string
 --- @return string[] # lines ending with a blank separator
 function M.load_error_block(load_error, paint)
-  local rel = load_error.file:gsub("^" .. vim.pesc(vim.fn.getcwd()) .. "/?", "")
+  local rel = strip_cwd(load_error.file, vim.fn.getcwd())
   return {
     paint("red", "LOAD ERROR ") .. rel,
     indent(load_error.message, "    "),
@@ -98,7 +107,7 @@ function M.output_block(out, color)
   local paint = painter(color)
   -- Streamed from a `vim.system` on_exit callback (a fast event context), where
   -- Vimscript `getcwd()` is forbidden; `vim.uv.cwd()` is the safe equivalent.
-  local rel = out.file:gsub("^" .. vim.pesc(vim.uv.cwd() or "") .. "/?", "")
+  local rel = strip_cwd(out.file, vim.uv.cwd())
   local lines = {}
   local header = paint("dim", "OUTPUT ") .. paint("dim", rel)
   if out.name and out.name ~= "" then
