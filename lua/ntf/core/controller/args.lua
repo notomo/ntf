@@ -1,5 +1,9 @@
 local M = {}
 
+--- The mutant statuses `--mutation-strict` can gate on; the bare flag selects all
+--- of them. `not_applied`/`equivalent` are out: they say nothing about the tests.
+local STRICT_CATEGORIES = { "survived", "no_coverage" }
+
 --- @class NtfOptions
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
@@ -13,7 +17,7 @@ local M = {}
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field mutation boolean mutation-test the covered code after a passing run
 --- @field mutation_path string? restrict the mutated files to this file or directory
---- @field mutation_threshold number? minimum mutation score, in percent
+--- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
 --- @field mutation_baseline string? known-equivalent mutants file (JSON)
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
@@ -47,7 +51,10 @@ M.flags = {
     name = "--mutation[=PATH]",
     description = "mutation-test the covered code (only under PATH, if given) once the tests pass",
   },
-  { name = "--mutation-threshold=N", description = "exit non-zero when the mutation score is below N percent" },
+  {
+    name = "--mutation-strict[=LIST]",
+    description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
+  },
   {
     name = "--mutation-baseline=FILE",
     description = "leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing",
@@ -88,7 +95,7 @@ function M.parse(argv)
     coverage_file = "luacov.stats.out",
     mutation = false,
     mutation_path = nil,
-    mutation_threshold = nil,
+    mutation_strict = nil,
     mutation_baseline = nil,
     mutation_results = "ntf-mutation.json",
     help = false,
@@ -112,9 +119,6 @@ function M.parse(argv)
     end,
     ["--exclude-code"] = function(v)
       table.insert(opts.exclude_code, v)
-    end,
-    ["--mutation-threshold"] = function(v)
-      opts.mutation_threshold = tonumber(v)
     end,
     ["--mutation-baseline"] = function(v)
       opts.mutation_baseline = v
@@ -142,6 +146,24 @@ function M.parse(argv)
       opts.mutation = true
       if inline ~= nil and inline ~= "" then
         opts.mutation_path = inline
+      end
+    elseif name == "--mutation-strict" then
+      opts.mutation_strict = {}
+      if inline == nil or inline == "" then
+        for _, status in ipairs(STRICT_CATEGORIES) do
+          opts.mutation_strict[status] = true
+        end
+      else
+        for status in inline:gmatch("[^,]+") do
+          if not vim.tbl_contains(STRICT_CATEGORIES, status) then
+            return "invalid --mutation-strict category: "
+              .. status
+              .. " (expected "
+              .. table.concat(STRICT_CATEGORIES, ", ")
+              .. ")"
+          end
+          opts.mutation_strict[status] = true
+        end
       end
     elseif value_flags[name] then
       local v = inline
@@ -193,15 +215,9 @@ function M.parse(argv)
   end
   if
     not opts.mutation
-    and (opts.mutation_threshold or opts.mutation_baseline or opts.mutation_results ~= "ntf-mutation.json")
+    and (opts.mutation_strict or opts.mutation_baseline or opts.mutation_results ~= "ntf-mutation.json")
   then
-    return "--mutation-threshold, --mutation-baseline, and --mutation-results require --mutation"
-  end
-  if
-    opts.mutation_threshold
-    and (type(opts.mutation_threshold) ~= "number" or opts.mutation_threshold < 0 or opts.mutation_threshold > 100)
-  then
-    return "invalid --mutation-threshold value (expected a percentage in 0..100)"
+    return "--mutation-strict, --mutation-baseline, and --mutation-results require --mutation"
   end
   if
     opts.mutation_path

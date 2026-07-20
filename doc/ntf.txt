@@ -16,7 +16,7 @@ USAGE                                                              *ntf-USAGE*
     --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
     --coverage[=FILE]         measure line coverage; write luacov.stats.out (or FILE) and print a summary
     --mutation[=PATH]         mutation-test the covered code (only under PATH, if given) once the tests pass
-    --mutation-threshold=N    exit non-zero when the mutation score is below N percent
+    --mutation-strict[=LIST]  exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
     --mutation-baseline=FILE  leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
     --mutation-results=FILE   mutation results output path (default: ntf-mutation.json)
     -h, --help                show this help
@@ -165,10 +165,11 @@ test that detects it — in the same one-process-per-test isolation as a normal 
 A test that hangs on a mutant (an infinite loop) is killed and counts as detected.
 
 The score is the share of detected mutants, counting an uncovered one as
-undetected. `--mutation-threshold=N` turns that into a gate, exiting non-zero when
-the score is below N percent:
+undetected. `--mutation-strict` turns that into a gate, exiting non-zero when any
+mutant survived or was left uncovered; `--mutation-strict=survived` (or
+`=no_coverage`) gates only that category, so the bar can be raised in steps:
 >sh
-  ntf --mutation --mutation-threshold=80
+  ntf --mutation --mutation-strict
 <
 `--mutation=PATH` restricts the mutated files to one file or directory, which is
 how you keep a run short: mutating everything means running the suite once per
@@ -202,7 +203,7 @@ the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:
   ntf --mutation --mutation-baseline=spec/mutation_baseline.json
 <
 A listed mutant is reported as equivalent and leaves the score, which can then
-reach 100 and be held there with `--mutation-threshold`. An entry is copied from
+reach 100 and be held there with `--mutation-strict`. An entry is copied from
 the survivor's record in the results file (`path` relative to the working
 directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
 the mutated `line`; ntf only reads the file, so keep it in the repository and

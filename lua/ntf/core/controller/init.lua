@@ -38,15 +38,21 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
-  if opts.mutation_threshold and summary.score and summary.score < opts.mutation_threshold then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation score %.1f%% is below the --mutation-threshold of %g%%\n"):format(
-        summary.score,
-        opts.mutation_threshold
-      )
-    )
-    code = 1
+  if opts.mutation_strict then
+    local parts = {}
+    for _, status in ipairs({ "survived", "no_coverage" }) do
+      if opts.mutation_strict[status] and summary.counts[status] > 0 then
+        table.insert(
+          parts,
+          ("%d %s"):format(summary.counts[status], status == "no_coverage" and "no coverage" or "survived")
+        )
+      end
+    end
+    if #parts > 0 then
+      io.stdout:flush()
+      io.stderr:write("mutation gate failed: " .. table.concat(parts, ", ") .. "\n")
+      code = 1
+    end
   end
   return code
 end

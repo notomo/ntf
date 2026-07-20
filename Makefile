@@ -45,4 +45,4 @@ mutation: EXCLUDE_CODE += \
 SPEC_ROOT = spec/lua/${PLUGIN_NAME}
 mutation: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) $(wildcard ${SPEC_ROOT}/*/))
 
-MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json
+MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json --mutation-strict

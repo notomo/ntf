@@ -35,7 +35,7 @@ Options:
   --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
   --coverage[=FILE]         measure line coverage; write luacov.stats.out (or FILE) and print a summary
   --mutation[=PATH]         mutation-test the covered code (only under PATH, if given) once the tests pass
-  --mutation-threshold=N    exit non-zero when the mutation score is below N percent
+  --mutation-strict[=LIST]  exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
   --mutation-baseline=FILE  leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
   --mutation-results=FILE   mutation results output path (default: ntf-mutation.json)
   -h, --help                show this help

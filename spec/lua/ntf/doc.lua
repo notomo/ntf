@@ -134,20 +134,19 @@ local exclude_code_command = ("ntf %s %s=lua/vendor %s=lua/mymod/test"):format(
   exclude_code_flag
 )
 
--- A threshold of 0 always passes, so the run exercises the whole pipeline
--- without pinning a score here.
+-- No gate flag, so the run exercises the whole pipeline and always passes here
+-- (mymod leaves one survivor).
 local mutation_flag = flag("--mutation")
 run_ntf({
   ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
   ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
-  flag("--mutation-threshold") .. "=0",
   "spec",
 }, { cwd = project_dir })
 local mutation_command = "ntf " .. mutation_flag
-local mutation_threshold_command = ("ntf %s %s=80"):format(mutation_flag, flag("--mutation-threshold"))
+local mutation_strict_command = ("ntf %s %s"):format(mutation_flag, flag("--mutation-strict"))
 
--- The documented baseline lists mymod's one surviving mutant, so the threshold
--- of 100 passes only if the equivalence marking actually applied.
+-- The documented baseline lists mymod's one surviving mutant, so --mutation-strict
+-- passes only if the equivalence marking actually applied.
 local mutation_baseline_path = doc_dir .. "/mutation_baseline.json"
 vim.fn.writefile(vim.fn.readfile(mutation_baseline_path), vim.fs.joinpath(project_dir, "spec/mutation_baseline.json"))
 local mutation_baseline_flag = flag("--mutation-baseline")
@@ -155,7 +154,7 @@ run_ntf({
   ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
   ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
   ("%s=%s"):format(mutation_baseline_flag, "spec/mutation_baseline.json"),
-  flag("--mutation-threshold") .. "=100",
+  flag("--mutation-strict"),
   "spec",
 }, { cwd = project_dir })
 local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):format(
@@ -312,9 +311,10 @@ test that detects it — in the same one-process-per-test isolation as a normal 
 A test that hangs on a mutant (an infinite loop) is killed and counts as detected.
 
 The score is the share of detected mutants, counting an uncovered one as
-undetected. `--mutation-threshold=N` turns that into a gate, exiting non-zero when
-the score is below N percent:]],
-          util.help_code_block(mutation_threshold_command, { language = "sh" }),
+undetected. `--mutation-strict` turns that into a gate, exiting non-zero when any
+mutant survived or was left uncovered; `--mutation-strict=survived` (or
+`=no_coverage`) gates only that category, so the bar can be raised in steps:]],
+          util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
 `--mutation=PATH` restricts the mutated files to one file or directory, which is
 how you keep a run short: mutating everything means running the suite once per
@@ -332,7 +332,7 @@ the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:]]
           util.help_code_block(mutation_baseline_command, { language = "sh" }),
           [[
 A listed mutant is reported as equivalent and leaves the score, which can then
-reach 100 and be held there with `--mutation-threshold`. An entry is copied from
+reach 100 and be held there with `--mutation-strict`. An entry is copied from
 the survivor's record in the results file (`path` relative to the working
 directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
 the mutated `line`; ntf only reads the file, so keep it in the repository and

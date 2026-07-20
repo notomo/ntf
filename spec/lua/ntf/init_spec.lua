@@ -819,21 +819,25 @@ describe("ntf --mutation", function()
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
   end)
 
-  it("exits non-zero when the score is below --mutation-threshold", function()
+  it("exits non-zero and reports the categories when --mutation-strict finds a survivor", function()
     local root, results_file = mutation_project()
 
     local obj =
-      helper.run_cli({ "--mutation", "--mutation-threshold=100", "--mutation-results=" .. results_file, "spec" }, root)
+      helper.run_cli({ "--mutation", "--mutation-strict", "--mutation-results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
-    assert.match("below the %-%-mutation%-threshold", obj.stderr)
+    assert.match("mutation gate failed: 1 survived", obj.stderr)
   end)
 
-  it("exits zero when the score meets --mutation-threshold", function()
+  it("exits zero when --mutation-strict gates only a category that is empty", function()
     local root, results_file = mutation_project()
 
-    local obj =
-      helper.run_cli({ "--mutation", "--mutation-threshold=0", "--mutation-results=" .. results_file, "spec" }, root)
+    -- The fixture leaves one survivor and no uncovered mutant, so gating only
+    -- no_coverage passes.
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-strict=no_coverage", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
 
     assert.equal(0, obj.code)
   end)

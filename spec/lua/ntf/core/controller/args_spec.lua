@@ -239,10 +239,9 @@ describe("ntf.core.controller.args.parse", function()
       assert.equal(dir, opts.mutation_path)
     end)
 
-    it("reads the threshold and the results file", function()
-      local opts = args.parse({ "--mutation", "--mutation-threshold=80", "--mutation-results=out.json", "spec" })
+    it("reads the results file", function()
+      local opts = args.parse({ "--mutation", "--mutation-results=out.json", "spec" })
 
-      assert.equal(80, opts.mutation_threshold)
       assert.equal("out.json", opts.mutation_results)
     end)
 
@@ -252,21 +251,41 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("%-%-mutation path not found", err)
     end)
 
-    it("errors when the threshold is not a percentage", function()
-      local err = args.parse({ "--mutation", "--mutation-threshold=101", "spec" })
+    it("gates on every category for bare --mutation-strict", function()
+      local opts = args.parse({ "--mutation", "--mutation-strict", "spec" })
 
-      assert.match("invalid %-%-mutation%-threshold value", err)
+      assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
     end)
 
-    it("errors when the threshold is negative", function()
-      local err = args.parse({ "--mutation", "--mutation-threshold=-1", "spec" })
+    it("treats --mutation-strict= with an empty value as bare --mutation-strict", function()
+      local opts = args.parse({ "--mutation", "--mutation-strict=", "spec" })
 
-      assert.match("invalid %-%-mutation%-threshold value", err)
+      assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
     end)
 
-    it("accepts the 0 and 100 threshold boundaries", function()
-      assert.equal(0, args.parse({ "--mutation", "--mutation-threshold=0", "spec" }).mutation_threshold)
-      assert.equal(100, args.parse({ "--mutation", "--mutation-threshold=100", "spec" }).mutation_threshold)
+    it("restricts the gate to the listed categories", function()
+      assert.same(
+        { survived = true },
+        args.parse({ "--mutation", "--mutation-strict=survived", "spec" }).mutation_strict
+      )
+      assert.same(
+        { no_coverage = true },
+        args.parse({ "--mutation", "--mutation-strict=no_coverage", "spec" }).mutation_strict
+      )
+      assert.same(
+        { survived = true, no_coverage = true },
+        args.parse({ "--mutation", "--mutation-strict=survived,no_coverage", "spec" }).mutation_strict
+      )
+    end)
+
+    it("errors on an unknown --mutation-strict category", function()
+      local err = args.parse({ "--mutation", "--mutation-strict=killed", "spec" })
+
+      assert.match("invalid %-%-mutation%-strict category: killed", err)
+    end)
+
+    it("leaves the gate disabled without --mutation-strict", function()
+      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_strict)
     end)
 
     it("treats --mutation= with an empty value as bare --mutation", function()
@@ -291,7 +310,7 @@ describe("ntf.core.controller.args.parse", function()
     end)
 
     it("errors when the mutation flags are given without --mutation", function()
-      local err = args.parse({ "--mutation-threshold=80", "spec" })
+      local err = args.parse({ "--mutation-strict", "spec" })
 
       assert.match("require %-%-mutation", err)
     end)
