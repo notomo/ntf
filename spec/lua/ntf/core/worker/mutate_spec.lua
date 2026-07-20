@@ -122,6 +122,57 @@ return {}
     assert.equal("failed", outcome.results[1].status)
   end)
 
+  it("loads the mutated source ahead of the runtimepath loader", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/mod.lua",
+      [[
+local M = {}
+function M.is_positive(n)
+  return n > 0
+end
+return M
+]]
+    )
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+    -- On the runtimepath too, so Neovim's own loader could also resolve the
+    -- module: this pins the install position, where any later slot would let
+    -- the original win.
+    vim.opt.runtimepath:append(cwd)
+
+    local applied = mutate.install(first_mutation(module, "swap-relational"), cwd)
+    local installed_index
+    for i, loader in ipairs(package.loaders) do
+      if not original_loaders[loader] then
+        installed_index = i
+      end
+    end
+    local applied_before = applied()
+    local ok, mod = pcall(require, "mod")
+    local applied_after = applied()
+
+    package.loaded["mod"] = nil
+    vim.opt.runtimepath:remove(cwd)
+    for i = #package.loaders, 1, -1 do
+      if not original_loaders[package.loaders[i]] then
+        table.remove(package.loaders, i)
+      end
+    end
+
+    assert(ok, mod)
+    -- Just after the preload loader, by index rather than by requiring a
+    -- runtimepath-resolvable module: a mutation trial's worker has its own
+    -- mutation loader installed already, which would mask a one-slot shift.
+    assert.equal(2, installed_index)
+    assert.is_false(applied_before)
+    assert.is_true(applied_after)
+    -- `n > 0` became `n >= 0`, so only the mutated source is true at 0.
+    assert.is_true(mod.is_positive(0))
+  end)
+
   it("reports that the mutation was not applied when the module is never required", function()
     local cwd = helper.test_data.full_path
     helper.test_data:create_file(

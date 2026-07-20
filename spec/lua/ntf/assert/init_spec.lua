@@ -129,6 +129,14 @@ describe("ntf.assert", function()
     assert.match("init_spec%.lua:" .. line .. ": expected to be equal", failure(failing))
   end)
 
+  it("rejects an unknown assertion name at the access site", function()
+    local function failing()
+      local _ = assert.nope
+    end
+    local line = debug.getinfo(failing, "S").linedefined + 1
+    assert.match("init_spec%.lua:" .. line .. ": ntf%.assert: unknown assertion or modifier: nope", failure(failing))
+  end)
+
   it("supports match", function()
     assert.match("b.d", "abcd")
     assert.is_true(fails(function()

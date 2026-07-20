@@ -1,7 +1,7 @@
 local M = {}
 
---- @type table<string, { max: integer, lines: table<string, integer> }>?
-local active
+--- @type table<string, { max: integer, lines: table<string, integer> }>
+local active = {}
 
 --- @param cwd string any form of the working directory
 --- @return string normalized absolute path with no trailing slash
@@ -132,8 +132,13 @@ function M.measurable_files(cwd, excludes)
   return files
 end
 
+-- Its own function rather than a local of `start`, because code running as the
+-- installed hook is invisible to the measurement itself (hooks do not nest):
+-- only a spec calling the returned hook directly can cover it.
 --- @param opts { cwd: string, excludes?: string[] }
-function M.start(opts)
+--- @return fun(event: string, line: integer) # a `debug.sethook` line hook
+--- @return table<string, { max: integer, lines: table<string, integer> }> # filled as the hook records
+function M.line_hook(opts)
   local cwd = normalize_dir(opts.cwd)
   local resolve = make_resolver(cwd, opts.excludes or {})
   local data = {}
@@ -148,7 +153,7 @@ function M.start(opts)
     end
     local entry = data[path]
     if not entry then
-      entry = { max = 0, lines = {} }
+      entry = { max = line, lines = {} }
       data[path] = entry
     end
     -- Line numbers are kept as string keys so the per-file table is a JSON
@@ -160,7 +165,12 @@ function M.start(opts)
       entry.max = line
     end
   end
+  return hook, data
+end
 
+--- @param opts { cwd: string, excludes?: string[] }
+function M.start(opts)
+  local hook, data = M.line_hook(opts)
   require("jit").off()
   debug.sethook(hook, "l")
   active = data
@@ -169,8 +179,8 @@ end
 --- @return table<string, { max: integer, lines: table<string, integer> }>
 function M.stop()
   debug.sethook()
-  local data = active or {}
-  active = nil
+  local data = active
+  active = {}
   return data
 end
 

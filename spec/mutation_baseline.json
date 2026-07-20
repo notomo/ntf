@@ -39,15 +39,6 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 25,
-      "operator": "swap-relational",
-      "original": "==",
-      "replacement": "~=",
-      "line": "  local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. \"/\"",
-      "rationale": "only an out-of-cwd path from the line hook reaches the difference, and hook execution is invisible to the outer run's coverage, so no covering test can exist"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
       "col": 24,
       "operator": "perturb-number",
       "original": "1",
@@ -120,11 +111,11 @@
     },
     {
       "path": "lua/ntf/core/mutation/results.lua",
-      "col": 21,
+      "col": 19,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
-      "line": "        return a.col < b.col",
+      "line": "      return a.col < b.col",
       "rationale": "only reached when the cols differ, so <= behaves identically"
     },
     {
@@ -207,6 +198,15 @@
       "replacement": "2",
       "line": "  local json = stdout:sub(from + #BEGIN, to - 1)",
       "rationale": "emit writes a newline between the JSON and the END marker, so the shorter slice sheds only whitespace that vim.json.decode ignores"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 12,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "    if line > entry.max then",
+      "rationale": "a tie writes back the value already stored, so >= behaves identically"
     }
   ]
 }

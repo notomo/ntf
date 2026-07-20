@@ -20,6 +20,51 @@ describe("ntf.core.coverage.collector.merge", function()
   end)
 end)
 
+describe("ntf.core.coverage.collector.line_hook", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  -- Calls `hook` from a chunk named `chunkname`, so the source the hook
+  -- attributes to (its caller's) is the fabricated name, not this spec file.
+  local function run_hook(hook, chunkname, lines)
+    local fn = assert(
+      loadstring("local hook, lines = ...\nfor _, line in ipairs(lines) do\n  hook('line', line)\nend", chunkname)
+    )
+    fn(hook, lines)
+  end
+
+  it("counts the hooked function's lines under its source path", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+    local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
+
+    run_hook(hook, "@" .. path, { 3, 3, 7, 1 })
+
+    assert.same({ [path] = { max = 7, lines = { ["1"] = 1, ["3"] = 2, ["7"] = 1 } } }, data)
+  end)
+
+  it("ignores line numbers below one", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+
+    run_hook(hook, "@" .. helper.test_data:path("covered.lua"), { 0 })
+
+    assert.same({}, data)
+  end)
+
+  it("records nothing for non-file chunks, spec files, excluded and outside paths", function()
+    local hook, data = collector.line_hook({
+      cwd = helper.test_data.full_path,
+      excludes = { vim.fs.normalize(helper.test_data:path("excluded")) .. "/" },
+    })
+
+    run_hook(hook, "stringchunk", { 3 })
+    run_hook(hook, "@" .. helper.test_data:path("excluded/mod.lua"), { 3 })
+    run_hook(hook, "@" .. helper.test_data:path("mod_spec.lua"), { 3 })
+    run_hook(hook, "@" .. vim.fs.joinpath(vim.fs.normalize(helper.root), "outside.lua"), { 3 })
+
+    assert.same({}, data)
+  end)
+end)
+
 describe("ntf.core.coverage.collector.start/stop", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
