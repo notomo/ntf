@@ -117,13 +117,29 @@ describe("ntf.core.controller.schedule", function()
     assert.equal(1000, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
   end)
 
+  it("loads a version 1 cache file", function()
+    local path = helper.test_data:create_file(
+      "v1.json",
+      '{"version":1,"files":{"spec/a_spec.lua":{"group one":{"ms":250,"status":"passed"}}}}'
+    )
+
+    assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
+  end)
+
   it("loads a missing, corrupt or incompatible file as an empty cache", function()
     local corrupt = helper.test_data:create_file("corrupt.json", "{ not json")
-    local incompatible = helper.test_data:create_file("incompatible.json", '{"version":999,"files":{}}')
+    local scalar = helper.test_data:create_file("scalar.json", "5")
+    local incompatible = helper.test_data:create_file(
+      "incompatible.json",
+      '{"version":999,"files":{"spec/a_spec.lua":{"group one":{"ms":250,"status":"passed"}}}}'
+    )
+    local no_files = helper.test_data:create_file("no_files.json", '{"version":1,"files":"nope"}')
 
     assert.same({}, schedule.load(helper.test_data:path("nope.json")).files)
     assert.same({}, schedule.load(corrupt).files)
+    assert.same({}, schedule.load(scalar).files)
     assert.same({}, schedule.load(incompatible).files)
+    assert.same({}, schedule.load(no_files).files)
   end)
 
   it("ignores an unwritable path instead of failing the run", function()

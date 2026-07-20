@@ -11,6 +11,33 @@
       "rationale": "every flag name is longer than one character, so the seed never survives math.max"
     },
     {
+      "path": "lua/ntf/core/controller/list.lua",
+      "col": 48,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "  return table.concat(lines, \"\\n\") .. (#lines > 0 and \"\\n\" or \"\")",
+      "rationale": "a load error renders as at least two lines (header and indented message), so a single-line list cannot occur"
+    },
+    {
+      "path": "lua/ntf/core/controller/schedule.lua",
+      "col": 18,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "      return a.ms > b.ms",
+      "rationale": "only reached when the ms differ, so >= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/controller/schedule.lua",
+      "col": 19,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "    return a.index < b.index",
+      "rationale": "the indexes come from ipairs, so two compared entries never share one and <= behaves identically"
+    },
+    {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 25,
       "operator": "swap-relational",

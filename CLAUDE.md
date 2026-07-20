@@ -8,7 +8,7 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `make check` — lua-language-server reports no problems
   (set `CHECK_VIMRUNTIME` to your nvim runtime dir if it is not at the default)
 - `stylua --config-path spec/.shared/stylua.toml lua spec/lua bin/ntf` — no diff
-- `make mutation` — after changing `lua/`: exits 0 and flags no new SURVIVED
+- `make mutation` — after changing `lua/`: exits 0 and flags no SURVIVED
   mutant; kill each one with a spec, or — only when genuinely undetectable —
   add a `spec/mutation_baseline.json` entry with its rationale
 - `make doc` — only after changing CLI flags or the test API; regenerates
