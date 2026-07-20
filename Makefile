@@ -18,7 +18,7 @@ REQUIREALL_IGNORE_MODULES=ntf.core.worker
 # every test for infrastructure reasons — kills that measure nothing about the
 # specs. The editor-facing and formatting layers are left out to keep the run
 # focused on the pure logic with direct unit specs.
-mutation: EXCLUDE_CODE += \
+mutation mutation_list: EXCLUDE_CODE += \
 	lua/ntf/init.lua \
 	lua/ntf/helper.lua \
 	lua/ntf/coverage \
@@ -43,6 +43,6 @@ mutation: EXCLUDE_CODE += \
 # end-to-end tests spawn a nested nvim per test and would dominate the
 # mutation run's cost.
 SPEC_ROOT = spec/lua/${PLUGIN_NAME}
-mutation: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) $(wildcard ${SPEC_ROOT}/*/))
+mutation mutation_list: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) $(wildcard ${SPEC_ROOT}/*/))
 
 MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json --mutation-strict
