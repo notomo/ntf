@@ -87,7 +87,7 @@ local function rows_of(mutant)
   for row = mutant.row, mutant.end_row do
     table.insert(rows, row)
   end
-  return rows
+  return vim.list_extend(rows, mutant.anchor_rows)
 end
 
 --- @param results NtfResult[]

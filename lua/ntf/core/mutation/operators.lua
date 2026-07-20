@@ -1,3 +1,5 @@
+local lines = require("ntf.core.coverage.lines")
+
 local M = {}
 
 --- @class NtfMutantSplice a byte range of a source and what to put in its place
@@ -12,6 +14,7 @@ local M = {}
 --- @field col integer 0-based start column
 --- @field end_row integer 1-based end line
 --- @field end_col integer 0-based end column, exclusive
+--- @field anchor_rows integer[] 1-based rows where the hit lands when the site executes (see `lines.anchor_rows`)
 
 -- Keyed by node type rather than by `get_node_text`: the grammar names an
 -- anonymous operator token by its own text.
@@ -51,6 +54,7 @@ local function site(node, operator, original, replacement)
     end_byte = end_byte,
     original = original,
     replacement = replacement,
+    anchor_rows = lines.anchor_rows(node),
   }
 end
 

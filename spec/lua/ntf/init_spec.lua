@@ -767,6 +767,46 @@ describe("ntf --mutation", function()
     assert.match("NO COVERAGE lua/dead%.lua:", obj.stdout)
   end)
 
+  it("runs a mutant whose line never receives a hit against the tests covering its statement", function()
+    local root = helper.test_data.full_path
+    -- The constant fields fold into the table template, so the line hook never
+    -- fires on their rows; only the `return {` row records the coverage.
+    helper.test_data:create_file(
+      "lua/config.lua",
+      table.concat({
+        "return {",
+        "  value = 10,",
+        "  strict = false,",
+        "}",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/config_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'describe("config", function()',
+        '  it("pins the values", function()',
+        '    local config = require("config")',
+        "    assert.equal(10, config.value)",
+        "    assert.is_false(config.strict)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
+
+    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("NO COVERAGE", obj.stdout)
+    assert.match("Mutation: 100%.0%%", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(2, results.counts.killed)
+    assert.equal(0, results.counts.no_coverage)
+  end)
+
   it("mutates only the files under the --mutation path", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)

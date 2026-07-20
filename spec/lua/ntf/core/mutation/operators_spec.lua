@@ -103,6 +103,18 @@ local _ = "a == b and 1"
     assert.same({}, sites)
   end)
 
+  it("carries the rows where the hit lands when the site executes", function()
+    local sites = operators.enumerate(table.concat({
+      "local _ = true",
+      "f({",
+      "  max = 20,",
+      "})",
+    }, "\n"))
+
+    assert.same({ 1 }, sites[1].anchor_rows)
+    assert.same({ 2 }, sites[2].anchor_rows)
+  end)
+
   it("locates a site by both its position and its byte range", function()
     local src = [[
 local _ = a
