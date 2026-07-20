@@ -110,6 +110,24 @@
       "rationale": "only reached when the start bytes differ, so <= behaves identically"
     },
     {
+      "path": "lua/ntf/core/mutation/order.lua",
+      "col": 18,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "      return a.ms > b.ms",
+      "rationale": "only reached when the ms differ, so >= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/mutation/order.lua",
+      "col": 19,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "    return a.index < b.index",
+      "rationale": "the indexes come from ipairs, so two compared entries never share one and <= behaves identically"
+    },
+    {
       "path": "lua/ntf/core/mutation/results.lua",
       "col": 19,
       "operator": "swap-relational",

@@ -1,5 +1,6 @@
 local driver = require("ntf.core.worker.driver")
 local tree = require("ntf.core.tree")
+local order = require("ntf.core.mutation.order")
 
 local M = {}
 
@@ -57,6 +58,8 @@ end
 function M.run(tasks, opts)
   local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4
   local total = #tasks
+
+  local dispatch = order.order(tasks)
 
   local outcomes = {}
   local started = 0
@@ -119,7 +122,7 @@ function M.run(tasks, opts)
       return
     end
     started = started + 1
-    run_trial(started, 1)
+    run_trial(dispatch[started], 1)
   end
 
   for _ = 1, math.min(jobs, total) do
