@@ -402,8 +402,6 @@ return {
   end)
 
   it("counts module-level lines of code required at spec load time", function()
-    -- A tiny project: production module under lua/, required at the spec's top
-    -- level (so it loads while the tree is built, before any test body runs).
     local root = helper.test_data.full_path
     helper.test_data:create_file(
       "lua/mod/init.lua",
@@ -433,8 +431,6 @@ return {
     local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
 
     assert.equal(0, obj.code)
-    -- The module-level line (`local M = {}`, line 1) runs only at require time,
-    -- during tree building. It must still be counted, i.e. have a non-zero hit.
     local lines = vim.fn.readfile(stats_file)
     local hits1
     for i, line in ipairs(lines) do
@@ -569,8 +565,6 @@ return {
     local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
 
     assert.equal(0, obj.code)
-    -- Exactly 1000 hits of line 3 (`return 1`): the line hook must observe
-    -- every iteration, with none lost to JIT-compiled traces.
     local lines = vim.fn.readfile(stats_file)
     local hits3
     for i, line in ipairs(lines) do
@@ -614,8 +608,6 @@ return {
     local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec" }, root)
 
     assert.equal(0, obj.code)
-    -- Each test runs in its own worker and calls f once; the merged count of
-    -- line 3 (`return 1`) is the sum over both workers.
     local lines = vim.fn.readfile(stats_file)
     local hits3
     for i, line in ipairs(lines) do
@@ -654,8 +646,6 @@ return {
 
     assert.equal(0, obj.code)
     assert.match("OUTPUT", obj.stdout)
-    -- both the Lua `print` and the native `io.stdout:write` land in one block,
-    -- proving capture no longer depends on swapping `_G.print`/`io.write`.
     assert.match("from print", obj.stdout)
     assert.match("from native write", obj.stdout)
   end)
@@ -711,8 +701,6 @@ local MUTATION_MODULE = table.concat({
   "return M",
 }, "\n")
 
---- Pins the `is_positive` boundary (so its mutants die) but not the `min` one,
---- which leaves `a < b` -> `a <= b` alive: min(1, 2) is 1 either way.
 local MUTATION_SPEC = table.concat({
   'local ntf = require("ntf")',
   "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
@@ -753,7 +741,6 @@ describe("ntf --mutation", function()
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
     assert.equal(0, results.counts.not_applied)
-    -- The mutants on `n > 0` die: the spec pins that boundary.
     assert.equal(2, results.counts.killed)
   end)
 
@@ -769,8 +756,6 @@ describe("ntf --mutation", function()
 
   it("runs a mutant whose line never receives a hit against the tests covering its statement", function()
     local root = helper.test_data.full_path
-    -- The constant fields fold into the table template, so the line hook never
-    -- fires on their rows; only the `return {` row records the coverage.
     helper.test_data:create_file(
       "lua/config.lua",
       table.concat({

@@ -1,27 +1,14 @@
--- Decides which never-hit lines should still count as coverable (so they show
--- as missed). LuaJIT's line hook attributes instructions to lines in ways that
--- a per-line text heuristic cannot model (a table constructor collapses onto its
--- opening line, consecutive bare `local`s merge onto the first, a closure's
--- creation lands on its closing `end`). So the set of coverable lines is derived
--- from the treesitter syntax tree instead: a line is coverable only when a node
--- that actually receives a hit begins on it.
 local M = {}
 
--- Statement nodes that execute on their own opening line, so a hit lands there.
 local EXEC_STMT = {
   if_statement = true,
   while_statement = true,
   repeat_statement = true,
-  for_numeric_statement = true,
-  for_generic_statement = true,
+  for_statement = true,
   break_statement = true,
   goto_statement = true,
 }
 
---- Whether a value's evaluation is dominated by creating a closure, whose hit
---- lands on the closing `end` rather than the statement's opening line. True for
---- a bare `function() ... end` and for a short-circuit `a or function() ... end`
---- (the operand closure, not the opener, carries the hit).
 --- @param node TSNode a value expression
 --- @return integer? # 0-based row of the closing `end`, nil when not closure-dominated
 local function closure_hit_row(node)
@@ -42,19 +29,14 @@ local function closure_hit_row(node)
   return nil
 end
 
---- The rows a statement's hit lands on when its only values are closure-dominated:
---- their creation hit lands on each closing `end`, not the statement's line, so
---- the header must not count as coverable.
 --- @param node TSNode an `assignment_statement` or `return_statement`
 --- @return integer[]? # 0-based rows, nil when any value receives its hit on the statement's own line
 local function only_closure_rows(node)
   for child in node:iter_children() do
     if child:type() == "expression_list" then
       local rows = {}
-      local total = 0
       for value in child:iter_children() do
         if value:named() then
-          total = total + 1
           local row = closure_hit_row(value)
           if not row then
             return nil
@@ -62,7 +44,7 @@ local function only_closure_rows(node)
           table.insert(rows, row)
         end
       end
-      return total > 0 and rows or nil
+      return rows[1] and rows or nil
     end
   end
   return nil
@@ -116,10 +98,6 @@ function M.coverable(src)
   return lines
 end
 
---- The rows where the line hook fires when the innermost hit-receiving construct
---- enclosing `node` executes. A line can hold code and still never receive a hit
---- of its own (a constant table field folds into the constructor's template), so
---- coverage of such a node is only visible on these rows.
 --- @param node TSNode
 --- @return integer[] # 1-based rows; empty when no hit-receiving ancestor exists
 function M.anchor_rows(node)

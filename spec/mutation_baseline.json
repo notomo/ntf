@@ -56,15 +56,6 @@
       "rationale": "entry.max arrives as a number (or its JSON string form), so tonumber always succeeds and the fallback is never read"
     },
     {
-      "path": "lua/ntf/core/coverage/lines.lua",
-      "col": 19,
-      "operator": "swap-relational",
-      "original": ">",
-      "replacement": ">=",
-      "line": "      return total > 0 and total == closures",
-      "rationale": "the grammar's expression_list always contains at least one expression, so total is never 0"
-    },
-    {
       "path": "lua/ntf/core/coverage/stats.lua",
       "col": 12,
       "operator": "perturb-number",

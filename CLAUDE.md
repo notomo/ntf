@@ -8,6 +8,9 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `make check` — lua-language-server reports no problems
   (set `CHECK_VIMRUNTIME` to your nvim runtime dir if it is not at the default)
 - `stylua --config-path spec/.shared/stylua.toml lua spec/lua bin/ntf` — no diff
+- `make mutation` — after changing `lua/`: exits 0 and flags no new SURVIVED
+  mutant; kill each one with a spec, or — only when genuinely undetectable —
+  add a `spec/mutation_baseline.json` entry with its rationale
 - `make doc` — only after changing CLI flags or the test API; regenerates
   `README.md` and `doc/ntf.txt`
 
@@ -27,8 +30,8 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   what code does. A "why not" takes the shape **"X rather than Y, because Z"**: Y
   is the road not taken (one a reader would plausibly take), and Z the constraint
   that forecloses it, invisible in this file — see `driver.lua` on SIGKILL vs
-  `vim.system`'s SIGTERM, or `coverage/lines.lua` on treesitter vs a text
-  heuristic. An outside fact on its own is still a "why" and belongs in the commit
+  `vim.system`'s SIGTERM, or `mutation/splice.lua` on its own module vs part of
+  operators. An outside fact on its own is still a "why" and belongs in the commit
   message; and if everything the comment names is right there in the code below
   it, delete the comment. Exception:
   doc-source comments — `---` descriptions on the public API, comments genvdoc

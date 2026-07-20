@@ -2,12 +2,6 @@ local lines = require("ntf.core.coverage.lines")
 
 local M = {}
 
---- @class NtfMutantSplice a byte range of a source and what to put in its place
---- @field start_byte integer 0-based byte offset
---- @field end_byte integer 0-based byte offset, exclusive
---- @field original string the replaced text
---- @field replacement string
-
 --- @class NtfMutantSite : NtfMutantSplice
 --- @field operator string mutation operator name
 --- @field row integer 1-based start line
@@ -124,16 +118,6 @@ function M.enumerate(src)
     return a.operator < b.operator
   end)
   return sites
-end
-
---- @param src string the full source text
---- @param splice NtfMutantSplice
---- @return string? # nil when the source no longer matches the splice
-function M.apply(src, splice)
-  if src:sub(splice.start_byte + 1, splice.end_byte) ~= splice.original then
-    return nil
-  end
-  return src:sub(1, splice.start_byte) .. splice.replacement .. src:sub(splice.end_byte + 1)
 end
 
 return M

@@ -1,4 +1,4 @@
-local operators = require("ntf.core.mutation.operators")
+local splice = require("ntf.core.mutation.splice")
 
 local M = {}
 
@@ -50,7 +50,7 @@ function M.install(mutation, cwd)
     local src = file:read("*a")
     file:close()
 
-    local mutated = operators.apply(src, mutation)
+    local mutated = splice.apply(src, mutation)
     if not mutated then
       return nil
     end

@@ -1,4 +1,5 @@
 local operators = require("ntf.core.mutation.operators")
+local splice = require("ntf.core.mutation.splice")
 local runner = require("ntf.core.mutation.runner")
 local baseline = require("ntf.core.mutation.baseline")
 local collector = require("ntf.core.coverage.collector")
@@ -67,7 +68,7 @@ local function enumerate_mutants(cwd, excludes, mutation_path)
       -- A mutant that does not compile would make every covering test error out
       -- and so count as detected, inflating the score. The operators are meant to
       -- keep the source valid; this only guards against a grammar surprise.
-      local mutated = operators.apply(src, site)
+      local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
         table.insert(entries, {
           mutant = vim.tbl_extend("force", site, { path = file }),

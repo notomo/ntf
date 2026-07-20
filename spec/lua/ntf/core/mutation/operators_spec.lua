@@ -1,6 +1,7 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local operators = require("ntf.core.mutation.operators")
+local splice = require("ntf.core.mutation.splice")
 
 --- @param src string
 --- @return table[]
@@ -167,23 +168,8 @@ return f
     local sites = operators.enumerate(src)
     assert.equal(9, #sites)
     for _, site in ipairs(sites) do
-      local mutated = assert(operators.apply(src, site))
+      local mutated = assert(splice.apply(src, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))
     end
-  end)
-end)
-
-describe("ntf.core.mutation.operators.apply", function()
-  it("splices the replacement into the source", function()
-    local src = [[local _ = a == b]]
-    local site = operators.enumerate(src)[1]
-
-    assert.equal([[local _ = a ~= b]], operators.apply(src, site))
-  end)
-
-  it("returns nil when the source no longer matches the site", function()
-    local site = operators.enumerate([[local _ = a == b]])[1]
-
-    assert.is_nil(operators.apply([[local _ = a < b]], site))
   end)
 end)
