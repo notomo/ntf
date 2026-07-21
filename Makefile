@@ -6,6 +6,9 @@ else
 NTF=./bin/ntf
 endif
 
+REQUIRE_LINT_CONFIG=spec/require_lint.json
+CI_TARGETS=mutation require_lint
+
 include spec/.shared/neovim-plugin.mk
 
 spec/.shared/neovim-plugin.mk:

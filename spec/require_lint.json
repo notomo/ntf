@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "from": "ntf.core",
+      "allow": ["ntf.core"],
+      "message": "the engine layer must stay self-contained: editor-facing layers depend on it, never the reverse"
+    }
+  ]
+}
