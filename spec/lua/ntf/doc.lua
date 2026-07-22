@@ -6,11 +6,6 @@ local plugin_name = vim.env.PLUGIN_NAME
 
 local usage = args.usage()
 
--- Every code element in the docs below is backed by something executed here:
--- snippets are runnable files, and documented command lines are assembled from
--- the same values as a verified run. A snippet that stops working (or names a
--- removed flag) fails `make doc` instead of shipping.
-
 local exercised_flags = {} --- @type table<string, true> keyed by the `args.flags` entry name
 
 --- @param name string bare flag token, e.g. "--test-hook"
@@ -29,8 +24,9 @@ end
 
 local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
 
--- The verified runs share one throwaway cache home: some run in random temp
--- cwds, whose default schedule caches would otherwise pile up in the real one.
+-- WHY: some verified runs use a random temp cwd, whose default schedule cache
+-- would otherwise pile up in the real cache home.
+-- NOT: letting the runs inherit XDG_CACHE_HOME.
 local cache_home = vim.fn.tempname()
 
 --- @param cli_args string[]
@@ -45,10 +41,9 @@ local run_ntf = function(cli_args, opts)
   end
 end
 
--- The "writing specs" snippet is reused by both the vimdoc chapter and the
--- README. A spec is not directly `dofile`-able (it needs ntf's build context),
--- so verify it by running it through the real CLI. The CLI only accepts
--- `*_spec.lua` paths, so the run goes through a copy under that name.
+-- WHY: a spec needs ntf's build context, and the CLI that supplies it only
+-- accepts `*_spec.lua` paths, hence the copy under that name.
+-- NOT: `dofile`-ing the snippet the way the other doc snippets are verified.
 local example_path = ("./spec/lua/%s/example.lua"):format(plugin_name)
 local example_spec = vim.fn.tempname() .. "_spec.lua"
 vim.fn.writefile(vim.fn.readfile(example_path), example_spec)
@@ -56,8 +51,6 @@ run_ntf({ example_spec })
 
 local doc_dir = ("./spec/lua/%s/doc"):format(plugin_name)
 
--- Documented hook commands show a user-local path; the flag token and the file
--- basename are shared with the verified run so they cannot diverge.
 local test_hook_path = doc_dir .. "/test_hook.lua"
 run_ntf({ ("%s=%s"):format(flag("--test-hook"), test_hook_path), example_spec })
 local test_hook_command = ("ntf %s=./%s"):format(flag("--test-hook"), vim.fs.basename(test_hook_path))
@@ -66,9 +59,9 @@ local global_hook_path = doc_dir .. "/global_hook.lua"
 run_ntf({ ("%s=%s"):format(flag("--global-hook"), global_hook_path), example_spec })
 local global_hook_command = ("ntf %s=./%s"):format(flag("--global-hook"), vim.fs.basename(global_hook_path))
 
--- The debugger snippet requires lldebugger, which ntf does not depend on;
--- satisfy the `require` with a stub module exposed via LUA_PATH, which the
--- workers inherit.
+-- WHY: the debugger snippet requires lldebugger, which ntf does not depend on,
+-- so a stub on the inherited LUA_PATH satisfies the workers' `require`.
+-- NOT: taking on lldebugger as a dependency to verify one snippet.
 local debug_hook_path = doc_dir .. "/debug.lua"
 local stub_dir = vim.fn.tempname()
 vim.fn.mkdir(stub_dir, "p")
@@ -88,9 +81,9 @@ local debug_command = ("ntf %s=./%s %s=1 %s='the test name'"):format(
   flag("--filter")
 )
 
--- The coverage and mutation runs measure (and mutate) the whole project they are
--- pointed at, which for ntf itself would be the entire code base. A throwaway
--- project keeps those verified runs quick and self-contained.
+-- WHY: the coverage and mutation runs measure and mutate the whole project they
+-- are pointed at, so a throwaway one keeps them quick and self-contained.
+-- NOT: pointing them at ntf itself, which would be the entire code base.
 local project_dir = vim.fn.tempname()
 vim.fn.mkdir(vim.fs.joinpath(project_dir, "lua"), "p")
 vim.fn.mkdir(vim.fs.joinpath(project_dir, "spec"), "p")
@@ -116,8 +109,9 @@ vim.fn.writefile({
   "return M",
 }, vim.fs.joinpath(project_dir, "lua/vendor/dep.lua"))
 
--- The documented coverage command is bare; the verified run redirects the stats
--- file to a temp path to avoid littering the working tree.
+-- WHY: the stats file goes to a temp path so the run does not litter the
+-- working tree.
+-- NOT: running the bare documented command, which writes into the cwd.
 local coverage_flag = flag("--coverage")
 run_ntf({ ("%s=%s"):format(coverage_flag, vim.fn.tempname()), "spec" }, { cwd = project_dir })
 local coverage_command = "ntf " .. coverage_flag
@@ -134,8 +128,9 @@ local exclude_code_command = ("ntf %s %s=lua/vendor %s=lua/mymod/test"):format(
   exclude_code_flag
 )
 
--- No gate flag, so the run exercises the whole pipeline and always passes here
--- (mymod leaves one survivor).
+-- WHY: without a gate flag the run exercises the whole pipeline and still exits
+-- zero on mymod's one survivor.
+-- NOT: adding --mutation-strict here, which that survivor would fail.
 local mutation_flag = flag("--mutation")
 run_ntf({
   ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
@@ -145,8 +140,9 @@ run_ntf({
 local mutation_command = "ntf " .. mutation_flag
 local mutation_strict_command = ("ntf %s %s"):format(mutation_flag, flag("--mutation-strict"))
 
--- The documented baseline lists mymod's one surviving mutant, so --mutation-strict
--- passes only if the equivalence marking actually applied.
+-- WHY: the documented baseline lists mymod's one surviving mutant, so the run
+-- passes the gate only if the equivalence marking really applied.
+-- NOT: leaving --mutation-strict off, where the run would pass either way.
 local mutation_baseline_path = doc_dir .. "/mutation_baseline.json"
 vim.fn.writefile(vim.fn.readfile(mutation_baseline_path), vim.fs.joinpath(project_dir, "spec/mutation_baseline.json"))
 local mutation_baseline_flag = flag("--mutation-baseline")
@@ -166,9 +162,9 @@ local list_flag = flag("--list")
 run_ntf({ list_flag, example_spec })
 run_ntf({ list_flag, ("%s=%s"):format(mutation_flag, "lua/mymod.lua"), "spec" }, { cwd = project_dir })
 
--- The flags above appear in documented commands; the rest of the usage block is
--- backed by these runs, so every documented flag fails `make doc` when it stops
--- working.
+-- WHY: these flags reach no documented command, and the check below demands a
+-- verified run for every flag the usage block documents.
+-- NOT: dropping the two runs as redundant with the documented commands.
 run_ntf({ flag("--timeout") .. "=60000", example_spec })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
@@ -177,8 +173,6 @@ for _, f in ipairs(args.flags) do
   end
 end
 
--- The README setup snippet runs in this very process (ntf is on the runtimepath
--- here just like in a user config) and must actually make `ntf` resolvable.
 local setup_path = doc_dir .. "/setup.lua"
 dofile(setup_path)
 if vim.fn.exepath("ntf") == "" then
@@ -365,8 +359,9 @@ it is what that later judgement starts from.]],
         if node.declaration == nil or node.declaration.type ~= "function" then
           return nil
         end
-        -- assert/meta.lua is a @meta types file, but its functions are called as
-        -- `ntf.assert.X`; document them under ntf.assert with `*ntf.assert.X()*` tags.
+        -- WHY: assert/meta.lua is a @meta types file whose functions are called
+        -- as `ntf.assert.X`, so they need `*ntf.assert.X()*` tags.
+        -- NOT: documenting them under the ntf.assert.meta module they declare.
         if node.declaration.module == "ntf.assert.meta" then
           node.declaration.module = "ntf.assert"
         end

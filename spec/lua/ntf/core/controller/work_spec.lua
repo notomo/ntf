@@ -17,6 +17,8 @@ describe("string", function()
 end)
 ]]
 
+local MATH_ADDS, MATH_SUBTRACTS, STRING_ADDS = "1.1", "1.2", "2.1"
+
 local function planned_ids(items)
   return vim.tbl_map(function(item)
     return item.node_id
@@ -31,22 +33,21 @@ describe("ntf.core.controller.work.plan", function()
     local file = helper.write_spec(source)
     local items = work.plan({ file })
 
-    assert.same({ "1.1", "1.2", "2.1" }, planned_ids(items))
+    assert.same({ MATH_ADDS, MATH_SUBTRACTS, STRING_ADDS }, planned_ids(items))
   end)
 
   it("keeps only leaves whose full name matches the filter", function()
     local file = helper.write_spec(source)
     local items = work.plan({ file }, "adds")
 
-    -- "math adds" and "string adds" match; "math subtracts" is dropped
-    assert.same({ "1.1", "2.1" }, planned_ids(items))
+    assert.same({ MATH_ADDS, STRING_ADDS }, planned_ids(items))
   end)
 
   it("matches the filter as a Lua pattern against the full name", function()
     local file = helper.write_spec(source)
     local items = work.plan({ file }, "^math")
 
-    assert.same({ "1.1", "1.2" }, planned_ids(items))
+    assert.same({ MATH_ADDS, MATH_SUBTRACTS }, planned_ids(items))
   end)
 
   it("drops work items that have no matching leaf", function()
@@ -54,7 +55,7 @@ describe("ntf.core.controller.work.plan", function()
     local items = work.plan({ file }, "subtracts")
 
     assert.equal(1, #items)
-    assert.equal("1.2", items[1].node_id)
+    assert.equal(MATH_SUBTRACTS, items[1].node_id)
   end)
 
   it("yields no items when the filter matches nothing", function()
@@ -92,9 +93,8 @@ end)
 ]])
     local items, load_errors = work.plan({ file })
 
-    -- The file loaded, so it is not a file-level load error; the broken
-    -- describe is scheduled as a leaf so its error gets reported on execution.
-    assert.equal(0, #load_errors)
-    assert.same({ "1" }, planned_ids(items))
+    local broken_describe = "1"
+    assert.same({}, load_errors)
+    assert.same({ broken_describe }, planned_ids(items))
   end)
 end)

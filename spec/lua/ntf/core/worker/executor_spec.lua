@@ -60,20 +60,12 @@ describe("ntf.core.worker.executor.run", function()
     local root = tree.build(helper.write_spec(source))
     executor.run(root, nil)
 
-    -- the third test calls pending() inside its body, so its before/after_each
-    -- hooks still run (runtime pending != declaration pending)
+    local passing_test = { "before", "it1", "finally1", "after" }
+    local failing_test = { "before", "it2", "after" }
+    local test_pending_from_inside_its_body = { "before", "after" }
+
     local log = rawget(_G, "__NTF_LOG")
-    assert.same({
-      "before",
-      "it1",
-      "finally1",
-      "after",
-      "before",
-      "it2",
-      "after",
-      "before",
-      "after",
-    }, log)
+    assert.same(vim.iter({ passing_test, failing_test, test_pending_from_inside_its_body }):flatten():totable(), log)
   end)
 
   it("runs only the selected leaf ids", function()

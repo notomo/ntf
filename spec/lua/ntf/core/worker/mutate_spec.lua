@@ -85,7 +85,6 @@ return M
     )
     local item = work.plan({ helper.test_data:create_file("spec/mod_spec.lua", SPEC) })[1]
 
-    -- `n > 0` becomes `n >= 0`, so is_positive(0) turns true.
     local outcome = launch(item, first_mutation(module, "swap-relational"), cwd)
 
     assert.is_true(outcome.mutation_applied)
@@ -104,10 +103,7 @@ end
 return M
 ]]
     )
-    -- A hook that pulls the module in first leaves it in package.loaded, where a
-    -- plain `require` would never reach the mutation loader. (ntf running its own
-    -- specs is the same situation.)
-    local hook = helper.test_data:create_file(
+    local hook_that_leaves_the_module_in_package_loaded = helper.test_data:create_file(
       "hook.lua",
       [[
 require("mod")
@@ -116,7 +112,8 @@ return {}
     )
     local item = work.plan({ helper.test_data:create_file("spec/mod_spec.lua", SPEC) })[1]
 
-    local outcome = launch(item, first_mutation(module, "swap-relational"), cwd, hook)
+    local outcome =
+      launch(item, first_mutation(module, "swap-relational"), cwd, hook_that_leaves_the_module_in_package_loaded)
 
     assert.is_true(outcome.mutation_applied)
     assert.equal("failed", outcome.results[1].status)
@@ -138,9 +135,9 @@ return M
     for _, loader in ipairs(package.loaders) do
       original_loaders[loader] = true
     end
-    -- On the runtimepath too, so Neovim's own loader could also resolve the
-    -- module: this pins the install position, where any later slot would let
-    -- the original win.
+    -- WHY: with cwd on the runtimepath Neovim's own loader resolves the module
+    -- too, so the installed index below has to win against it.
+    -- NOT: leaving cwd off the runtimepath, where any install position passes.
     vim.opt.runtimepath:append(cwd)
 
     local applied = mutate.install(first_mutation(module, "swap-relational"), cwd)
@@ -163,14 +160,17 @@ return M
     end
 
     assert(ok, mod)
-    -- Just after the preload loader, by index rather than by requiring a
-    -- runtimepath-resolvable module: a mutation trial's worker has its own
-    -- mutation loader installed already, which would mask a one-slot shift.
-    assert.equal(2, installed_index)
+    -- WHY: a mutation trial's worker already has its own mutation loader
+    -- installed, which would mask a one-slot shift.
+    -- NOT: letting a require of a runtimepath-resolvable module stand in for the
+    -- index.
+    local just_after_the_preload_loader = 2
+    assert.equal(just_after_the_preload_loader, installed_index)
     assert.is_false(applied_before)
     assert.is_true(applied_after)
-    -- `n > 0` became `n >= 0`, so only the mutated source is true at 0.
-    assert.is_true(mod.is_positive(0))
+
+    local only_the_mutated_source_is_positive_at_zero = mod.is_positive(0)
+    assert.is_true(only_the_mutated_source_is_positive_at_zero)
   end)
 
   it("reports that the mutation was not applied when the module is never required", function()

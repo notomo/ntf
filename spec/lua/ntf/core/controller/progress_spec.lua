@@ -37,13 +37,12 @@ describe("ntf.core.controller.progress", function()
     assert.equal("", table.concat(buf))
   end)
 
-  it("closes the current dot line via newline so the next block starts fresh", function()
+  it("closes the current dot line via newline, and a second one with nothing pending adds no break", function()
     local buf, write = collector()
     local prog = progress.new({ write = write, color = false })
 
     prog.on_item({}, item_of("passed", "passed"))
     prog.newline()
-    -- a second newline with nothing pending must not double the break
     prog.newline()
     prog.on_item({}, item_of("passed"))
     prog.finish()

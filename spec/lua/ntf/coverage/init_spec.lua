@@ -5,15 +5,25 @@ local helper = require("ntf.test.helper")
 
 local ns = vim.api.nvim_create_namespace("ntf.coverage")
 
-local SOURCE = table.concat({
-  "local M = {}", -- 1 code, hit
-  "-- comment", -- 2 not code
-  "function M.f()", -- 3 code, hit
-  "  return 1", -- 4 code, missed
-  "end", -- 5 lone end, not code
-}, "\n")
+local COVERED = "NtfCoverageCovered"
+local MISSED = "NtfCoverageMissed"
 
---- Map row (0-based) -> sign_hl_group of the coverage extmarks in `bufnr`.
+--- @class CoverageLine
+--- @field code string one source line of the measured module
+--- @field hit boolean whether the stats file records a hit for the line
+--- @field sign string? sign highlight group the line must get, nil when it must get no sign
+
+--- @type CoverageLine[]
+local MODULE = {
+  { code = "local M = {}", hit = true, sign = COVERED },
+  { code = "-- comment", hit = false },
+  { code = "function M.f()", hit = true, sign = COVERED },
+  { code = "  return 1", hit = false, sign = MISSED },
+  { code = "end", hit = false },
+}
+
+--- @param bufnr integer
+--- @return table<integer,string> sign_hl_group of the coverage extmarks by 0-based row
 local function signs(bufnr)
   local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
   local result = {}
@@ -23,188 +33,149 @@ local function signs(bufnr)
   return result
 end
 
+--- @param lines CoverageLine[]
+--- @return string path of the written module
+local function create_module(lines)
+  local codes = vim.tbl_map(function(line)
+    return line.code
+  end, lines)
+  return helper.test_data:create_file("mod.lua", table.concat(codes, "\n"))
+end
+
+--- @param src string module path
+--- @param hits integer[] hit count per line, starting at line 1
+--- @return string path of the written stats file
+local function create_stats(src, hits)
+  local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
+  return helper.test_data:create_file("luacov.stats.out", ("%d:%s\n%s\n"):format(#hits, file, table.concat(hits, " ")))
+end
+
+--- @param lines CoverageLine[]
+--- @return integer[] hit count per line
+local function hits_of(lines)
+  return vim.tbl_map(function(line)
+    return line.hit and 1 or 0
+  end, lines)
+end
+
+--- @param lines CoverageLine[]
+--- @return table<integer,string> expected sign highlight group by 0-based row
+local function expected_signs(lines)
+  local expected = {}
+  for i, line in ipairs(lines) do
+    if line.sign then
+      expected[i - 1] = line.sign
+    end
+  end
+  return expected
+end
+
+--- @param lines CoverageLine[]
+--- @return table<integer,string> sign highlight group by 0-based row
+local function decorated_signs(lines)
+  local src = create_module(lines)
+  local stats = create_stats(src, hits_of(lines))
+
+  vim.cmd.edit(src)
+  local bufnr = vim.api.nvim_get_current_buf()
+  coverage.decorate({ path = stats, buffer = bufnr })
+  return signs(bufnr)
+end
+
 describe("ntf.coverage.decorate", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
   it("signs covered and coverable-but-missed lines, skipping non-code lines", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    -- max=4: line 1 hit, 2 unhit (comment), 3 hit, 4 unhit (missed).
-    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
-
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [0] = "NtfCoverageCovered", -- line 1
-      [2] = "NtfCoverageCovered", -- line 3
-      [3] = "NtfCoverageMissed", -- line 4
-    }, signs(bufnr))
+    assert.same(expected_signs(MODULE), decorated_signs(MODULE))
   end)
 
   it("places no sign past the buffer's end when the stats file is stale", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    -- Stats from an older, longer version of the file: hits on lines 6-8, which
-    -- no longer exist in the buffer.
-    local stats = helper.test_data:create_file("luacov.stats.out", ("8:%s\n1 0 1 0 0 1 1 1\n"):format(file))
+    local src = create_module(MODULE)
+    local hits_of_the_longer_previous_file = { 1, 0, 1, 0, 0, 1, 1, 1 }
+    local stats = create_stats(src, hits_of_the_longer_previous_file)
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
     coverage.decorate({ path = stats, buffer = bufnr })
 
-    assert.same({
-      [0] = "NtfCoverageCovered", -- line 1
-      [2] = "NtfCoverageCovered", -- line 3
-      [3] = "NtfCoverageMissed", -- line 4
-    }, signs(bufnr))
+    assert.same(expected_signs(MODULE), signs(bufnr))
   end)
 
   it("does not flag multi-line closure header lines as missed", function()
-    -- LuaJIT attributes the closure-creating instruction to the closing `end`,
-    -- so the `function(...)` header lines never get a hit; they must not be
-    -- treated as coverable-but-missed.
-    local header_src = table.concat({
-      "local a = function()", -- 1 closure header, unhit
-      "  return 1", -- 2 code, missed (closure never called)
-      "end", -- 3 lone end, hit (closure creation lands here)
-      "return function()", -- 4 closure header, unhit
-      "  return 2", -- 5 code, missed
-      "end", -- 6 lone end, hit
-    }, "\n")
-    local src = helper.test_data:create_file("mod.lua", header_src)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("6:%s\n0 0 1 0 0 1\n"):format(file))
+    --- @type CoverageLine[]
+    local closure_headers = {
+      { code = "local a = function()", hit = false },
+      { code = "  return 1", hit = false, sign = MISSED },
+      { code = "end", hit = true, sign = COVERED },
+      { code = "return function()", hit = false },
+      { code = "  return 2", hit = false, sign = MISSED },
+      { code = "end", hit = true, sign = COVERED },
+    }
 
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [1] = "NtfCoverageMissed", -- line 2
-      [2] = "NtfCoverageCovered", -- line 3 (end, hit)
-      [4] = "NtfCoverageMissed", -- line 5
-      [5] = "NtfCoverageCovered", -- line 6 (end, hit)
-    }, signs(bufnr))
+    assert.same(expected_signs(closure_headers), decorated_signs(closure_headers))
   end)
 
   it("does not flag explicit `= nil` assignment lines as missed", function()
-    -- Assigning nil to a table field emits no bytecode, so the line can never
-    -- get a hit; it must not be treated as coverable-but-missed.
-    local nil_src = table.concat({
-      "local t = {", -- 1 code, hit (constructor opener)
-      "  path = nil,", -- 2 = nil, unhit -> not coverable (no sign)
-      "}", -- 3 lone close, not code
-      "return t", -- 4 code, missed
-    }, "\n")
-    local src = helper.test_data:create_file("mod.lua", nil_src)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 0 0\n"):format(file))
+    --- @type CoverageLine[]
+    local nil_field = {
+      { code = "local t = {", hit = true, sign = COVERED },
+      { code = "  path = nil,", hit = false },
+      { code = "}", hit = false },
+      { code = "return t", hit = false, sign = MISSED },
+    }
 
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [0] = "NtfCoverageCovered", -- line 1
-      [3] = "NtfCoverageMissed", -- line 4
-    }, signs(bufnr))
+    assert.same(expected_signs(nil_field), decorated_signs(nil_field))
   end)
 
   it("does not flag table fields, bare locals, or opener braces as missed", function()
-    -- LuaJIT collapses a table constructor onto its opening line, merges
-    -- consecutive bare `local`s onto the first, and never hits a lone `{`. None
-    -- of those lines can receive a hit, so they must not be coverable. A genuine
-    -- unhit call line, by contrast, must still show as missed.
-    local mixed_src = table.concat({
-      "local t1 = {", -- 1  opener, hit
-      '  one = "one",', -- 2  field, never hit -> not coverable
-      '  two = "two",', -- 3  field, never hit -> not coverable
-      "}", -- 4  lone close
-      "local x", -- 5  bare local (first), hit
-      "local y", -- 6  bare local, never hit -> not coverable
-      "local t2 = {", -- 7  opener, hit
-      "  f(),", -- 8  call, unhit -> missed
-      "}", -- 9  lone close
-      "return t1, t2, x, y", -- 10 return, hit
-    }, "\n")
-    local src = helper.test_data:create_file("mod.lua", mixed_src)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("10:%s\n1 0 0 0 1 0 1 0 0 1\n"):format(file))
+    --- @type CoverageLine[]
+    local fields_and_locals = {
+      { code = "local t1 = {", hit = true, sign = COVERED },
+      { code = '  one = "one",', hit = false },
+      { code = '  two = "two",', hit = false },
+      { code = "}", hit = false },
+      { code = "local x", hit = true, sign = COVERED },
+      { code = "local y", hit = false },
+      { code = "local t2 = {", hit = true, sign = COVERED },
+      { code = "  f(),", hit = false, sign = MISSED },
+      { code = "}", hit = false },
+      { code = "return t1, t2, x, y", hit = true, sign = COVERED },
+    }
 
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [0] = "NtfCoverageCovered", -- line 1 opener
-      [4] = "NtfCoverageCovered", -- line 5 bare local (hit)
-      [6] = "NtfCoverageCovered", -- line 7 opener
-      [7] = "NtfCoverageMissed", -- line 8 unhit call
-      [9] = "NtfCoverageCovered", -- line 10 return
-    }, signs(bufnr))
+    assert.same(expected_signs(fields_and_locals), decorated_signs(fields_and_locals))
   end)
 
   it("does not flag the receiver line of a multi-line method chain as missed", function()
-    -- A call node begins on its receiver line (`vim` alone), but LuaJIT lands the
-    -- hit on the `arguments` line (`.iter(...)`). The receiver line must not be
-    -- coverable; the call line carries the coverage.
-    local chain_src = table.concat({
-      "local t = {", -- 1  opener, hit
-      "  vim", -- 2  receiver, never hit -> not coverable
-      "    .iter(x)", -- 3  call arguments, hit
-      "    :totable(),", -- 4  call arguments, unhit -> missed
-      "}", -- 5  lone close
-      "return t", -- 6  return, hit
-    }, "\n")
-    local src = helper.test_data:create_file("mod.lua", chain_src)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("6:%s\n1 0 1 0 0 1\n"):format(file))
+    --- @type CoverageLine[]
+    local method_chain = {
+      { code = "local t = {", hit = true, sign = COVERED },
+      { code = "  vim", hit = false },
+      { code = "    .iter(x)", hit = true, sign = COVERED },
+      { code = "    :totable(),", hit = false, sign = MISSED },
+      { code = "}", hit = false },
+      { code = "return t", hit = true, sign = COVERED },
+    }
 
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [0] = "NtfCoverageCovered", -- line 1 opener
-      [2] = "NtfCoverageCovered", -- line 3 .iter(x) (hit)
-      [3] = "NtfCoverageMissed", -- line 4 :totable() (unhit call)
-      [5] = "NtfCoverageCovered", -- line 6 return
-    }, signs(bufnr))
+    assert.same(expected_signs(method_chain), decorated_signs(method_chain))
   end)
 
   it("does not flag a `x = a or function() end` header as missed", function()
-    -- The value is `existing or function()`: LuaJIT lands the hit on the closure
-    -- line, not the assignment's opening line, so the header must not count as
-    -- coverable (the closure body still carries its own coverage).
-    local or_src = table.concat({
-      "local cb = existing", -- 1  header (a or closure), never hit -> not coverable
-      "  or function()", -- 2  closure creation, hit
-      "    return 1", -- 3  closure body, unhit -> missed
-      "  end", -- 4  lone end
-      "return cb", -- 5  return, hit
-    }, "\n")
-    local src = helper.test_data:create_file("mod.lua", or_src)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("5:%s\n0 1 0 0 1\n"):format(file))
+    --- @type CoverageLine[]
+    local or_closure = {
+      { code = "local cb = existing", hit = false },
+      { code = "  or function()", hit = true, sign = COVERED },
+      { code = "    return 1", hit = false, sign = MISSED },
+      { code = "  end", hit = false },
+      { code = "return cb", hit = true, sign = COVERED },
+    }
 
-    vim.cmd.edit(src)
-    local bufnr = vim.api.nvim_get_current_buf()
-    coverage.decorate({ path = stats, buffer = bufnr })
-
-    assert.same({
-      [1] = "NtfCoverageCovered", -- line 2 closure creation (hit)
-      [2] = "NtfCoverageMissed", -- line 3 unhit closure body
-      [4] = "NtfCoverageCovered", -- line 5 return
-    }, signs(bufnr))
+    assert.same(expected_signs(or_closure), decorated_signs(or_closure))
   end)
 
   it("clears the decoration with enable = false", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
@@ -215,7 +186,7 @@ describe("ntf.coverage.decorate", function()
   end)
 
   it("errors when the coverage file does not exist", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local src = create_module(MODULE)
     local path = helper.test_data:path("missing.stats.out")
 
     vim.cmd.edit(src)
@@ -227,7 +198,7 @@ describe("ntf.coverage.decorate", function()
   end)
 
   it("leaves the buffer untouched when its file is not in the stats", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
+    local src = create_module(MODULE)
     local stats = helper.test_data:create_file("luacov.stats.out", "1:/other.lua\n1\n")
 
     vim.cmd.edit(src)
@@ -243,9 +214,8 @@ describe("ntf.coverage.is_decorated", function()
   after_each(helper.after_each)
 
   it("is false before decorating and true after, then false again when cleared", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
@@ -259,9 +229,8 @@ describe("ntf.coverage.is_decorated", function()
   end)
 
   it("reports per buffer", function()
-    local src = helper.test_data:create_file("mod.lua", SOURCE)
-    local file = vim.fs.normalize(vim.fn.fnamemodify(src, ":p"))
-    local stats = helper.test_data:create_file("luacov.stats.out", ("4:%s\n1 0 1 0\n"):format(file))
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
 
     vim.cmd.edit(src)
     local decorated = vim.api.nvim_get_current_buf()

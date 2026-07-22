@@ -14,11 +14,10 @@ describe("ntf.core.coverage.stats.write", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
-  it("writes the luacov.stats.out format (header line + space-separated counts)", function()
+  it("writes a `<max>:<path>` header, then counts for lines 1..max with unhit lines as 0", function()
     local out = helper.test_data:path("luacov.stats.out")
     stats.write(out, { ["/x.lua"] = { max = 3, lines = { [1] = 2, [3] = 5 } } })
 
-    -- "<max>:<path>" then counts for lines 1..max, unhit lines written as 0.
     assert.equal("3:/x.lua\n2 0 5\n", read_all(out))
   end)
 

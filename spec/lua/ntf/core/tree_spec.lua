@@ -79,7 +79,6 @@ describe("outer", function()
 end)
 ]]))
 
-    -- The file itself loaded fine; only the describe body blew up.
     assert.is_nil(root.load_error)
     local outer = root.children[1]
     assert.match("broken describe body", tostring(outer.load_error))

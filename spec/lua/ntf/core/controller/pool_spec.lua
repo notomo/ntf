@@ -17,8 +17,6 @@ end)
 ]])
     local items = work.plan({ file })
 
-    -- on_item fires for every finished worker; throwing here stands in for any
-    -- bug in the result/output handling. Such an error must surface, not hang.
     local ok, err = pcall(function()
       pool.run(items, {
         root = helper.root,

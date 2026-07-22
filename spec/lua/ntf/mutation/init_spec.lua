@@ -28,7 +28,8 @@ local function record(row, status)
   }
 end
 
---- Map row (0-based) -> the extmark's sign highlight and virtual text.
+--- @param bufnr integer
+--- @return table<integer,{sign_hl_group:string,virt_text:string?}> by 0-based row
 local function marks(bufnr)
   local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
   local result = {}

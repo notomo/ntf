@@ -2,9 +2,9 @@ local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local report = require("ntf.core.mutation.report")
 
--- A real directory rather than a made-up "/root", because summary() expands
--- cwd with fnamemodify(":p"), which on Windows prefixes a drive letter onto
--- "/root" and the records no longer sit under it.
+-- WHY: summary() expands the given cwd with fnamemodify(":p"), which on Windows
+-- prefixes a drive letter, so the records would no longer sit under the root.
+-- NOT: a made-up absolute directory such as "/root".
 local root = vim.fs.normalize(vim.fn.getcwd())
 
 --- @param relative_path string
@@ -52,13 +52,13 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("1 killed  1 timeout  1 survived  1 no coverage\n", text)
     assert.match("SURVIVED lua/a%.lua:3 swap%-relational: < %-> <=", text)
     assert.match("NO COVERAGE lua/b%.lua:4", text)
-    -- A detected mutant says nothing beyond the score, so it is not listed.
-    assert.no.match("lua/a%.lua:1", text)
-    -- A status nothing landed in is left out of the counts line.
-    assert.no.match("not applied", text)
+    local detected_mutant = "lua/a%.lua:1"
+    assert.no.match(detected_mutant, text)
+    local status_nothing_landed_in = "not applied"
+    assert.no.match(status_nothing_landed_in, text)
   end)
 
-  it("shows a path relative to the working directory, however that was spelled", function()
+  it("shows a path relative to the working directory, leaving a path outside it whole", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "survived"), record("/other/b.lua", 2, "survived") },
       counts = { killed = 0, timeout = 0, survived = 2, no_coverage = 0, not_applied = 0, equivalent = 0 },
@@ -68,7 +68,6 @@ describe("ntf.core.mutation.report.summary", function()
     local text = report.summary(summary, root .. "/", { color = false })
 
     assert.match("SURVIVED lua/a%.lua:1", text)
-    -- A file outside the working directory has no relative form; it stays whole.
     assert.match("SURVIVED /other/b%.lua:2", text)
   end)
 
@@ -94,8 +93,8 @@ describe("ntf.core.mutation.report.summary", function()
 
     assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
     assert.match("1 equivalent", text)
-    -- An equivalent mutant is settled; only the lost judgement needs attention.
-    assert.no.match("lua/a%.lua:2", text)
+    local settled_equivalent_mutant = "lua/a%.lua:2"
+    assert.no.match(settled_equivalent_mutant, text)
     assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
   end)
 

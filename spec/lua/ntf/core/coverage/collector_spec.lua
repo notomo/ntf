@@ -24,8 +24,9 @@ describe("ntf.core.coverage.collector.line_hook", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
-  -- Calls `hook` from a chunk named `chunkname`, so the source the hook
-  -- attributes to (its caller's) is the fabricated name, not this spec file.
+  --- @param hook fun(event:string, line:integer)
+  --- @param chunkname string name of the chunk that calls the hook, so it attributes the lines there instead of to this spec file
+  --- @param lines integer[] line numbers fed to the hook
   local function run_hook(hook, chunkname, lines)
     local fn = assert(
       loadstring("local hook, lines = ...\nfor _, line in ipairs(lines) do\n  hook('line', line)\nend", chunkname)
@@ -70,9 +71,7 @@ describe("ntf.core.coverage.collector.start/stop", function()
   after_each(helper.after_each)
 
   it("counts executed lines of a measured file under cwd", function()
-    -- A non-spec file under the data dir: it is under cwd (so measured) and does
-    -- not match *_spec.lua (so not excluded).
-    local file = helper.test_data:create_file(
+    local measured = helper.test_data:create_file(
       "subject.lua",
       table.concat({
         "local function add(a, b)",
@@ -82,33 +81,28 @@ describe("ntf.core.coverage.collector.start/stop", function()
         "return add",
       }, "\n")
     )
-    local add = assert(loadfile(file))()
+    local add = assert(loadfile(measured))()
 
     collector.start({ cwd = helper.test_data.full_path })
     add(1, 2)
     add(3, 4)
     local data = collector.stop()
 
-    local key = vim.fs.normalize(file)
-    assert.truthy(data[key])
-    -- The function body (lines 2 and 3) ran twice; the chunk's top lines ran
-    -- before start, so they are not counted.
-    assert.equal(2, data[key].lines["2"])
-    assert.equal(2, data[key].lines["3"])
+    local body_line_hits = { ["2"] = 2, ["3"] = 2 }
+    assert.same(body_line_hits, data[vim.fs.normalize(measured)].lines)
   end)
 
   it("does not measure files outside cwd", function()
+    local module_outside_cwd = "ntf.core.coverage.report"
+
     collector.start({ cwd = helper.test_data.full_path })
-    -- ntf's own modules live outside the data dir, so running one is not counted.
-    require("ntf.core.coverage.report")
+    require(module_outside_cwd)
     local data = collector.stop()
 
     assert.same({}, data)
   end)
 
-  it("does not measure files under an excluded test directory", function()
-    -- The test tree (specs and any deps alongside them) is excluded. The dir need
-    -- not be `spec/`: here it is `test/`, derived from where the spec lives.
+  it("does not measure files sitting alongside a spec, whatever the directory is named", function()
     local file = helper.test_data:create_file(
       "test/sub.lua",
       table.concat({
@@ -171,9 +165,8 @@ describe("ntf.core.coverage.collector.measurable_files", function()
 
   it("still lists a lua file whose contents the meta check cannot read", function()
     local file = helper.test_data:create_file("lua/locked.lua", "return 1")
-    -- Mode 0 strips read permission on POSIX; on Windows it only makes the file
-    -- read-only, so there the meta check simply takes the readable path.
-    vim.uv.fs_chmod(file, 0)
+    local no_read_permission = 0
+    vim.uv.fs_chmod(file, no_read_permission)
 
     local files = collector.measurable_files(helper.test_data.full_path, {})
 
@@ -182,8 +175,8 @@ describe("ntf.core.coverage.collector.measurable_files", function()
 end)
 
 describe("ntf.core.coverage.collector.exclude_roots", function()
-  -- Build the fake paths under a real absolute base so the test holds on Windows
-  -- too, where a bare "/repo" would gain a drive letter once made absolute.
+  --- @param path string
+  --- @return string absolute path under a real base, so a bare "/repo" keeps the drive letter it gains on Windows
   local function abs(path)
     return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
   end

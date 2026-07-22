@@ -215,10 +215,8 @@ describe("bin/ntf end-to-end", function()
   end)
 
   it("disables the worker timeout with --timeout=0", function()
-    -- 0 must mean "no timer at all": a literal 0ms timer would kill the worker
-    -- before this slow-but-finite test could pass.
-    local path = spec("slow_spec.lua", SLOW)
-    local obj = run({ path }, { "--timeout=0" })
+    local slow_but_finite = spec("slow_spec.lua", SLOW)
+    local obj = run({ slow_but_finite }, { "--timeout=0" })
 
     assert.equal(0, obj.code)
     assert.match("1 passed", obj.stdout)
@@ -288,7 +286,6 @@ return {
 
     assert.equal(1, obj.code)
     assert.match("teardown boom", obj.stdout)
-    -- the actual tests still ran and are reported, not dropped on the floor
     assert.match("2 passed", obj.stdout)
   end)
 
@@ -312,10 +309,6 @@ return {
 
   it("runs the --global-hook module's setup and teardown once around the whole run", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "global_hook.log")
-    -- Two top-level tests become two work items (two workers), so a --test-hook
-    -- would log twice; the global hook must still log exactly once. The spec also
-    -- logs at its top level, which runs on every load: once when the controller
-    -- plans the run and once per worker. Setup must precede even the plan's load.
     local path = spec(
       "global_hooked_spec.lua",
       ([[
@@ -353,7 +346,21 @@ return {
     local obj = run({ path }, { "--global-hook=" .. hook, "--jobs=1" })
 
     assert.equal(0, obj.code)
-    assert.same({ "setup", "load", "load", "test", "load", "test", "teardown" }, vim.fn.readfile(log))
+    local controller_plan = { "load" }
+    local worker_of_one_top_level_test = { "load", "test" }
+    assert.same(
+      vim
+        .iter({
+          { "setup" },
+          controller_plan,
+          worker_of_one_top_level_test,
+          worker_of_one_top_level_test,
+          { "teardown" },
+        })
+        :flatten()
+        :totable(),
+      vim.fn.readfile(log)
+    )
   end)
 
   it("surfaces a --global-hook teardown error without discarding the results", function()
@@ -364,7 +371,6 @@ return {
 
     assert.equal(1, obj.code)
     assert.match("teardown boom", obj.stderr)
-    -- the actual tests still ran and are reported, not dropped on the floor
     assert.match("2 passed", obj.stdout)
   end)
 
@@ -388,17 +394,15 @@ return {
 
   it("writes a luacov stats file and prints a summary with --coverage", function()
     local path = spec("pass_spec.lua", PASSING)
-    -- Keep the stats file inside the temp data dir so teardown cleans it up.
     local stats_file = vim.fs.joinpath(helper.test_data.full_path, "cov.stats.out")
     local obj = run({ path }, { "--coverage=" .. stats_file })
 
     assert.equal(0, obj.code)
     assert.match("2 passed", obj.stdout)
     assert.match("Coverage:", obj.stdout)
-    -- The file exists in luacov format: a "<max>:<path>" header line. (ntf's own
-    -- modules run under the spec, so there is always at least one measured file.)
     assert.equal(1, vim.fn.filereadable(stats_file))
-    assert.match("^%d+:.+%.lua$", vim.fn.readfile(stats_file)[1])
+    local luacov_header = "^%d+:.+%.lua$"
+    assert.match(luacov_header, vim.fn.readfile(stats_file)[1])
   end)
 
   it("counts module-level lines of code required at spec load time", function()
@@ -496,10 +500,9 @@ return {
         "return M",
       }, "\n")
     )
-    -- Excluded although the tests do run it: the point is that it is not the code
-    -- under test.
+    local run_by_the_tests_but_not_the_code_under_test = "lua/vendor/dep.lua"
     helper.test_data:create_file(
-      "lua/vendor/dep.lua",
+      run_by_the_tests_but_not_the_code_under_test,
       table.concat({
         "local M = {}",
         "function M.g()",
@@ -829,11 +832,9 @@ describe("ntf --mutation", function()
     assert.match("mutation gate failed: 1 survived", obj.stderr)
   end)
 
-  it("exits zero when --mutation-strict gates only a category that is empty", function()
+  it("exits zero when --mutation-strict gates only no_coverage, which the fixture leaves empty", function()
     local root, results_file = mutation_project()
 
-    -- The fixture leaves one survivor and no uncovered mutant, so gating only
-    -- no_coverage passes.
     local obj = helper.run_cli(
       { "--mutation", "--mutation-strict=no_coverage", "--mutation-results=" .. results_file, "spec" },
       root
@@ -924,7 +925,6 @@ describe("ntf --mutation", function()
   it("counts a mutant that hangs the tests as detected", function()
     local root = helper.test_data.full_path
     local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
-    -- `i = i + 1` becomes `i = i - 1`, and the loop never ends.
     helper.test_data:create_file(
       "lua/loop.lua",
       table.concat({

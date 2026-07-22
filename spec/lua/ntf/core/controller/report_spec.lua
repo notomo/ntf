@@ -181,8 +181,7 @@ describe("ntf.core.controller.report.resolve_color", function()
     end
   end
 
-  it("is false when stdout is not a tty", function()
-    -- under the test runner a worker's stdout is a pipe to the controller
+  it("is false when stdout is not a tty, as under the test runner where it is a pipe", function()
     assert.is_false(report.resolve_color())
   end)
 
