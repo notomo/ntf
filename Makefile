@@ -46,6 +46,10 @@ mutation mutation_list: EXCLUDE_CODE += \
 # end-to-end tests spawn a nested nvim per test and would dominate the
 # mutation run's cost.
 SPEC_ROOT = spec/lua/${PLUGIN_NAME}
-mutation mutation_list: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) $(wildcard ${SPEC_ROOT}/*/))
+# Subdirectories come from $(dir) over their entries rather than a ${SPEC_ROOT}/*/
+# glob, because make 3.81 (macOS) and mingw make strip the trailing slash and so
+# match plain files such as doc.lua too, which ntf rejects as not a spec file.
+SPEC_SUBDIRS = $(sort $(dir $(wildcard ${SPEC_ROOT}/*/*)))
+mutation mutation_list: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) ${SPEC_SUBDIRS})
 
 MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json --mutation-strict
