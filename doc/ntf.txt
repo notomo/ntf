@@ -14,6 +14,7 @@ USAGE                                                              *ntf-USAGE*
     --test-hook=FILE          run a Lua module providing setup/teardown around each test, in its worker
     --global-hook=FILE        run a Lua module providing setup/teardown once around the whole run, in the launcher process
     --exclude-code=PATH       leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
+    --exclude-spec=PATH       skip a spec file or directory when discovering tests (repeatable)
     --coverage[=FILE]         measure line coverage; write luacov.stats.out (or FILE) and print a summary
     --mutation[=PATH]         mutation-test the covered code (only under PATH, if given) once the tests pass
     --mutation-strict[=LIST]  exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)

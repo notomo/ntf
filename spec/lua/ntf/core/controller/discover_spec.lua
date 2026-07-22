@@ -27,4 +27,24 @@ describe("ntf.core.controller.discover.specs", function()
     assert.equal(1, #files)
     assert.match("a_spec%.lua$", files[1])
   end)
+
+  it("skips an excluded file but keeps the rest", function()
+    helper.test_data:create_file("dir/a_spec.lua", "")
+    local skipped = helper.test_data:create_file("dir/b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") }, { skipped })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("skips every spec under an excluded directory", function()
+    helper.test_data:create_file("dir/a_spec.lua", "")
+    helper.test_data:create_file("dir/nested/b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") }, { helper.test_data:path("dir/nested") })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
 end)

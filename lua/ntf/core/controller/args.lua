@@ -15,6 +15,7 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field exclude_code string[] files or directories to leave out of the code under test
+--- @field exclude_spec string[] spec files or directories to skip during discovery
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field mutation boolean mutation-test the covered code after a passing run
@@ -44,6 +45,10 @@ M.flags = {
   {
     name = "--exclude-code=PATH",
     description = "leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)",
+  },
+  {
+    name = "--exclude-spec=PATH",
+    description = "skip a spec file or directory when discovering tests (repeatable)",
   },
   {
     name = "--coverage[=FILE]",
@@ -93,6 +98,7 @@ function M.parse(argv)
     test_hook = nil,
     global_hook = nil,
     exclude_code = {},
+    exclude_spec = {},
     coverage = false,
     coverage_file = "luacov.stats.out",
     mutation = false,
@@ -121,6 +127,9 @@ function M.parse(argv)
     end,
     ["--exclude-code"] = function(v)
       table.insert(opts.exclude_code, v)
+    end,
+    ["--exclude-spec"] = function(v)
+      table.insert(opts.exclude_spec, v)
     end,
     ["--mutation-baseline"] = function(v)
       opts.mutation_baseline = v
@@ -213,6 +222,11 @@ function M.parse(argv)
   for _, path in ipairs(opts.exclude_code) do
     if vim.fn.filereadable(path) == 0 and vim.fn.isdirectory(path) == 0 then
       return "--exclude-code path not found: " .. path
+    end
+  end
+  for _, path in ipairs(opts.exclude_spec) do
+    if vim.fn.filereadable(path) == 0 and vim.fn.isdirectory(path) == 0 then
+      return "--exclude-spec path not found: " .. path
     end
   end
   if

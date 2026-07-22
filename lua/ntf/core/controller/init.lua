@@ -95,7 +95,7 @@ function M.run(root)
     mutation_baseline = loaded
   end
 
-  local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths)
+  local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths, opts.exclude_spec)
   if not ok then
     io.stderr:write(tostring(files) .. "\n")
     os.exit(2)

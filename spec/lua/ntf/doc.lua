@@ -166,6 +166,7 @@ run_ntf({ list_flag, ("%s=%s"):format(mutation_flag, "lua/mymod.lua"), "spec" },
 -- verified run for every flag the usage block documents.
 -- NOT: dropping the two runs as redundant with the documented commands.
 run_ntf({ flag("--timeout") .. "=60000", example_spec })
+run_ntf({ ("%s=%s"):format(flag("--exclude-spec"), example_spec), "spec" }, { cwd = project_dir })
 run_ntf({ flag("--help") })
 for _, f in ipairs(args.flags) do
   if not exercised_flags[f.name] then

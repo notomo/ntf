@@ -219,6 +219,26 @@ describe("ntf.core.controller.args.parse", function()
     end)
   end)
 
+  describe("--exclude-spec", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("collects every occurrence", function()
+      local a = helper.test_data:create_file("a_spec.lua", "")
+      local dir = helper.test_data:create_dir("nested")
+
+      local opts = args.parse({ "--exclude-spec=" .. a, "--exclude-spec=" .. dir, "spec" })
+
+      assert.same({ a, dir }, opts.exclude_spec)
+    end)
+
+    it("errors when the path does not exist", function()
+      local err = args.parse({ "--exclude-spec=/no/such/dir", "spec" })
+
+      assert.match("%-%-exclude%-spec path not found", err)
+    end)
+  end)
+
   describe("--mutation", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

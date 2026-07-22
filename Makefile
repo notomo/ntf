@@ -7,7 +7,7 @@ NTF=./bin/ntf
 endif
 
 REQUIRE_LINT_CONFIG=spec/require_lint.json
-CI_TARGETS=mutation require_lint comment_lint
+CI_TARGETS=require_lint comment_lint test mutation
 
 include spec/.shared/neovim-plugin.mk
 
@@ -42,14 +42,7 @@ mutation mutation_list: EXCLUDE_CODE += \
 	lua/ntf/core/controller/discover.lua \
 	lua/ntf/core/controller/work.lua
 
-# Every spec except init_spec.lua rather than the whole suite: its bin/ntf
-# end-to-end tests spawn a nested nvim per test and would dominate the
-# mutation run's cost.
-SPEC_ROOT = spec/lua/${PLUGIN_NAME}
-# Subdirectories come from $(dir) over their entries rather than a ${SPEC_ROOT}/*/
-# glob, because make 3.81 (macOS) and mingw make strip the trailing slash and so
-# match plain files such as doc.lua too, which ntf rejects as not a spec file.
-SPEC_SUBDIRS = $(sort $(dir $(wildcard ${SPEC_ROOT}/*/*)))
-mutation mutation_list: SPEC_DIR = $(filter-out ${SPEC_ROOT}/init_spec.lua,$(wildcard ${SPEC_ROOT}/*_spec.lua) ${SPEC_SUBDIRS})
+# Skip init_spec.lua rather than run the whole suite: its bin/ntf end-to-end.
+mutation mutation_list: MUTATION_FLAGS += --exclude-spec=spec/lua/${PLUGIN_NAME}/init_spec.lua
 
 MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json --mutation-strict
