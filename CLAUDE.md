@@ -11,6 +11,8 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `make require_lint` — enforces the require direction in `spec/require_lint.json`
   (the `ntf.core` engine layer stays self-contained; editor-facing layers depend
   on it, never the reverse)
+- `make comment_lint` — enforces the comment form below over `lua/` (the doc
+  sources listed in `spec/doc_config.json` are exempt for their `---` prose)
 - `make mutation` — after changing `lua/`: must exit 0. It passes
   `--mutation-strict`, so any SURVIVED or NO COVERAGE mutant already fails the
   exit code — kill each survivor with a spec, and reach each no-coverage mutant
@@ -30,19 +32,13 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   that, then `make doc`; never hand-edit the outputs.
 - `spec/.shared/` is cloned from notomo/workflow (gitignored); `make` clones it on
   first run.
-- Express structure with LuaCATS (`@class/@field/@param/@return/@type`). Commit
-  messages carry the "why"; a code comment exists only for the non-obvious "why
-  not" (rejected alternatives, constraints), written carefully; never to restate
-  what code does. A "why not" takes the shape **"X rather than Y, because Z"**: Y
-  is the road not taken (one a reader would plausibly take), and Z the constraint
-  that forecloses it, invisible in this file — see `driver.lua` on SIGKILL vs
-  `vim.system`'s SIGTERM, or `mutation/splice.lua` on its own module vs part of
-  operators. An outside fact on its own is still a "why" and belongs in the commit
-  message; and if everything the comment names is right there in the code below
-  it, delete the comment. Exception:
-  doc-source comments — `---` descriptions on the public API, comments genvdoc
-  extracts (e.g. `coverage/highlight_group.lua`), and comments in snippets
-  `spec/lua/ntf/doc.lua` renders — keep them.
+- Express structure with LuaCATS (`@class/@field/@param/@return/@type`). Comments
+  follow `spec/.shared/script/comment_lint.md`, which `make comment_lint`
+  enforces — read it before writing one. Its `WHY:`/`NOT:` pair in practice: see
+  `driver.lua` on SIGKILL vs `vim.system`'s SIGTERM, or `mutation/splice.lua` on
+  its own module vs part of operators. Outside that rule's `lua/` scope, keep the
+  comments genvdoc extracts (e.g. `coverage/highlight_group.lua`) and the ones in
+  the snippets `spec/lua/ntf/doc.lua` renders.
 - Every code/command element in the generated docs must be backed by something
   `spec/lua/ntf/doc.lua` executes during `make doc` (runnable snippet files in
   `spec/lua/ntf/doc/`, commands assembled from verified runs); no unverified
