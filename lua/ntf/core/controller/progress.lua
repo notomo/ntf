@@ -1,6 +1,7 @@
--- Streamed to stderr as workers complete, so a long (or hung) run shows it is
--- alive. Plain dots, no in-place `\r` redraw, so the stream survives non-tty
--- capture (agents, CI) too.
+-- WHY: marks go to stderr as workers complete, so a long (or hung) run shows it
+-- is alive.
+-- NOT: an in-place `\r` redraw, which would not survive non-tty capture (agents,
+-- CI).
 local M = {}
 
 local COLORS = {
@@ -58,8 +59,6 @@ local MUTANT_MARKS = {
   not_applied = { "?", "yellow" },
 }
 
---- The mutation run takes the same shape: one character per mutant, streamed as
---- it settles.
 --- @param opts { write: fun(text: string), enabled: boolean, color: boolean }
 --- @return { on_start: fun(total: integer), on_task: fun(outcome: NtfMutantOutcome), finish: fun() }
 function M.mutation(opts)

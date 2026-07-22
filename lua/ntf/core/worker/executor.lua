@@ -76,7 +76,9 @@ function M.run(root, selected)
       trace = node.trace,
     }
 
-    -- The build-error message carries its own location, so no traceback is captured.
+    -- WHY: the build-error message carries its own location.
+    -- NOT: a `result.traceback` as the failure paths below set; it would only
+    -- describe the tree builder, not the spec that failed to build.
     if node.load_error then
       result.status = "error"
       result.message = to_text(node.load_error)

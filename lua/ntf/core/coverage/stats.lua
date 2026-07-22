@@ -1,6 +1,3 @@
--- Writes merged coverage counts in LuaCov's `luacov.stats.out` format. LuaCov
--- reads each file's leading <max> with `read("*n")` and then that many numbers,
--- so trailing spaces and the exact separators are not significant.
 local M = {}
 
 --- @param path string output file path

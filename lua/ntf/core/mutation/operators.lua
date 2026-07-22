@@ -10,8 +10,9 @@ local M = {}
 --- @field end_col integer 0-based end column, exclusive
 --- @field anchor_rows integer[] 1-based rows where the hit lands when the site executes (see `lines.anchor_rows`)
 
--- Keyed by node type rather than by `get_node_text`: the grammar names an
--- anonymous operator token by its own text.
+-- WHY: keyed by node type, which the grammar names after the anonymous operator
+-- token's own text.
+-- NOT: by `get_node_text`.
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },
@@ -73,8 +74,9 @@ local function unary_sites(node, src, sites)
       operand = child
     end
   end
-  -- The whole `not x` is replaced by `x`, rather than deleting the `not` token
-  -- alone, so no dangling whitespace is left behind.
+  -- WHY: the whole `not x` is replaced by `x`, so no dangling whitespace is
+  -- left behind.
+  -- NOT: deleting the `not` token alone.
   if operand and node:child(0):type() == "not" then
     local text = vim.treesitter.get_node_text(node, src)
     table.insert(sites, site(node, "drop-not", text, vim.treesitter.get_node_text(operand, src)))

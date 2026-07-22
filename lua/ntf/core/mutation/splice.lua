@@ -1,7 +1,7 @@
--- Its own module rather than part of operators.lua, because the worker applies
--- mutants with it: requiring operators there would chain-load coverage/lines
--- into every worker before the loader hook is installed, and (ntf being
--- self-hosted) leave mutants of those modules unappliable.
+-- WHY: its own module, because the worker applies mutants with it.
+-- NOT: part of operators.lua, whose require would chain-load coverage/lines into
+-- every worker before the loader hook is installed and, ntf being self-hosted,
+-- leave mutants of those modules unappliable.
 local M = {}
 
 --- @class NtfMutantSplice a byte range of a source and what to put in its place

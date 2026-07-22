@@ -48,8 +48,8 @@ function M.write(path, summary)
       if a.row ~= b.row then
         return a.row < b.row
       end
-      -- No operator tiebreak: two sites never share a token, so a row+col tie
-      -- cannot occur.
+      -- WHY: two sites never share a token, so a row+col tie cannot occur.
+      -- NOT: an operator tiebreak.
       return a.col < b.col
     end)
   end
@@ -59,7 +59,9 @@ function M.write(path, summary)
     version = VERSION,
     score = summary.score,
     counts = summary.counts,
-    -- An empty Lua table encodes as `[]`, which would not decode back as a map.
+    -- WHY: an empty Lua table encodes as `[]`, which `M.read` would not decode
+    -- back as a map.
+    -- NOT: `files = files`.
     files = next(files) and files or vim.empty_dict(),
   }))
   f:close()

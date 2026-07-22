@@ -44,7 +44,8 @@ function M.decorate(opts)
 
   local line_count = vim.api.nvim_buf_line_count(bufnr)
   for _, record in ipairs(records) do
-    -- The buffer may have moved on since the run; a mutant past its end is stale.
+    -- WHY: the buffer may have shrunk since the run that recorded these rows.
+    -- NOT: letting `nvim_buf_set_extmark` raise on the out-of-range row.
     if record.status == "survived" and record.row <= line_count then
       vim.api.nvim_buf_set_extmark(bufnr, ns, record.row - 1, 0, {
         sign_text = SIGN,

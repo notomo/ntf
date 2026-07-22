@@ -27,7 +27,6 @@ local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 --- @param cwd string? working directory for the subprocess (default: plugin root)
 --- @return { code: integer, stdout: string, stderr: string }
 function helper.run_cli(args, cwd)
-  -- A .bat cannot be spawned directly by libuv; route it through cmd.exe.
   local cmd = is_win and { "cmd.exe", "/c", script } or { script }
   cmd = vim.list_extend(cmd, args)
   local env = { XDG_CACHE_HOME = helper.test_data:path("xdg_cache") }

@@ -11,9 +11,9 @@ local VERSION = 1
 --- @field line string exact text of the mutant's start line
 --- @field rationale string why no test can detect the mutant
 
--- An entry names its mutant by the line's text rather than its number: a row
--- shifts under any edit above it, while the text pins the judged code itself,
--- so the mark dies exactly when the judgement needs remaking.
+-- WHY: an entry names its mutant by the line's text, which pins the judged code
+-- itself, so the mark dies exactly when the judgement needs remaking.
+-- NOT: the line number, which shifts under any edit above it.
 --- @param path string working-directory-relative path
 --- @param line string text of the mutant's start line
 --- @param site { col: integer, operator: string, original: string, replacement: string }

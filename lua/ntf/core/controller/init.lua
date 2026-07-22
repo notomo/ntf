@@ -1,6 +1,5 @@
 local M = {}
 
---- Runs the mutants and reports them, once the tests have passed.
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
@@ -83,9 +82,9 @@ function M.run(root)
 
   require("ntf.core.runtime").setup()
 
-  -- The baseline is loaded (and rejected) up front rather than in the mutation
-  -- phase: a malformed file should fail like any other bad flag, not after the
-  -- whole suite has run.
+  -- WHY: a malformed baseline file should fail like any other bad flag, not
+  -- after the whole suite has run.
+  -- NOT: loading (and rejecting) it in the mutation phase, where it is used.
   local mutation_baseline --- @type NtfMutationBaselineEntry[]?
   if opts.mutation_baseline then
     local loaded = require("ntf.core.mutation.baseline").load(opts.mutation_baseline)
@@ -131,9 +130,9 @@ function M.run(root)
     end
     os.exit(code)
   end
-  -- The listing keeps the declaration order even though the run below dispatches
-  -- in schedule order: the reordering is a run-time optimization, and a stable
-  -- listing is what grep/diff consumers need.
+  -- WHY: grep/diff consumers of the listing need a stable order, while the
+  -- schedule reordering below is only a run-time optimization.
+  -- NOT: listing the scheduled `items`.
   local planned_items = items
 
   local schedule = require("ntf.core.controller.schedule")
@@ -156,8 +155,9 @@ function M.run(root)
   local color = report.resolve_color()
 
   local cwd = vim.fn.getcwd()
-  -- The mutation run needs the same exclusion set as the coverage it is built on,
-  -- so it is decided here rather than inside the pool.
+  -- WHY: the mutation run needs the same exclusion set as the coverage it is
+  -- built on, so both take it from here.
+  -- NOT: deciding it inside the pool, which only the coverage run goes through.
   local collector = require("ntf.core.coverage.collector")
   local coverage_excludes =
     vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
@@ -199,8 +199,9 @@ function M.run(root)
   end
 
   if opts.mutation then
-    -- A mutant is only meaningful against a suite that passes: against a failing
-    -- one, every mutant would look detected.
+    -- WHY: a mutant is only meaningful against a suite that passes; against a
+    -- failing one, every mutant would look detected.
+    -- NOT: mutating anyway and reporting the score that comes out.
     if code ~= 0 then
       if opts.list then
         io.stdout:write(text)

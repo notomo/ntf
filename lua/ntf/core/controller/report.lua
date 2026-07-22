@@ -98,15 +98,18 @@ function M.resolve_color()
   return (ok and handle == "tty" and not vim.env.NO_COLOR) or false
 end
 
---- Streamed live as each worker finishes, so the block carries its own trailing
---- blank line as a separator.
+-- WHY: the block is streamed live as each worker finishes, so no later pass can
+-- space it out; it carries its own trailing blank line as a separator.
+-- NOT: returning the bare block and having the caller separate the blocks it
+-- joins.
 --- @param out NtfWorkerOutput
 --- @param color boolean
 --- @return string
 function M.output_block(out, color)
   local paint = painter(color)
-  -- Streamed from a `vim.system` on_exit callback (a fast event context), where
-  -- Vimscript `getcwd()` is forbidden; `vim.uv.cwd()` is the safe equivalent.
+  -- WHY: this runs from a `vim.system` on_exit callback (a fast event context),
+  -- where Vimscript `getcwd()` is forbidden.
+  -- NOT: `vim.fn.getcwd()`, which the rest of this module uses.
   local rel = strip_cwd(out.file, vim.uv.cwd())
   local lines = {}
   local header = paint("dim", "OUTPUT ") .. paint("dim", rel)

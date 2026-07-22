@@ -19,10 +19,10 @@ function M.exclude_roots(spec_files, cwd)
   for _, file in ipairs(spec_files) do
     local abs = vim.fs.normalize(vim.fn.fnamemodify(file, ":p"))
     if abs:sub(1, #cwd + 1) == cwd .. "/" then
-      local first = abs:sub(#cwd + 2):match("^[^/]+")
-      -- Only a directory (the spec lives below it) makes a subtree to exclude;
-      -- a spec file sitting directly in cwd has no top-level dir of its own.
-      if first and abs:sub(#cwd + 2) ~= first then
+      local relative = abs:sub(#cwd + 2)
+      local first = relative:match("^[^/]+")
+      local in_subdir = first ~= nil and first ~= relative
+      if in_subdir then
         local root = cwd .. "/" .. first .. "/"
         if not seen[root] then
           seen[root] = true
@@ -78,7 +78,6 @@ local function make_resolver(cwd, excludes)
       return cached
     end
 
-    -- File chunks are named "@<path>"; anything else (strings, C) is skipped.
     local path = source:match("^@(.*)$")
     local result = path and measured_path(path, cwd, excludes) or false
 
@@ -108,8 +107,9 @@ function M.measurable_files(cwd, excludes)
   for name, node_type in
     vim.fs.dir(cwd, {
       depth = math.huge,
-      -- Prune excluded subtrees rather than filtering their (possibly many,
-      -- e.g. cloned test deps) files one by one.
+      -- WHY: an excluded subtree can hold many files (cloned test deps, say),
+      -- and pruning it walks none of them.
+      -- NOT: filtering those files out one by one after the walk.
       skip = function(rel)
         local prefix = cwd .. "/" .. rel .. "/"
         for _, exclude in ipairs(excludes) do
@@ -132,9 +132,10 @@ function M.measurable_files(cwd, excludes)
   return files
 end
 
--- Its own function rather than a local of `start`, because code running as the
--- installed hook is invisible to the measurement itself (hooks do not nest):
--- only a spec calling the returned hook directly can cover it.
+-- WHY: code running as the installed hook is invisible to the measurement
+-- itself (hooks do not nest), so only a spec calling the returned hook directly
+-- can cover it.
+-- NOT: a local of `start`.
 --- @param opts { cwd: string, excludes?: string[] }
 --- @return fun(event: string, line: integer) # a `debug.sethook` line hook
 --- @return table<string, { max: integer, lines: table<string, integer> }> # filled as the hook records
@@ -143,10 +144,11 @@ function M.line_hook(opts)
   local resolve = make_resolver(cwd, opts.excludes or {})
   local data = {}
 
-  -- A line hook is called as hook("line", linenumber); the source of the
-  -- triggering function comes from getinfo at level 2 (the hooked function).
+  --- @type integer `debug.getinfo` level, inside a `debug.sethook` line hook, of the function whose source is being measured
+  local measured_level = 2
+
   local function hook(_, line)
-    local info = debug.getinfo(2, "S")
+    local info = debug.getinfo(measured_level, "S")
     local path = resolve(info.source)
     if not path or line < 1 then
       return
@@ -156,9 +158,10 @@ function M.line_hook(opts)
       entry = { max = line, lines = {} }
       data[path] = entry
     end
-    -- Line numbers are kept as string keys so the per-file table is a JSON
-    -- object: `vim.json.encode` rejects the sparse integer-keyed array this
-    -- would otherwise be when serialising the worker's payload.
+    -- WHY: the worker serialises this table with `vim.json.encode`, which
+    -- rejects the sparse integer-keyed array it would otherwise be; string keys
+    -- keep it a JSON object.
+    -- NOT: `entry.lines[line]`.
     local key = tostring(line)
     entry.lines[key] = (entry.lines[key] or 0) + 1
     if line > entry.max then
@@ -184,10 +187,8 @@ function M.stop()
   return data
 end
 
---- Tolerates string line keys, since the counts arrive JSON-decoded from a
---- worker (`vim.json` turns the integer keys into strings on the way back).
 --- @param into table accumulator (same shape as `M.stop`'s return)
---- @param part table|nil one worker's counts
+--- @param part table|nil one worker's counts, JSON-decoded, so its line keys are strings
 function M.merge(into, part)
   for path, entry in pairs(part or {}) do
     local target = into[path]

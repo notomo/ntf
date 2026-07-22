@@ -56,9 +56,9 @@ end
 local function hit_row(node)
   local kind = node:type()
   if kind == "function_call" then
-    -- Anchor on the `(` (the `arguments` child), where the call's hit lands,
-    -- not the call node's start: a multi-line method chain begins on the
-    -- receiver line (`vim` alone) whose row never receives a hit.
+    -- WHY: the call's hit lands on the `(` (the `arguments` child).
+    -- NOT: the call node's start, which for a multi-line method chain is the
+    -- receiver line (`vim` alone), a row that never receives a hit.
     for child in node:iter_children() do
       if child:type() == "arguments" then
         return (child:start())
@@ -109,8 +109,10 @@ function M.anchor_rows(node)
     end
     local kind = current:type()
     if kind == "assignment_statement" or kind == "return_statement" then
-      -- `hit_row` said no because every value is a closure: the hits land on
-      -- their closing `end` rows instead.
+      -- WHY: `hit_row` said no because every value is a closure, whose hits land
+      -- on its closing `end` row instead.
+      -- NOT: climbing past the statement, which would anchor the mutant to some
+      -- enclosing block that runs whether or not the closure is ever called.
       return vim.tbl_map(function(end_row)
         return end_row + 1
       end, only_closure_rows(current) or {})

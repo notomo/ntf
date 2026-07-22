@@ -119,9 +119,10 @@ M.finally = function(fn)
   end
 end
 
---- Run `fn` with a fresh `finally` collector installed, restoring the
---- previous one afterwards (execute may nest inside a running test).
---- @param fn fun() must not throw; the caller catches errors inside
+-- WHY: an execute may nest inside a running test, whose own collector has to
+-- survive it.
+-- NOT: clearing the collector on the way out.
+--- @param fn fun() runs with a fresh `finally` collector installed; must not throw, the caller catches errors inside
 --- @return (fun())[] collected finally callbacks
 function M.collect_finallies(fn)
   local saved = finally_collector
@@ -132,10 +133,12 @@ function M.collect_finallies(fn)
   return collected
 end
 
---- A describe whose body errored during build is a leaf too: reported as an error
---- in its own right and never descended into, since its children are unreliable.
+-- WHY: the children a describe collected before its body errored are an
+-- arbitrary prefix of what the file meant to declare, so the describe is
+-- reported as one error instead.
+-- NOT: descending into them and running what did get collected.
 --- @param node NtfNode
---- @return boolean
+--- @return boolean # true for `it`, `pending`, and any node whose body errored during build
 function M.is_leaf(node)
   return node.type == "it" or node.type == "pending" or node.load_error ~= nil
 end

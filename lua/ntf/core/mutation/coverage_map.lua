@@ -4,9 +4,7 @@ local M = {}
 --- @field add fun(item_index: integer, coverage: table?) record one worker's line hits
 --- @field item_indexes fun(path: string, rows: integer[]): integer[] items that hit any of the rows
 
---- Which tests reach which lines, so a mutant is only run against the tests that
---- can possibly detect it.
---- @return NtfMutationCoverageMap
+--- @return NtfMutationCoverageMap which tests reach which lines, so a mutant is only run against the tests that can possibly detect it
 function M.new()
   --- @type table<string, table<integer, table<integer, true>>>
   local by_path = {}

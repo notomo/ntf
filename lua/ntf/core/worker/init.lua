@@ -1,12 +1,14 @@
--- The worker runs via `-c "luafile <this>"` (after startup) rather than `-l` on
--- purpose: under `-l` Neovim turns otherwise non-fatal Vim errors (e.g. E348 from
--- `expand()`) into hard errors, which would make many plugins behave differently
--- than they do under a normal session. `-c` keeps the vusted-compatible semantics.
+-- WHY: the worker runs via `-c "luafile <this>"`, after startup, which keeps the
+-- vusted-compatible semantics.
+-- NOT: `-l`, under which Neovim turns otherwise non-fatal Vim errors (E348 from
+-- `expand()`, say) into hard errors, making many plugins behave differently than
+-- they do under a normal session.
 
 local protocol = require("ntf.core.worker.protocol")
 
--- Decoded at module scope so the error handler below can still attribute a
--- failure to its spec file.
+-- WHY: the `xpcall(main, ...)` handler at the bottom reports `payload.file`, so
+-- the payload has to exist even when `main` is what threw.
+-- NOT: decoding it inside `main`.
 local payload = protocol.payload()
 
 local function main()
@@ -55,9 +57,11 @@ local function main()
   local root_node = tree.build(payload.file)
 
   if root_node.load_error then
-    -- A spec that failed to load has no meaningful coverage; drop the hook and
-    -- report only the load error (with any teardown error appended, since this path
-    -- has no results array to carry it).
+    -- WHY: a spec that failed to load has no meaningful coverage, and this path
+    -- emits no results array, so a teardown error has to ride on the load-error
+    -- message.
+    -- NOT: emitting the coverage collected before the failure, and a
+    -- `teardown_result` beside it as the normal path does.
     if collector then
       collector.stop()
     end

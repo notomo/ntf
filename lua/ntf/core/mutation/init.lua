@@ -65,9 +65,11 @@ local function enumerate_mutants(cwd, excludes, mutation_path)
     local src_lines = vim.split(src, "\n", { plain = true })
     local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
     for _, site in ipairs(operators.enumerate(src)) do
-      -- A mutant that does not compile would make every covering test error out
-      -- and so count as detected, inflating the score. The operators are meant to
-      -- keep the source valid; this only guards against a grammar surprise.
+      -- WHY: a mutant that does not compile would make every covering test error
+      -- out and so count as detected, inflating the score.
+      -- NOT: trusting the operators to keep the source valid and enumerating the
+      -- site unconditionally; they are meant to, but a grammar surprise is not
+      -- worth a silently inflated score.
       local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
         table.insert(entries, {
@@ -107,11 +109,11 @@ end
 --- @return number?
 local function score_of(summary_counts)
   local detected = summary_counts.killed + summary_counts.timeout
-  -- A mutant no test reaches is undetected, not excluded: that is exactly what a
-  -- coverage hole costs. A mutant that was never actually loaded, on the other
-  -- hand, says nothing about the tests, so it stays out of the score.
-  -- A baseline-equivalent mutant is undetectable by definition, so it also
-  -- stays out.
+  -- WHY: a mutant no test reaches counts as undetected, since that is exactly
+  -- what a coverage hole costs, while a mutant that was never actually loaded
+  -- says nothing about the tests and a baseline-equivalent one is undetectable
+  -- by definition, so those two stay out of the score.
+  -- NOT: excluding the unreached ones along with them.
   local scoreable = detected + summary_counts.survived + summary_counts.no_coverage
   if scoreable == 0 then
     return nil

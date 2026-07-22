@@ -23,8 +23,11 @@ local PAYLOAD_ENV = "_NTF_WORKER_PAYLOAD"
 local BEGIN = "<<<NTF_JSON>>>"
 local END = "<<<END_NTF_JSON>>>"
 
---- Worker side: write the result block. Must be the last stdout write; the
---- controller treats everything before the marker as the test's own output.
+-- WHY: `M.parse` splits a worker's stdout at the first marker pair and the
+-- controller keeps what comes before it as the test's own output, so this must
+-- be the last stdout write of the worker.
+-- NOT: emitting a partial result early and a final one later; the second block
+-- would land inside the first one's span.
 --- @param result NtfWorkerResult
 function M.emit(result)
   io.stdout:write("\n" .. BEGIN .. "\n")
@@ -32,24 +35,22 @@ function M.emit(result)
   io.stdout:write("\n" .. END .. "\n")
 end
 
---- Worker side: decode the payload the controller passed in.
---- @return NtfWorkerPayload
+--- @return NtfWorkerPayload the payload the controller passed in
 function M.payload()
   return vim.json.decode(vim.env[PAYLOAD_ENV])
 end
 
---- Controller side: the environment that carries `payload` to a worker.
---- Parameters go through the environment since `arg` is not populated for the
---- `-c "luafile"` launch (see worker/init.lua).
+-- WHY: `arg` is not populated for the `-c "luafile"` launch worker/init.lua
+-- explains, so parameters reach a worker through its environment.
+-- NOT: passing them as script arguments read from `arg`.
 --- @param payload NtfWorkerPayload
---- @return table<string, string>
+--- @return table<string, string> the environment that carries `payload` to a worker
 function M.env(payload)
   return { [PAYLOAD_ENV] = vim.json.encode(payload) }
 end
 
---- Controller side: extract and decode the result block from a worker's stdout.
---- @param stdout string?
---- @return NtfWorkerResult?
+--- @param stdout string? a worker's stdout
+--- @return NtfWorkerResult? the decoded result block, if the stdout carries one
 function M.parse(stdout)
   if not stdout then
     return nil
@@ -67,12 +68,11 @@ function M.parse(stdout)
   return decoded
 end
 
---- A worker's captured output is everything it wrote to either standard stream.
---- On stdout that means explicit `io.write`/`io.stdout:write`/native writes (the
---- result marker block is excluded; `emit` is always the last thing written). On
---- stderr it means `print`, `vim.api.nvim_echo` and other messages, which Neovim
---- routes to its message channel rather than stdout. The two streams cannot be
---- interleaved after the fact, so stdout is shown first, then stderr.
+-- WHY: stderr counts as the worker's own output too, since Neovim routes
+-- `print`, `vim.api.nvim_echo` and other messages to its message channel rather
+-- than to stdout.
+-- NOT: interleaving the two in write order, which is unrecoverable once both
+-- streams have been collected, so stdout is shown whole and then stderr.
 --- @param stdout string?
 --- @param stderr string?
 --- @return string

@@ -16,8 +16,9 @@ local M = {}
 --- @field status "killed"|"timeout"|"survived"|"not_applied"
 --- @field killed_by string? full name of the first test that detected the mutant
 
--- Not the run's own timeout: a mutant that turns a loop infinite would burn it
--- whole, once per trial.
+-- WHY: a mutant that turns a loop infinite must not burn a full timeout per
+-- trial, so a trial gets a budget scaled to what the test cost in the baseline.
+-- NOT: the run's own per-test timeout.
 --- @param baseline_ms number
 --- @param timeout integer the run's per-test timeout in ms (0 disables)
 --- @return integer
@@ -40,18 +41,20 @@ local function classify(outcome)
       return { status = "killed", killed_by = tree.full_name(result.names or {}) }
     end
   end
-  -- Explicitly false, not just absent: a crashed worker reports nothing, and its
-  -- results have already been read as a kill above.
+  -- WHY: a crashed worker reports nothing at all, and its results have already
+  -- been read as a kill above, so only an explicit `false` means not applied.
+  -- NOT: treating an absent report as not applied.
   if outcome.mutation_applied == false then
     return { status = "not_applied" }
   end
   return nil
 end
 
---- Each trial runs in its own worker process, exactly as in the baseline run:
---- ntf has no between-test cleanup, so packing several tests into one process
---- would change the hook and global-state semantics and make a mutant look
---- detected for reasons that have nothing to do with it.
+-- WHY: each trial runs in its own worker process, exactly as in the baseline
+-- run, because ntf has no between-test cleanup.
+-- NOT: packing several tests into one process, which would change the hook and
+-- global-state semantics and make a mutant look detected for reasons that have
+-- nothing to do with it.
 --- @param tasks NtfMutantTask[]
 --- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, test_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutantOutcome[] # parallel to tasks
@@ -101,8 +104,9 @@ function M.run(tasks, opts)
         replacement = task.mutant.replacement,
       },
     }, function(outcome)
-      -- libuv would just log and drop an error raised here; capture the first
-      -- to re-raise after the wait.
+      -- WHY: libuv would just log and drop an error raised here, so the first
+      -- one is captured and re-raised after the wait.
+      -- NOT: running the body bare and letting it throw into the libuv callback.
       local ok, err = xpcall(function()
         local settled = classify(outcome)
         if settled then

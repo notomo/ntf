@@ -2,8 +2,9 @@ local painter = require("ntf.core.controller.report").painter
 
 local M = {}
 
--- Only the undetected mutants are worth listing: they are the ones that say
--- something about the tests. Detected ones are just the score.
+-- WHY: an undetected mutant is the one that says something about the tests; a
+-- detected one only moves the score.
+-- NOT: a line per mutant for every status in `COUNT_LABELS`.
 local LISTED = {
   survived = { label = "SURVIVED", color = "red" },
   no_coverage = { label = "NO COVERAGE", color = "yellow" },

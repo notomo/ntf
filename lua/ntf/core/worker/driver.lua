@@ -22,9 +22,10 @@ local M = {}
 local function results_of(item, obj, timed_out_ms)
   local decoded = protocol.parse(obj.stdout)
 
-  -- An empty list is an error rather than a clean pass: the worker runs exactly
-  -- one requested node, so reporting nothing means the node was never found in
-  -- the rebuilt tree (e.g. a mutant broke the id scheme), not that it passed.
+  -- WHY: the worker runs exactly one requested node, so reporting nothing means
+  -- the node was never found in the rebuilt tree (a mutant broke the id scheme,
+  -- say).
+  -- NOT: reading an empty result list as a clean pass.
   if decoded and decoded.results and #decoded.results > 0 then
     for _, result in ipairs(decoded.results) do
       result.file = item.file
@@ -64,18 +65,24 @@ function M.launch(item, opts, on_done)
     timeout = nil
   end
 
-  -- Launch via `-c "luafile"` (after startup) instead of `-l`: see worker/init.lua.
+  -- WHY: the worker script is launched by `-c "luafile"`, after startup, for
+  -- the reason worker/init.lua gives.
+  -- NOT: `-l`.
   local cmd = {
     vim.v.progpath,
     "--clean",
     "--headless",
-    -- Workers run in parallel in the same cwd, where the swap file name for an
-    -- unnamed buffer is shared, so concurrent workers collide on it (E303).
-    -- Tests do not need swap files; disable before the first buffer is created.
+    -- WHY: workers run in parallel in the same cwd, where the swap file name for
+    -- an unnamed buffer is shared, so concurrent workers collide on it (E303).
+    -- `--cmd` lands before the first buffer is created.
+    -- NOT: setting it from the worker script, which runs after that buffer
+    -- exists.
     "--cmd",
     "set noswapfile",
-    -- The worker script cannot require any ntf module until the ntf root is on
-    -- runtimepath, so that happens at startup, before `-c` runs the script.
+    -- WHY: the worker script cannot require any ntf module until the ntf root is
+    -- on runtimepath.
+    -- NOT: prepending it from the worker script itself, which is already an ntf
+    -- module.
     "--cmd",
     ("lua vim.opt.runtimepath:prepend(%q)"):format(opts.root),
     "-c",
@@ -91,10 +98,9 @@ function M.launch(item, opts, on_done)
     cwd = opts.cwd,
   })
 
-  -- We enforce the timeout ourselves with SIGKILL rather than vim.system's
-  -- `timeout` option, which sends SIGTERM. A worker spinning in pure Lua never
-  -- reaches Neovim's event loop to handle SIGTERM, so only SIGKILL is guaranteed
-  -- to stop a hung test.
+  -- WHY: a worker spinning in pure Lua never reaches Neovim's event loop to
+  -- handle SIGTERM, so only SIGKILL is guaranteed to stop a hung test.
+  -- NOT: vim.system's `timeout` option, which sends SIGTERM.
   local timed_out = false
   local timer
   local proc = vim.system(cmd, { cwd = opts.cwd, env = env, text = true }, function(obj)
@@ -108,8 +114,9 @@ function M.launch(item, opts, on_done)
       results = results_of(item, obj, timed_out and timeout or nil),
       coverage = decoded and decoded.coverage or nil,
       timed_out = timed_out or nil,
-      -- Not `or nil`: a worker that never loaded the mutated module reports
-      -- `false`, and the controller must be able to tell that from "no report".
+      -- WHY: a worker that never loaded the mutated module reports `false`, and
+      -- the controller must be able to tell that from "no report".
+      -- NOT: `or nil`, which would collapse the two.
       mutation_applied = decoded and decoded.mutation_applied,
     }
     if decoded then

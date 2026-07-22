@@ -149,9 +149,7 @@ local function register_builtins(registry)
   end)
 end
 
---- The returned object is a metatable-driven DSL (`assert.equal`, `assert.no.X`,
---- `:register`), so it is intentionally typed as a plain `table`.
---- @return table
+--- @return table # a metatable-driven DSL: `assert.equal`, `assert.no.X`, `:register`
 function M.new()
   local registry = {}
   register_builtins(registry)

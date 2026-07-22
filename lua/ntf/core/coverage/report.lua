@@ -22,8 +22,9 @@ end
 --- @return integer covered, integer coverable
 local function count_file(source_lines, hits)
   local coverable, covered = 0, 0
-  -- Union the source's coverable lines with every line that was actually hit, so
-  -- a recorded line is never dropped from the denominator.
+  -- WHY: the hit lines are unioned in so a recorded line is never dropped from
+  -- the denominator.
+  -- NOT: the source's coverable lines alone.
   local seen = {}
   for line in pairs(hits) do
     seen[line] = true
@@ -76,8 +77,8 @@ function M.summary(merged, cwd)
       total_coverable
     )
     for _, row in ipairs(rows) do
-      -- Padded here rather than with a `%-Ns` width, which `string.format`
-      -- rejects beyond 99: a deep enough path would crash the summary.
+      -- WHY: a deep enough path would crash the summary otherwise.
+      -- NOT: a `%-Ns` width, which `string.format` rejects beyond 99.
       local name = row.name .. (" "):rep(width + 2 - #row.name)
       lines[#lines + 1] = ("  %s%5.1f%% (%d/%d)"):format(
         name,

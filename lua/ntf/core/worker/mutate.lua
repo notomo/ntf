@@ -13,8 +13,10 @@ function M.module_names(path, cwd)
   end
   local relative = path:sub(#cwd + 2)
 
-  -- Both layouts package.path can resolve: `lua/?.lua` (runtimepath, where the
-  -- `lua/` prefix is not part of the name) and a plain `./?.lua`.
+  -- WHY: package.path can resolve either layout, `lua/?.lua` (runtimepath, where
+  -- the `lua/` prefix is not part of the name) or a plain `./?.lua`.
+  -- NOT: the runtimepath layout alone, which leaves a file outside `lua/`
+  -- unmutatable.
   local stem = relative:match("^lua/(.*)%.lua$") or relative:match("^(.*)%.lua$")
   if not stem then
     return names
@@ -55,8 +57,9 @@ function M.install(mutation, cwd)
       return nil
     end
 
-    -- Keep the original chunk name so tracebacks and the coverage line hook,
-    -- which key on `@<path>`, still attribute to the real file.
+    -- WHY: tracebacks and the coverage line hook key on the chunk's `@<path>`,
+    -- so the mutated chunk keeps the original one to stay attributable.
+    -- NOT: naming the chunk after the mutant to tell the two apart.
     local chunk, err = loadstring(mutated, "@" .. mutation.path)
     if not chunk then
       return err
@@ -66,14 +69,17 @@ function M.install(mutation, cwd)
     return chunk
   end
 
-  -- Ahead of Neovim's runtimepath loader, which would otherwise win.
+  -- WHY: Neovim's runtimepath loader would otherwise resolve the name first.
+  -- NOT: `table.insert(package.loaders, loader)`.
   table.insert(package.loaders, 2, loader)
 
-  -- A module already in package.loaded would never reach the loader. That is the
-  -- case whenever something loaded it before the spec did -- a test hook, or (as
-  -- ntf runs its own specs) ntf itself. Dropping it makes the spec's `require`
-  -- load the mutated source; whoever holds the original keeps it, so ntf's own
-  -- machinery is not mutated out from under itself.
+  -- WHY: a module already in package.loaded never reaches a loader, and
+  -- something has usually loaded it before the spec does (a test hook, or, as
+  -- ntf runs its own specs, ntf itself). Dropping the entry makes the spec's
+  -- `require` load the mutated source, while whoever already holds the original
+  -- keeps it, so ntf's own machinery is not mutated out from under itself.
+  -- NOT: clearing all of `package.loaded`, which would hand ntf's machinery the
+  -- mutant too.
   for name in pairs(names) do
     package.loaded[name] = nil
   end

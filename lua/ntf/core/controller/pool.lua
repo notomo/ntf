@@ -3,8 +3,10 @@ local collector = require("ntf.core.coverage.collector")
 
 local M = {}
 
---- Captured output is handed to `on_output` the moment each worker finishes; the
---- cost is that blocks appear in worker-completion order, not deterministic spec order.
+-- WHY: captured output is handed to `on_output` the moment each worker
+-- finishes, so a long run shows it as it happens.
+-- NOT: holding the blocks and emitting them in spec order at the end, which
+-- would be deterministic but silent until the whole run is over.
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
@@ -42,8 +44,9 @@ function M.run(items, opts)
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
-      -- libuv would just log and drop an error raised here; capture the first
-      -- to re-raise after the wait.
+      -- WHY: libuv would just log and drop an error raised here, so the first
+      -- one is captured and re-raised after the wait.
+      -- NOT: running the body bare and letting it throw into the libuv callback.
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
         if opts.coverage then
