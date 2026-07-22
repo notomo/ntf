@@ -1,9 +1,9 @@
 local setup_highlight_groups = function()
   local highlightlib = require("ntf.vendor.misclib.highlight")
   return {
-    -- covered lines
+    --- covered lines
     NtfCoverageCovered = highlightlib.link("NtfCoverageCovered", "DiffAdd"),
-    -- coverable-but-missed lines
+    --- coverable-but-missed lines
     NtfCoverageMissed = highlightlib.link("NtfCoverageMissed", "DiffDelete"),
   }
 end

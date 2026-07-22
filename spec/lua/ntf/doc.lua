@@ -185,17 +185,10 @@ if vim.fn.exepath("ntf") == "" then
   error("setup snippet did not put ntf on PATH: " .. setup_path)
 end
 
+local doc_config = vim.json.decode(table.concat(vim.fn.readfile(vim.env.DOC_CONFIG), "\n"))
+
 require("genvdoc").generate(plugin_name, {
-  source = {
-    patterns = {
-      ("lua/%s/init.lua"):format(plugin_name),
-      ("lua/%s/coverage/init.lua"):format(plugin_name),
-      ("lua/%s/mutation/init.lua"):format(plugin_name),
-      ("lua/%s/helper.lua"):format(plugin_name),
-      ("lua/%s/assert/meta.lua"):format(plugin_name),
-      ("lua/%s/assert/init.lua"):format(plugin_name),
-    },
-  },
+  source = doc_config.source,
   chapters = {
     {
       name = "USAGE",

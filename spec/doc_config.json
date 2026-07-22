@@ -1,0 +1,14 @@
+{
+  "source": {
+    "patterns": [
+      "lua/ntf/init.lua",
+      "lua/ntf/coverage/init.lua",
+      "lua/ntf/coverage/highlight_group.lua",
+      "lua/ntf/mutation/init.lua",
+      "lua/ntf/mutation/highlight_group.lua",
+      "lua/ntf/helper.lua",
+      "lua/ntf/assert/meta.lua",
+      "lua/ntf/assert/init.lua"
+    ]
+  }
+}
