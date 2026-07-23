@@ -163,14 +163,10 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({}, files)
   end)
 
-  it("still lists a lua file whose contents the meta check cannot read", function()
-    local file = helper.test_data:create_file("lua/locked.lua", "return 1")
-    local no_read_permission = 0
-    vim.uv.fs_chmod(file, no_read_permission)
+  it("treats a file it cannot read as non-meta", function()
+    local missing = helper.test_data:path("lua/missing.lua")
 
-    local files = collector.measurable_files(helper.test_data.full_path, {})
-
-    assert.same({ vim.fs.normalize(file) }, files)
+    assert.is_false(collector.is_meta_file(vim.fs.normalize(missing)))
   end)
 end)
 

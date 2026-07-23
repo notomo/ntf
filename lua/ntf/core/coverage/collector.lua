@@ -86,9 +86,13 @@ local function make_resolver(cwd, excludes)
   end
 end
 
+-- WHY: exposed so a spec can drive the unreadable-file branch directly; chmod 0
+-- still leaves a file readable on Windows, so measuring it through the walk
+-- cannot reach that branch there.
+-- NOT: a local of `measurable_files`.
 --- @param path string absolute file path
 --- @return boolean
-local function is_meta_file(path)
+function M.is_meta_file(path)
   local f = io.open(path, "r")
   if not f then
     return false
@@ -123,7 +127,7 @@ function M.measurable_files(cwd, excludes)
   do
     if node_type == "file" and name:match("%.lua$") then
       local path = measured_path(cwd .. "/" .. name, cwd, excludes)
-      if path and not is_meta_file(path) then
+      if path and not M.is_meta_file(path) then
         table.insert(files, path)
       end
     end
