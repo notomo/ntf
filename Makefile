@@ -16,12 +16,17 @@ spec/.shared/neovim-plugin.mk:
 
 REQUIREALL_IGNORE_MODULES=ntf.core.worker
 
+# mutation_matrix reuses the same self-hosting setup to report which specs never
+# solely detect a mutant (--mutation-matrix); it shares mutation's exclusions and
+# baseline but not its --mutation-strict gate, since it reports rather than gates.
+MUTATION_TARGETS=mutation mutation_list mutation_matrix
+
 # Excluded rather than mutated, because ntf is self-hosted: mutants in the
 # process-spawning and worker machinery hang (burning trial timeouts) or fail
 # every test for infrastructure reasons — kills that measure nothing about the
 # specs. The editor-facing and formatting layers are left out to keep the run
 # focused on the pure logic with direct unit specs.
-mutation mutation_list: EXCLUDE_CODE += \
+$(MUTATION_TARGETS): EXCLUDE_CODE += \
 	lua/ntf/init.lua \
 	lua/ntf/helper.lua \
 	lua/ntf/coverage \
@@ -43,6 +48,12 @@ mutation mutation_list: EXCLUDE_CODE += \
 	lua/ntf/core/controller/work.lua
 
 # Skip init_spec.lua rather than run the whole suite: its bin/ntf end-to-end.
-mutation mutation_list: MUTATION_FLAGS += --exclude-spec=spec/lua/${PLUGIN_NAME}/init_spec.lua
+$(MUTATION_TARGETS): MUTATION_FLAGS += \
+	--exclude-spec=spec/lua/${PLUGIN_NAME}/init_spec.lua \
+	--mutation-baseline=spec/mutation_baseline.json
 
-MUTATION_FLAGS += --mutation-baseline=spec/mutation_baseline.json --mutation-strict
+mutation: MUTATION_FLAGS += --mutation-strict
+
+mutation_matrix: MUTATION_FLAGS += --mutation-matrix
+mutation_matrix: FORCE deps
+	$(NTF) ${MUTATION_FLAGS} ${EXCLUDE_CODE_FLAGS} ${SPEC_DIR}
