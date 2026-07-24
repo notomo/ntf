@@ -808,6 +808,54 @@ describe("ntf --mutation", function()
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
   end)
 
+  it("names the tests that detect nothing on their own under --mutation-matrix", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/copy_spec.lua", (MUTATION_SPEC:gsub('describe%("mod"', 'describe("copy"')))
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-matrix", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Matrix: 3 mutants fully tried", obj.stdout)
+    assert.match("REDUNDANT mod detects positives at the boundary %(detected 2, none of them alone%)", obj.stdout)
+    assert.match("REDUNDANT copy detects positives at the boundary %(detected 2, none of them alone%)", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    local records = results.files[vim.fs.joinpath(root, "lua/mod.lua")]
+    local killers = records[1].killers
+    table.sort(killers)
+    assert.same({ "copy detects positives at the boundary", "mod detects positives at the boundary" }, killers)
+  end)
+
+  it("skips the mutants reached by more tests than --mutation-matrix=N allows", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/copy_spec.lua", (MUTATION_SPEC:gsub('describe%("mod"', 'describe("copy"')))
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-matrix=1", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    local every_mutant_is_covered_by_the_two_copies = "Matrix:"
+    assert.no.match(every_mutant_is_covered_by_the_two_copies, obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.is_nil(results.files[vim.fs.joinpath(root, "lua/mod.lua")][1].killers)
+  end)
+
+  it("leaves the mutation score untouched when --mutation-matrix records the whole killer set", function()
+    local root, results_file = mutation_project()
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-matrix", "--mutation-results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.survived)
+    assert.equal(2, results.counts.killed)
+  end)
+
   it("mutates nothing under an --exclude-code path", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/vendor/dep.lua", MUTATION_MODULE)

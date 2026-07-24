@@ -98,6 +98,35 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
   end)
 
+  it("lists the redundant tests once the killer sets are known", function()
+    local killed = record(abs("lua/a.lua"), 1, "killed")
+    killed.killers = { "spec a", "spec b" }
+    local also_killed = record(abs("lua/a.lua"), 2, "killed")
+    also_killed.killers = { "spec b" }
+    local summary = {
+      records = { killed, also_killed },
+      counts = { killed = 2, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      score = 100,
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match("Matrix: 2 mutants fully tried", text)
+    assert.match("REDUNDANT spec a %(detected 1, none of them alone%)", text)
+    local only_killer_of_the_second_mutant = "REDUNDANT spec b"
+    assert.no.match(only_killer_of_the_second_mutant, text)
+  end)
+
+  it("says nothing about the matrix when no killer set was recorded", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = { killed = 1, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      score = 100,
+    }
+
+    assert.no.match("Matrix:", report.summary(summary, root, { color = false }))
+  end)
+
   it("reports n/a when there is no mutant to score", function()
     local summary = {
       records = {},

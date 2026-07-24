@@ -158,6 +158,20 @@ local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):form
   mutation_baseline_flag
 )
 
+-- WHY: mymod's spec has one test per mutated function, so every killer set holds
+-- exactly one name and the run reports no redundant test — which is the honest
+-- output for that project, and still exercises the whole matrix path.
+-- NOT: adding a duplicate spec to the documented project just to produce a
+-- REDUNDANT line, which would then show up in every other documented run.
+local mutation_matrix_flag = flag("--mutation-matrix")
+run_ntf({
+  ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
+  ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
+  mutation_matrix_flag,
+  "spec",
+}, { cwd = project_dir })
+local mutation_matrix_command = ("ntf %s %s"):format(mutation_flag, mutation_matrix_flag)
+
 local list_flag = flag("--list")
 run_ntf({ list_flag, example_spec })
 run_ntf({ list_flag, ("%s=%s"):format(mutation_flag, "lua/mymod.lua"), "spec" }, { cwd = project_dir })
@@ -304,6 +318,31 @@ mutant survived or was left uncovered; `--mutation-strict=survived` (or
 `=no_coverage`) gates only that category, so the bar can be raised in steps:]],
           util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
+Stopping at the first detecting test keeps the run short, but it also means the
+results only ever name one of a mutant's killers. `--mutation-matrix` runs the
+remaining tests anyway and records every one that detects the mutant, which
+answers the opposite question: not which code the tests miss, but which tests
+the suite would not miss. A test that is never the sole killer of any mutant
+detects nothing its siblings do not, and is reported as REDUNDANT:]],
+          util.help_code_block(mutation_matrix_command, { language = "sh" }),
+          [[
+The verdict rests on knowing a mutant's whole killer set, so a mutant whose set
+is cut short — by a test that hangs on it, or by a mutant the run could not
+apply — is left out of the report. The flag never changes the score or the
+`--mutation-strict` gate; it only fills in `killers` in the results file.
+
+The cost is one run of the suite per covering test rather than per mutant.
+`--mutation-matrix=N` bounds it by skipping the mutants more than N tests reach,
+which are the ones with the most trials to run — but skipping them drops those
+tests from the report rather than the mutants, since a test that only ever
+reaches the hot path then appears in no killer set at all. Reach for `N` when a
+whole matrix is genuinely too slow, not by default.
+
+Read the report as a ranking to review, not a delete list. Redundancy is
+measured against the mutants that exist today, and a test that duplicates
+another one now may be the only one left holding a behaviour once the code
+moves.
+
 `--mutation=PATH` restricts the mutated files to one file or directory, which is
 how you keep a run short: mutating everything means running the suite once per
 mutant. The full result — every mutant, its position, and what it became — is

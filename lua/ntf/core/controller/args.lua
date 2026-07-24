@@ -6,6 +6,13 @@ local M = {}
 --- @type string[] the mutant statuses `--mutation-strict` can gate on; the bare flag selects all of them
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
+-- WHY: a cap sheds tests, not mutants. A test that only ever reaches the hot
+-- path never enters the report at all, so capping ntf's own run at 20 covering
+-- tests hid 62 of its 199 redundant tests, to save 52s of wall clock against
+-- 18s — parallel trials absorb most of what the long tail costs.
+-- NOT: a finite default, which trades away a third of the report for time.
+local DEFAULT_MATRIX_CAP = math.huge
+
 --- @class NtfOptions
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
@@ -21,6 +28,7 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field mutation boolean mutation-test the covered code after a passing run
 --- @field mutation_path string? restrict the mutated files to this file or directory
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
+--- @field mutation_matrix number? record every killer of each mutant covered by at most this many tests (math.huge for all of them); nil records only the first
 --- @field mutation_baseline string? known-equivalent mutants file (JSON)
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
@@ -61,6 +69,10 @@ M.flags = {
   {
     name = "--mutation-strict[=LIST]",
     description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
+  },
+  {
+    name = "--mutation-matrix[=N]",
+    description = "record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)",
   },
   {
     name = "--mutation-baseline=FILE",
@@ -104,6 +116,7 @@ function M.parse(argv)
     mutation = false,
     mutation_path = nil,
     mutation_strict = nil,
+    mutation_matrix = nil,
     mutation_baseline = nil,
     mutation_results = "ntf-mutation.json",
     help = false,
@@ -157,6 +170,15 @@ function M.parse(argv)
       opts.mutation = true
       if inline ~= nil and inline ~= "" then
         opts.mutation_path = inline
+      end
+    elseif name == "--mutation-matrix" then
+      opts.mutation_matrix = DEFAULT_MATRIX_CAP
+      if inline ~= nil and inline ~= "" then
+        local cap = tonumber(inline)
+        if not cap or cap < 1 then
+          return "invalid --mutation-matrix value (expected a test count >= 1)"
+        end
+        opts.mutation_matrix = cap
       end
     elseif name == "--mutation-strict" then
       opts.mutation_strict = {}
@@ -229,11 +251,9 @@ function M.parse(argv)
       return "--exclude-spec path not found: " .. path
     end
   end
-  if
-    not opts.mutation
-    and (opts.mutation_strict or opts.mutation_baseline or opts.mutation_results ~= "ntf-mutation.json")
-  then
-    return "--mutation-strict, --mutation-baseline, and --mutation-results require --mutation"
+  local mutation_only_flag = opts.mutation_strict or opts.mutation_matrix or opts.mutation_baseline
+  if not opts.mutation and (mutation_only_flag or opts.mutation_results ~= "ntf-mutation.json") then
+    return "--mutation-strict, --mutation-matrix, --mutation-baseline, and --mutation-results require --mutation"
   end
   if
     opts.mutation_path

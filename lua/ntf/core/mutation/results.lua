@@ -18,6 +18,7 @@ local VERSION = 1
 --- @field replacement string
 --- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"
 --- @field killed_by string?
+--- @field killers string[]? every test that detected the mutant; absent unless --mutation-matrix tried the whole covering set
 
 --- @param path string output path
 --- @param summary NtfMutationSummary
@@ -40,6 +41,7 @@ function M.write(path, summary)
       replacement = mutant.replacement,
       status = record.status,
       killed_by = record.killed_by,
+      killers = record.killers,
     })
   end
 

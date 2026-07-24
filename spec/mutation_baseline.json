@@ -128,6 +128,24 @@
       "rationale": "the indexes come from ipairs, so two compared entries never share one and <= behaves identically"
     },
     {
+      "path": "lua/ntf/core/mutation/redundancy.lua",
+      "col": 24,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "      return a.detected > b.detected",
+      "rationale": "only reached when the counts differ, so >= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/mutation/redundancy.lua",
+      "col": 18,
+      "operator": "swap-relational",
+      "original": "<",
+      "replacement": "<=",
+      "line": "    return a.name < b.name",
+      "rationale": "the names are the keys of one table, so two compared entries never share one and <= behaves identically"
+    },
+    {
       "path": "lua/ntf/core/mutation/results.lua",
       "col": 19,
       "operator": "swap-relational",

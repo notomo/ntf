@@ -13,6 +13,7 @@ local M = {}
 --- @field mutant NtfMutant
 --- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"
 --- @field killed_by string? full name of the test that detected the mutant
+--- @field killers string[]? every test that detected the mutant; set only under --mutation-matrix, and only when the set is complete
 
 --- @class NtfMutationSummary
 --- @field records NtfMutationRecord[]
@@ -154,7 +155,8 @@ function M.run(opts, ctx)
           return a.baseline_ms < b.baseline_ms
         end)
 
-        table.insert(tasks, { mutant = mutant, trials = trials })
+        local exhaustive = opts.mutation_matrix ~= nil and #trials <= opts.mutation_matrix
+        table.insert(tasks, { mutant = mutant, trials = trials, exhaustive = exhaustive })
         table.insert(task_records, #records)
       end
     end
@@ -176,6 +178,7 @@ function M.run(opts, ctx)
     local record = records[task_records[task_index]]
     record.status = outcome.status
     record.killed_by = outcome.killed_by
+    record.killers = outcome.killers
   end
 
   local counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 }

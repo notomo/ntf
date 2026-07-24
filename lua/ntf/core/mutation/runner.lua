@@ -11,10 +11,12 @@ local M = {}
 --- @class NtfMutantTask one mutant and the tests that can detect it
 --- @field mutant NtfMutant
 --- @field trials NtfMutantTrial[] cheapest first, so a kill is found early
+--- @field exhaustive boolean? keep going after a kill, to learn the mutant's whole killer set
 
 --- @class NtfMutantOutcome
 --- @field status "killed"|"timeout"|"survived"|"not_applied"
 --- @field killed_by string? full name of the first test that detected the mutant
+--- @field killers string[]? every test that detected the mutant; set only once all its trials ran, so its presence means the set is complete
 
 -- WHY: a mutant that turns a loop infinite must not burn a full timeout per
 -- trial, so a trial gets a budget scaled to what the test cost in the baseline.
@@ -84,11 +86,15 @@ function M.run(tasks, opts)
 
   --- @param task_index integer
   --- @param trial_index integer
-  local function run_trial(task_index, trial_index)
+  --- @param killers string[] the tests that detected the mutant in the trials so far
+  local function run_trial(task_index, trial_index, killers)
     local task = tasks[task_index]
     local trial = task.trials[trial_index]
     if not trial then
-      return settle(task_index, { status = "survived" })
+      if #killers == 0 then
+        return settle(task_index, { status = "survived", killers = task.exhaustive and killers or nil })
+      end
+      return settle(task_index, { status = "killed", killed_by = killers[1], killers = killers })
     end
 
     driver.launch(trial.item, {
@@ -109,10 +115,26 @@ function M.run(tasks, opts)
       -- NOT: running the body bare and letting it throw into the libuv callback.
       local ok, err = xpcall(function()
         local settled = classify(outcome)
+        -- WHY: only a kill is worth carrying on for. Continuing past a timeout
+        -- would spend a full budget on every remaining test, and a not-applied
+        -- mutant was never loaded at all, so neither can name another killer —
+        -- stopping there is what keeps a recorded `killers` set complete.
+        -- NOT: running every trial to the end whatever the status says.
+        if settled and task.exhaustive and settled.killed_by then
+          table.insert(killers, settled.killed_by)
+          return run_trial(task_index, trial_index + 1, killers)
+        end
         if settled then
+          -- WHY: an earlier trial already detected the mutant, so the verdict a
+          -- run without --mutation-matrix would have reached still stands, and
+          -- the flag never moves the score.
+          -- NOT: letting this later timeout overwrite that kill.
+          if #killers > 0 then
+            return settle(task_index, { status = "killed", killed_by = killers[1] })
+          end
           return settle(task_index, settled)
         end
-        run_trial(task_index, trial_index + 1)
+        run_trial(task_index, trial_index + 1, killers)
       end, debug.traceback)
       if not ok then
         fatal = fatal or err
@@ -126,7 +148,7 @@ function M.run(tasks, opts)
       return
     end
     started = started + 1
-    run_trial(dispatch[started], 1)
+    run_trial(dispatch[started], 1, {})
   end
 
   for _ = 1, math.min(jobs, total) do
