@@ -10,6 +10,7 @@ local LISTED = {
   survived = { label = "SURVIVED", color = "red" },
   no_coverage = { label = "NO COVERAGE", color = "yellow" },
   not_applied = { label = "NOT APPLIED", color = "yellow" },
+  baseline_killable = { label = "BASELINE KILLABLE", color = "red" },
 }
 
 local COUNT_LABELS = {
@@ -19,6 +20,7 @@ local COUNT_LABELS = {
   { status = "no_coverage", label = "no coverage", color = "yellow" },
   { status = "not_applied", label = "not applied", color = "yellow" },
   { status = "equivalent", label = "equivalent", color = "green" },
+  { status = "baseline_killable", label = "baseline killable", color = "red" },
 }
 
 --- @param file string absolute path

@@ -30,6 +30,7 @@ local DEFAULT_MATRIX_CAP = math.huge
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
 --- @field mutation_matrix number? record every killer of each mutant covered by at most this many tests (math.huge for all of them); nil records only the first
 --- @field mutation_baseline string? known-equivalent mutants file (JSON)
+--- @field mutation_verify_baseline boolean run the --mutation-baseline entries and fail any that a test can kill
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
 
@@ -78,6 +79,10 @@ M.flags = {
     name = "--mutation-baseline=FILE",
     description = "leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing",
   },
+  {
+    name = "--mutation-verify-baseline",
+    description = "run the --mutation-baseline entries instead of trusting them; exit non-zero when a test kills one",
+  },
   { name = "--mutation-results=FILE", description = "mutation results output path (default: ntf-mutation.json)" },
   { name = "-h, --help", description = "show this help" },
 }
@@ -118,6 +123,7 @@ function M.parse(argv)
     mutation_strict = nil,
     mutation_matrix = nil,
     mutation_baseline = nil,
+    mutation_verify_baseline = false,
     mutation_results = "ntf-mutation.json",
     help = false,
   }
@@ -161,6 +167,8 @@ function M.parse(argv)
       opts.help = true
     elseif arg == "--list" then
       opts.list = true
+    elseif arg == "--mutation-verify-baseline" then
+      opts.mutation_verify_baseline = true
     elseif name == "--coverage" then
       opts.coverage = true
       if inline ~= nil and inline ~= "" then
@@ -251,9 +259,15 @@ function M.parse(argv)
       return "--exclude-spec path not found: " .. path
     end
   end
-  local mutation_only_flag = opts.mutation_strict or opts.mutation_matrix or opts.mutation_baseline
+  local mutation_only_flag = opts.mutation_strict
+    or opts.mutation_matrix
+    or opts.mutation_baseline
+    or opts.mutation_verify_baseline
   if not opts.mutation and (mutation_only_flag or opts.mutation_results ~= "ntf-mutation.json") then
-    return "--mutation-strict, --mutation-matrix, --mutation-baseline, and --mutation-results require --mutation"
+    return "--mutation-strict, --mutation-matrix, --mutation-baseline, --mutation-verify-baseline, and --mutation-results require --mutation"
+  end
+  if opts.mutation_verify_baseline and not opts.mutation_baseline then
+    return "--mutation-verify-baseline requires --mutation-baseline"
   end
   if
     opts.mutation_path

@@ -11,7 +11,7 @@ local M = {}
 
 --- @class NtfMutationRecord
 --- @field mutant NtfMutant
---- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"
+--- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable"
 --- @field killed_by string? full name of the test that detected the mutant
 --- @field killers string[]? every test that detected the mutant; set only under --mutation-matrix, and only when the set is complete
 
@@ -112,14 +112,30 @@ local function score_of(summary_counts)
   local detected = summary_counts.killed + summary_counts.timeout
   -- WHY: a mutant no test reaches counts as undetected, since that is exactly
   -- what a coverage hole costs, while a mutant that was never actually loaded
-  -- says nothing about the tests and a baseline-equivalent one is undetectable
-  -- by definition, so those two stay out of the score.
+  -- says nothing about the tests, a baseline-equivalent one is undetectable by
+  -- definition, and a baseline-killable one is a broken entry rather than a test
+  -- signal, so those three stay out of the score.
   -- NOT: excluding the unreached ones along with them.
   local scoreable = detected + summary_counts.survived + summary_counts.no_coverage
   if scoreable == 0 then
     return nil
   end
   return 100 * detected / scoreable
+end
+
+--- @param ctx { items: NtfWorkItem[], coverage_map: NtfMutationCoverageMap }
+--- @param durations table<string, number> baseline test durations, keyed file\0node_id
+--- @param mutant NtfMutant
+--- @return NtfMutantTrial[] # covering tests, cheapest first, so a kill is found early; empty when uncovered
+local function covering_trials(ctx, durations, mutant)
+  local trials = vim.tbl_map(function(item_index)
+    local item = ctx.items[item_index]
+    return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
+  end, ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)))
+  table.sort(trials, function(a, b)
+    return a.baseline_ms < b.baseline_ms
+  end)
+  return trials
 end
 
 --- @param opts NtfOptions
@@ -136,28 +152,35 @@ function M.run(opts, ctx)
   local tasks = {}
   --- @type integer[] index into records, parallel to tasks
   local task_records = {}
+  --- @type boolean[] whether the task re-runs a baseline entry, parallel to tasks
+  local task_verify = {}
 
   for _, entry in ipairs(enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_path)) do
     local mutant = entry.mutant
 
     if matcher.match(entry.relative_path, entry.line_text, mutant) then
       table.insert(records, { mutant = mutant, status = "equivalent" })
+
+      -- WHY: --mutation-verify-baseline distrusts the mark and runs the entry
+      -- for real, so one a test can now kill is caught instead of trusted.
+      -- NOT: running it with the flag off, which is the work the baseline skips.
+      if opts.mutation_verify_baseline then
+        local trials = covering_trials(ctx, durations, mutant)
+        if #trials > 0 then
+          table.insert(tasks, { mutant = mutant, trials = trials, exhaustive = false })
+          table.insert(task_records, #records)
+          table.insert(task_verify, true)
+        end
+      end
     else
       table.insert(records, { mutant = mutant, status = "no_coverage" })
 
-      local item_indexes = ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant))
-      if #item_indexes > 0 then
-        local trials = vim.tbl_map(function(item_index)
-          local item = ctx.items[item_index]
-          return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
-        end, item_indexes)
-        table.sort(trials, function(a, b)
-          return a.baseline_ms < b.baseline_ms
-        end)
-
+      local trials = covering_trials(ctx, durations, mutant)
+      if #trials > 0 then
         local exhaustive = opts.mutation_matrix ~= nil and #trials <= opts.mutation_matrix
         table.insert(tasks, { mutant = mutant, trials = trials, exhaustive = exhaustive })
         table.insert(task_records, #records)
+        table.insert(task_verify, false)
       end
     end
   end
@@ -176,12 +199,24 @@ function M.run(opts, ctx)
   })
   for task_index, outcome in pairs(outcomes) do
     local record = records[task_records[task_index]]
-    record.status = outcome.status
-    record.killed_by = outcome.killed_by
-    record.killers = outcome.killers
+    if task_verify[task_index] then
+      -- WHY: a killed or timed-out entry is one a test detects, so its
+      -- equivalence mark is wrong; any other outcome means the mark held and the
+      -- record stays equivalent.
+      -- NOT: overwriting the equivalent status when the entry survived as claimed.
+      if outcome.status == "killed" or outcome.status == "timeout" then
+        record.status = "baseline_killable"
+        record.killed_by = outcome.killed_by
+      end
+    else
+      record.status = outcome.status
+      record.killed_by = outcome.killed_by
+      record.killers = outcome.killers
+    end
   end
 
-  local counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 }
+  local counts =
+    { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0, baseline_killable = 0 }
   for _, record in ipairs(records) do
     counts[record.status] = counts[record.status] + 1
   end

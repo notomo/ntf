@@ -3,6 +3,16 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
+-- WHY: all three renderers join their lines the same way — newline-separated,
+-- trailing newline only when there is output — so the rule lives in one place.
+-- NOT: repeating the concat inline, where one line among identical copies could
+-- be judged equivalent while the others stay killable.
+--- @param lines string[]
+--- @return string
+local function joined(lines)
+  return table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
+end
+
 --- @param items NtfWorkItem[]
 --- @return string # one "path:line: full name" line per test
 function M.tests(items)
@@ -10,7 +20,7 @@ function M.tests(items)
   for _, item in ipairs(items) do
     table.insert(lines, ("%s: %s"):format(report.rel_source(item.trace), tree.full_name(item.names)))
   end
-  return table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
+  return joined(lines)
 end
 
 --- @param entry NtfMutantListEntry
@@ -44,7 +54,7 @@ function M.mutants(entries)
       )
     )
   end
-  return table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
+  return joined(lines)
 end
 
 --- @param load_errors NtfLoadError[]
@@ -58,7 +68,7 @@ function M.load_errors(load_errors)
   if lines[#lines] == "" then
     table.remove(lines)
   end
-  return table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
+  return joined(lines)
 end
 
 return M

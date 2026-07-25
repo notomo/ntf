@@ -37,6 +37,18 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
+  -- WHY: --mutation-verify-baseline only ever produces this status, and it means
+  -- an entry claimed equivalent was actually killed, so the gate must fail
+  -- however the run was otherwise configured.
+  -- NOT: folding it under --mutation-strict, which gates on test quality instead.
+  local killable = summary.counts.baseline_killable
+  if killable > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d baseline entr%s killable\n"):format(killable, killable == 1 and "y" or "ies")
+    )
+    code = 1
+  end
   if opts.mutation_strict then
     local parts = {}
     for _, status in ipairs({ "survived", "no_coverage" }) do

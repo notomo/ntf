@@ -42,7 +42,15 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 3, "survived"),
         record(abs("lua/b.lua"), 4, "no_coverage"),
       },
-      counts = { killed = 1, timeout = 1, survived = 1, no_coverage = 1, not_applied = 0, equivalent = 0 },
+      counts = {
+        killed = 1,
+        timeout = 1,
+        survived = 1,
+        no_coverage = 1,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
       score = 50,
     }
 
@@ -61,7 +69,15 @@ describe("ntf.core.mutation.report.summary", function()
   it("shows a path relative to the working directory, leaving a path outside it whole", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "survived"), record("/other/b.lua", 2, "survived") },
-      counts = { killed = 0, timeout = 0, survived = 2, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 2,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
       score = 0,
     }
 
@@ -74,7 +90,15 @@ describe("ntf.core.mutation.report.summary", function()
   it("counts the equivalents apart and lists the lost baseline entries", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "equivalent") },
-      counts = { killed = 1, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 1 },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 1,
+        baseline_killable = 0,
+      },
       score = 100,
       lost = {
         {
@@ -98,6 +122,28 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
   end)
 
+  it("lists a baseline-killable mutant apart from the score", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "baseline_killable") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 1,
+      },
+      score = 100,
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
+    assert.match("1 baseline killable", text)
+    assert.match("BASELINE KILLABLE lua/a%.lua:2 swap%-relational: < %-> <=", text)
+  end)
+
   it("lists the redundant tests once the killer sets are known", function()
     local killed = record(abs("lua/a.lua"), 1, "killed")
     killed.killers = { "spec a", "spec b" }
@@ -105,7 +151,15 @@ describe("ntf.core.mutation.report.summary", function()
     also_killed.killers = { "spec b" }
     local summary = {
       records = { killed, also_killed },
-      counts = { killed = 2, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      counts = {
+        killed = 2,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
       score = 100,
     }
 
@@ -120,7 +174,15 @@ describe("ntf.core.mutation.report.summary", function()
   it("says nothing about the matrix when no killer set was recorded", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
-      counts = { killed = 1, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
       score = 100,
     }
 
@@ -130,7 +192,15 @@ describe("ntf.core.mutation.report.summary", function()
   it("reports n/a when there is no mutant to score", function()
     local summary = {
       records = {},
-      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0 },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
       score = nil,
     }
 

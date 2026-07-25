@@ -361,6 +361,30 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("%-%-mutation%-baseline file not found", err)
     end)
 
+    it("verifies the baseline entries with --mutation-verify-baseline", function()
+      local file = helper.test_data:create_file("baseline.json", "{}")
+
+      local opts = args.parse({ "--mutation", "--mutation-baseline=" .. file, "--mutation-verify-baseline", "spec" })
+
+      assert.is_true(opts.mutation_verify_baseline)
+    end)
+
+    it("leaves the baseline trusted without --mutation-verify-baseline", function()
+      assert.is_false(args.parse({ "--mutation", "spec" }).mutation_verify_baseline)
+    end)
+
+    it("errors when --mutation-verify-baseline is given without --mutation-baseline", function()
+      local err = args.parse({ "--mutation", "--mutation-verify-baseline", "spec" })
+
+      assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-baseline", err)
+    end)
+
+    it("errors when --mutation-verify-baseline alone is given without --mutation", function()
+      local err = args.parse({ "--mutation-verify-baseline", "spec" })
+
+      assert.match("require %-%-mutation", err)
+    end)
+
     it("errors when the mutation flags are given without --mutation", function()
       local err = args.parse({ "--mutation-strict", "spec" })
 

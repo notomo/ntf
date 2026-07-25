@@ -158,6 +158,23 @@ local mutation_baseline_command = ("ntf %s %s=spec/mutation_baseline.json"):form
   mutation_baseline_flag
 )
 
+-- WHY: mymod's one baseline entry is genuinely equivalent, so verifying it runs
+-- the entry and still exits zero — the documented passing case.
+-- NOT: an entry a test kills, which would fail the very run the docs show.
+local mutation_verify_baseline_flag = flag("--mutation-verify-baseline")
+run_ntf({
+  ("%s=%s"):format(mutation_flag, "lua/mymod.lua"),
+  ("%s=%s"):format(flag("--mutation-results"), vim.fn.tempname()),
+  ("%s=%s"):format(mutation_baseline_flag, "spec/mutation_baseline.json"),
+  mutation_verify_baseline_flag,
+  "spec",
+}, { cwd = project_dir })
+local mutation_verify_baseline_command = ("ntf %s %s=spec/mutation_baseline.json %s"):format(
+  mutation_flag,
+  mutation_baseline_flag,
+  mutation_verify_baseline_flag
+)
+
 -- WHY: mymod's spec has one test per mutated function, so every killer set holds
 -- exactly one name and the run reports no redundant test — which is the honest
 -- output for that project, and still exercises the whole matrix path.
@@ -367,7 +384,14 @@ edit it by hand. An entry names its mutant by the line's text rather than its
 number: it keeps matching while the code merely moves, and when the marked line
 itself changes the run fails, listing the entry as LOST — the judgement has to
 be made again, by fixing the entry or deleting it. The `rationale` is required;
-it is what that later judgement starts from.]],
+it is what that later judgement starts from.
+
+An entry is only ever trusted, not checked: a mutant a new test would now detect
+stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
+runs the listed mutants instead of trusting them and exits non-zero, reporting
+each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
+stale judgement the code line never gave away. Run it after editing the baseline:]],
+          util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
         }, "\n")
       end,
     },

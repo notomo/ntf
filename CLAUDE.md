@@ -19,6 +19,11 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   with one (restructuring so the code is callable from a spec if need be, as
   `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
   undetectable — add a `spec/mutation_baseline.json` entry with its rationale
+- `make mutation_verify_baseline` — after editing `spec/mutation_baseline.json`:
+  must exit 0. It re-runs the listed mutants (`--mutation-verify-baseline`) and
+  fails any a test now kills (reported BASELINE KILLABLE) — kill it with a spec
+  instead, or fix the entry. Kept out of `make mutation` so its hot path stays
+  cheap; CI runs it as the backstop
 - `make doc` — only after changing CLI flags or the test API; regenerates
   `README.md` and `doc/ntf.txt`
 
