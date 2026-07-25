@@ -81,6 +81,18 @@ describe("ntf.core.controller.schedule", function()
     })
   end)
 
+  it("keys a spec outside the working directory by its full path", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+    local outside = "/elsewhere/x_spec.lua"
+
+    schedule.save(path, schedule.load(path), {
+      { id = "1.1", names = { "group", "one" }, file = outside, status = "passed", duration = 1.0 },
+    }, root)
+
+    assert.equal(1000, schedule.load(path).files[outside]["group one"].ms)
+  end)
+
   it("saves durations keyed by relative path and full name", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")

@@ -49,6 +49,24 @@ describe("ntf.core.tree.build", function()
     assert.equal(6, pending_node.trace.line)
   end)
 
+  it("records the line a describe and an it were defined on", function()
+    local root = tree.build(helper.write_spec(source))
+
+    local outer = root.children[1]
+    assert.equal(4, outer.trace.line)
+    assert.equal(5, outer.children[1].trace.line)
+  end)
+
+  it("traces a describe to its function's definition line, not the call site", function()
+    local root = tree.build(helper.write_spec(table.concat({
+      "local ntf = require('ntf')",
+      "local body = function() end",
+      "ntf.describe('outer', body)",
+    }, "\n")))
+
+    assert.equal(2, root.children[1].trace.line)
+  end)
+
   it("records an it-level timeout opt-in", function()
     local root = tree.build(helper.write_spec(source))
     local timed_it = root.children[1].children[4]
@@ -64,7 +82,11 @@ describe("ntf.core.tree.build", function()
   it("captures a syntax error that keeps the file from even loading", function()
     local root = tree.build(helper.write_spec([[describe((]]))
 
-    assert.truthy(root.load_error)
+    -- WHY: a `path:line:` prefix is the loadfile parse error, proving the build
+    -- reported that rather than falling through to run the nil chunk.
+    -- NOT: asserting only that some load_error is present, which a later
+    -- "attempt to call a nil value" would satisfy just as well.
+    assert.match(":%d+:", tostring(root.load_error))
     assert.same({}, root.children)
   end)
 

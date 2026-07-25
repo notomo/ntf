@@ -81,12 +81,7 @@ end
 --- @param src string
 --- @param sites NtfMutantSite[]
 local function unary_sites(node, src, sites)
-  local operand
-  for child in node:iter_children() do
-    if child:named() then
-      operand = child
-    end
-  end
+  local operand = node:named_child(0)
   -- WHY: the whole `not x` is replaced by `x`, so no dangling whitespace is
   -- left behind.
   -- NOT: deleting the `not` token alone.
@@ -96,11 +91,15 @@ local function unary_sites(node, src, sites)
   end
 end
 
---- @param cond TSNode the `condition` field of a decision node
+--- @param node TSNode a decision node whose condition is forced to each outcome
 --- @param src string the full source text
---- @param forces string[] the boolean literals to force the condition to
 --- @param sites NtfMutantSite[]
-local function condition_sites(cond, src, forces, sites)
+local function force_branch_sites(node, src, sites)
+  local forces = FORCE_BRANCH[node:type()]
+  if not forces then
+    return
+  end
+  local cond = node:field("condition")[1]
   -- WHY: a bare `true`/`false` condition is already mutated by flip-boolean, and
   -- forcing it to the same value is a no-op, so it is left to that operator.
   -- NOT: emitting a force-branch site that duplicates the flip.
@@ -135,13 +134,7 @@ function M.enumerate(src)
       end
     end
 
-    local forces = FORCE_BRANCH[kind]
-    if forces then
-      local cond = node:field("condition")[1]
-      if cond then
-        condition_sites(cond, src, forces, sites)
-      end
-    end
+    force_branch_sites(node, src, sites)
 
     for child in node:iter_children() do
       if child:named() then
@@ -155,13 +148,7 @@ function M.enumerate(src)
     if a.start_byte ~= b.start_byte then
       return a.start_byte < b.start_byte
     end
-    if a.operator ~= b.operator then
-      return a.operator < b.operator
-    end
-    -- WHY: the two force-branch sites share a start byte and an operator name, so
-    -- without this their order is unspecified (Lua's table.sort is unstable).
-    -- NOT: leaving them to compare equal and sort nondeterministically.
-    return a.replacement < b.replacement
+    return a.operator < b.operator
   end)
   return sites
 end

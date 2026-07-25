@@ -137,6 +137,16 @@ describe("ntf.assert", function()
     assert.match("init_spec%.lua:" .. line .. ": ntf%.assert: unknown assertion or modifier: nope", failure(failing))
   end)
 
+  it("raises when a registered assertion does not hold", function()
+    -- WHY: the check goes through pcall and the callable assert, not a registered
+    -- one, so it still fires when a mutant makes every registered assertion pass.
+    -- NOT: `assert.is_false(held)`, which that same mutant would silence.
+    local held = pcall(function()
+      assert.equal(1, 2)
+    end)
+    assert(not held, "assert.equal(1, 2) should have raised")
+  end)
+
   it("supports match", function()
     assert.match("b.d", "abcd")
     assert.is_true(fails(function()

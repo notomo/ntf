@@ -106,4 +106,8 @@ describe("ntf.core.mutation.results", function()
   it("returns nil for a missing file", function()
     assert.is_nil(results.read(helper.test_data:path("nope.json")))
   end)
+
+  it("returns nil for a file that is not valid JSON", function()
+    assert.is_nil(results.read(helper.test_data:create_file("bad.json", "{ not json")))
+  end)
 end)

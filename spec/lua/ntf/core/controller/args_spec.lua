@@ -125,6 +125,10 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("unknown option: %-x", err)
   end)
 
+  it("keeps the given paths instead of defaulting to spec", function()
+    assert.same({ "given/path" }, args.parse({ "given/path" }).paths)
+  end)
+
   it("aligns the longest flag name two spaces from its description in usage", function()
     local longest = args.flags[1]
     for _, flag in ipairs(args.flags) do
@@ -425,6 +429,14 @@ describe("ntf.core.controller.args.parse", function()
       local err = args.parse({})
 
       assert.match("no spec paths given", err)
+    end)
+
+    it("returns the help flag before reaching the no-paths check", function()
+      helper.test_data:cd("")
+
+      local opts = args.parse({ "-h" })
+
+      assert.is_true(opts.help)
     end)
   end)
 end)

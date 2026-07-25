@@ -234,6 +234,186 @@
       "replacement": ">=",
       "line": "    if line > entry.max then",
       "rationale": "a tie writes back the value already stored, so >= behaves identically"
+    },
+    {
+      "path": "lua/ntf/core/coverage/lines.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "child:named()",
+      "replacement": "true",
+      "line": "      if child:named() then",
+      "rationale": "a binary_expression's anonymous children are operator tokens with no closure to find, so widening closure_hit_row to them still returns nil"
+    },
+    {
+      "path": "lua/ntf/core/coverage/lines.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "child:named()",
+      "replacement": "true",
+      "line": "      if child:named() then",
+      "rationale": "anonymous children are leaf tokens with no hit-receiving row and no named descendants, so walking them adds no coverable line"
+    },
+    {
+      "path": "lua/ntf/core/mutation/operators.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "number",
+      "replacement": "true",
+      "line": "      if number then",
+      "rationale": "a tree-sitter number node's text always parses, so tonumber never returns nil and the guard is always true"
+    },
+    {
+      "path": "lua/ntf/core/mutation/operators.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "child:named()",
+      "replacement": "true",
+      "line": "      if child:named() then",
+      "rationale": "anonymous children are leaf tokens with no mutable site and no named descendants, so walking them enumerates nothing"
+    },
+    {
+      "path": "lua/ntf/core/mutation/operators.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "a.start_byte ~= b.start_byte",
+      "replacement": "true",
+      "line": "    if a.start_byte ~= b.start_byte then",
+      "rationale": "the operator tiebreak is reached only for two sites sharing a start byte, which are only the two force-branch mutants of one condition; they share the operator name too, so the tiebreak returns false either way and the order is identical"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "not info",
+      "replacement": "false",
+      "line": "  if not info then",
+      "rationale": "trace_of runs two frames below a live caller, so debug.getinfo of that level always returns a frame and never nil"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "not ok",
+      "replacement": "true",
+      "line": "  if not ok then",
+      "rationale": "a describe body returns nothing, so on success pcall's second value is nil and setting load_error to it leaves the node unmarked, exactly as skipping the assignment would"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "finally_collector",
+      "replacement": "true",
+      "line": "  if finally_collector then",
+      "rationale": "every spec runs inside collect_finallies, which keeps finally_collector non-nil for the whole call including any nested build, so finally()'s nil branch is unreachable from a spec"
+    },
+    {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "not ok",
+      "replacement": "true",
+      "line": "  if not ok then",
+      "rationale": "a spec file's chunk returns nothing, so on success pcall's second value is nil and load_error stays unset either way"
+    },
+    {
+      "path": "lua/ntf/core/mutation/coverage_map.lua",
+      "col": 11,
+      "operator": "force-branch",
+      "original": "row",
+      "replacement": "true",
+      "line": "        if row then",
+      "rationale": "coverage line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only populate lines[nil], which item_indexes, keyed by numeric rows, never reads"
+    },
+    {
+      "path": "lua/ntf/core/controller/schedule.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "a.ms ~= b.ms",
+      "replacement": "true",
+      "line": "    if a.ms ~= b.ms then",
+      "rationale": "reached only to compare two tests of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
+    },
+    {
+      "path": "lua/ntf/core/mutation/redundancy.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "a.detected ~= b.detected",
+      "replacement": "true",
+      "line": "    if a.detected ~= b.detected then",
+      "rationale": "reached only to compare two tests of equal detection count, whose order the sort then leaves in place, so forcing the guard true cannot change the reported order"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "cached ~= nil",
+      "replacement": "false",
+      "line": "    if cached ~= nil then",
+      "rationale": "the decided cache only memoizes measured_path, a pure function of source, so never returning the cached value recomputes the identical result"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 13,
+      "operator": "force-branch",
+      "original": "prefix:sub(1, #exclude) == exclude",
+      "replacement": "false",
+      "line": "          if prefix:sub(1, #exclude) == exclude then",
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "n",
+      "replacement": "true",
+      "line": "      if n then",
+      "rationale": "merge's line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only assign lines[nil], which the max-indexed writer never reads"
+    },
+    {
+      "path": "lua/ntf/core/controller/list.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "lines[#lines] == \"\"",
+      "replacement": "true",
+      "line": "  if lines[#lines] == \"\" then",
+      "rationale": "each load-error block ends with a blank separator line, so the last line is empty whenever one exists; forcing the guard true only ever drops that blank or no-ops on the empty list"
+    },
+    {
+      "path": "lua/ntf/core/mutation/order.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "a.ms ~= b.ms",
+      "replacement": "true",
+      "line": "    if a.ms ~= b.ms then",
+      "rationale": "reached only to compare two tasks of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
+    },
+    {
+      "path": "lua/ntf/core/worker/mutate.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "not file",
+      "replacement": "false",
+      "line": "    if not file then",
+      "rationale": "enumerate already read this file to produce the mutant and it is not removed before the trial, so the worker's io.open of the same path always succeeds"
+    },
+    {
+      "path": "lua/ntf/core/worker/mutate.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "not mutated",
+      "replacement": "false",
+      "line": "    if not mutated then",
+      "rationale": "enumerate_mutants only dispatches a mutant whose splice.apply already succeeded, so the loader's splice of the same site never returns nil"
+    },
+    {
+      "path": "lua/ntf/core/worker/mutate.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "not chunk",
+      "replacement": "false",
+      "line": "    if not chunk then",
+      "rationale": "enumerate_mutants only dispatches a mutant whose mutated source already compiled via loadstring, so the loader's loadstring of the same source never fails"
     }
   ]
 }

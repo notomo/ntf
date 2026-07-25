@@ -55,6 +55,38 @@ describe("ntf.core.coverage.lines.coverable", function()
 
     assert.is_nil(lines.coverable(src)[2])
   end)
+
+  it("does not count a line whose comma-separated values are all closures", function()
+    local src = table.concat({
+      "local a, b = function()",
+      "  return 1",
+      "end, function()",
+      "  return 2",
+      "end",
+    }, "\n")
+
+    assert.is_nil(lines.coverable(src)[1])
+  end)
+
+  it("counts a line that mixes a non-closure value with a closure", function()
+    local src = table.concat({
+      "local a, b = 1, function()",
+      "  return 1",
+      "end",
+    }, "\n")
+
+    assert.is_true(lines.coverable(src)[1])
+  end)
+
+  it("counts an assignment whose closure is parenthesized", function()
+    local src = table.concat({
+      "local x = (function()",
+      "  return 1",
+      "end)",
+    }, "\n")
+
+    assert.is_true(lines.coverable(src)[1])
+  end)
 end)
 
 describe("ntf.core.coverage.lines.anchor_rows", function()

@@ -71,6 +71,31 @@ describe("ntf.core.mutation.baseline.load", function()
 
     assert.match("entries%[1%] needs a non%-empty rationale", baseline.load(file))
   end)
+
+  it("rejects an entry that is not an object", function()
+    local file = helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = { "nope" } }))
+
+    assert.match("entries%[1%] is not an object", baseline.load(file))
+  end)
+
+  it("rejects a non-number col", function()
+    local file = helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({ version = 1, entries = { entry({ col = "seven" }) } })
+    )
+
+    assert.match("entries%[1%] needs a number col", baseline.load(file))
+  end)
+
+  it("rejects a file that cannot be read", function()
+    assert.match("cannot be read", baseline.load(vim.fs.joinpath(helper.test_data.full_path, "missing.json")))
+  end)
+
+  it("rejects a document whose entries are not an array", function()
+    local file = helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = "nope" }))
+
+    assert.match("expected an entries array", baseline.load(file))
+  end)
 end)
 
 describe("ntf.core.mutation.baseline.matcher", function()

@@ -22,6 +22,10 @@ describe("ntf.core.worker.mutate.module_names", function()
   it("maps nothing outside the working directory", function()
     assert.same({}, mutate.module_names("/other/lua/a/b.lua", "/root"))
   end)
+
+  it("maps nothing for a non-Lua file under the working directory", function()
+    assert.same({}, mutate.module_names("/root/notes.txt", "/root"))
+  end)
 end)
 
 local function first_mutation(path, operator)
@@ -171,6 +175,44 @@ return M
 
     local only_the_mutated_source_is_positive_at_zero = mod.is_positive(0)
     assert.is_true(only_the_mutated_source_is_positive_at_zero)
+  end)
+
+  it("hands a require for an unresolved module to the next loader", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/mod.lua",
+      [[
+local M = {}
+function M.is_positive(n)
+  return n > 0
+end
+return M
+]]
+    )
+    helper.test_data:create_file("lua/other.lua", "return { name = 'real other' }")
+
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+    vim.opt.runtimepath:append(cwd)
+
+    mutate.install(first_mutation(module, "swap-relational"), cwd)
+    local ok, other = pcall(require, "other")
+
+    package.loaded["other"] = nil
+    vim.opt.runtimepath:remove(cwd)
+    for i = #package.loaders, 1, -1 do
+      if not original_loaders[package.loaders[i]] then
+        table.remove(package.loaders, i)
+      end
+    end
+
+    assert(ok, other)
+    -- WHY: the loader resolves only mod, so a require for another module must
+    -- fall through to the real one rather than being served mod's mutated source.
+    -- NOT: asserting mod itself, which never exercises the unresolved-name path.
+    assert.equal("real other", other.name)
   end)
 
   it("reports that the mutation was not applied when the module is never required", function()
