@@ -95,6 +95,52 @@ local _ = 0x10
     }, sites)
   end)
 
+  it("forces each branch of an if/elseif chain to both outcomes", function()
+    local sites = summarize([[
+if a == b then
+elseif c then
+else
+end
+]])
+
+    assert.same({
+      { operator = "force-branch", row = 1, original = "a == b", replacement = "false" },
+      { operator = "force-branch", row = 1, original = "a == b", replacement = "true" },
+      { operator = "swap-relational", row = 1, original = "==", replacement = "~=" },
+      { operator = "force-branch", row = 2, original = "c", replacement = "false" },
+      { operator = "force-branch", row = 2, original = "c", replacement = "true" },
+    }, sites)
+  end)
+
+  it("forces a while condition to false only, never the infinite true", function()
+    local sites = summarize([[while a < b do end]])
+
+    assert.same({
+      { operator = "force-branch", row = 1, original = "a < b", replacement = "false" },
+      { operator = "swap-relational", row = 1, original = "<", replacement = "<=" },
+    }, sites)
+  end)
+
+  it("forces a repeat condition to true only, never the infinite false", function()
+    local sites = summarize([[repeat until a < b]])
+
+    assert.same({
+      { operator = "force-branch", row = 1, original = "a < b", replacement = "true" },
+      { operator = "swap-relational", row = 1, original = "<", replacement = "<=" },
+    }, sites)
+  end)
+
+  it("leaves a bare boolean condition to flip-boolean, forcing no branch", function()
+    local sites = summarize([[
+if true then
+end
+]])
+
+    assert.same({
+      { operator = "flip-boolean", row = 1, original = "true", replacement = "false" },
+    }, sites)
+  end)
+
   it("finds no site in a string or a comment", function()
     local sites = summarize([[
 -- a == b and 1
@@ -166,7 +212,7 @@ return f
 ]]
 
     local sites = operators.enumerate(src)
-    assert.equal(9, #sites)
+    assert.equal(11, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(src, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

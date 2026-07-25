@@ -715,6 +715,7 @@ local MUTATION_SPEC = table.concat({
   "  end)",
   '  it("takes the min", function()',
   "    assert.equal(1, mod.min(1, 2))",
+  "    assert.equal(1, mod.min(2, 1))",
   "  end)",
   "end)",
 }, "\n")
@@ -744,7 +745,7 @@ describe("ntf --mutation", function()
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
     assert.equal(0, results.counts.not_applied)
-    assert.equal(2, results.counts.killed)
+    assert.equal(4, results.counts.killed)
   end)
 
   it("reports a mutant no test reaches as uncovered", function()
@@ -816,7 +817,7 @@ describe("ntf --mutation", function()
       helper.run_cli({ "--mutation", "--mutation-matrix", "--mutation-results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
-    assert.match("Matrix: 3 mutants fully tried", obj.stdout)
+    assert.match("Matrix: 5 mutants fully tried", obj.stdout)
     assert.match("REDUNDANT mod detects positives at the boundary %(detected 2, none of them alone%)", obj.stdout)
     assert.match("REDUNDANT copy detects positives at the boundary %(detected 2, none of them alone%)", obj.stdout)
 
@@ -853,7 +854,7 @@ describe("ntf --mutation", function()
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
-    assert.equal(2, results.counts.killed)
+    assert.equal(4, results.counts.killed)
   end)
 
   it("mutates nothing under an --exclude-code path", function()
