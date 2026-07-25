@@ -335,15 +335,6 @@
       "rationale": "reached only to compare two tests of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
     },
     {
-      "path": "lua/ntf/core/mutation/redundancy.lua",
-      "col": 7,
-      "operator": "force-branch",
-      "original": "a.detected ~= b.detected",
-      "replacement": "true",
-      "line": "    if a.detected ~= b.detected then",
-      "rationale": "reached only to compare two tests of equal detection count, whose order the sort then leaves in place, so forcing the guard true cannot change the reported order"
-    },
-    {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 7,
       "operator": "force-branch",
