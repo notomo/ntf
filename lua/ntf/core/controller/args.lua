@@ -1,8 +1,5 @@
 local M = {}
 
--- WHY: a `not_applied` or `equivalent` mutant says nothing about the tests, so
--- gating on it would fail a run for something no spec can fix.
--- NOT: every status the mutation report knows about.
 --- @type string[] the mutant statuses `--mutation-strict` can gate on; the bare flag selects all of them
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 

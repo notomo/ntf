@@ -44,9 +44,6 @@ function M.run(items, opts)
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
-      -- WHY: libuv would just log and drop an error raised here, so the first
-      -- one is captured and re-raised after the wait.
-      -- NOT: running the body bare and letting it throw into the libuv callback.
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
         if opts.coverage then

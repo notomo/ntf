@@ -10,9 +10,9 @@ local M = {}
 --- @field end_col integer 0-based end column, exclusive
 --- @field anchor_rows integer[] 1-based rows where the hit lands when the site executes (see `lines.anchor_rows`)
 
--- WHY: keyed by node type, which the grammar names after the anonymous operator
--- token's own text.
--- NOT: by `get_node_text`.
+-- WHY: the grammar names an anonymous operator token after its own text, so the
+-- node type is already the spelling to swap on.
+-- NOT: `vim.treesitter.get_node_text`, a source slice per candidate node.
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },
@@ -82,9 +82,9 @@ end
 --- @param sites NtfMutantSite[]
 local function unary_sites(node, src, sites)
   local operand = node:named_child(0)
-  -- WHY: the whole `not x` is replaced by `x`, so no dangling whitespace is
-  -- left behind.
-  -- NOT: deleting the `not` token alone.
+  -- WHY: the `not` token's own range stops at the keyword, so splicing it out
+  -- leaves the space before the operand behind.
+  -- NOT: a splice of `node:child(0)`, the `not` token alone.
   if operand and node:child(0):type() == "not" then
     local text = vim.treesitter.get_node_text(node, src)
     table.insert(sites, site(node, "drop-not", text, vim.treesitter.get_node_text(operand, src)))
@@ -100,9 +100,6 @@ local function force_branch_sites(node, src, sites)
     return
   end
   local cond = node:field("condition")[1]
-  -- WHY: a bare `true`/`false` condition is already mutated by flip-boolean, and
-  -- forcing it to the same value is a no-op, so it is left to that operator.
-  -- NOT: emitting a force-branch site that duplicates the flip.
   if BOOLEAN_FLIPS[cond:type()] then
     return
   end

@@ -3,10 +3,6 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
--- WHY: all three renderers join their lines the same way — newline-separated,
--- trailing newline only when there is output — so the rule lives in one place.
--- NOT: repeating the concat inline, where one line among identical copies could
--- be judged equivalent while the others stay killable.
 --- @param lines string[]
 --- @return string
 local function joined(lines)

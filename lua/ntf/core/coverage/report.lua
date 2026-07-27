@@ -22,9 +22,6 @@ end
 --- @return integer covered, integer coverable
 local function count_file(source_lines, hits)
   local coverable, covered = 0, 0
-  -- WHY: the hit lines are unioned in so a recorded line is never dropped from
-  -- the denominator.
-  -- NOT: the source's coverable lines alone.
   local seen = {}
   for line in pairs(hits) do
     seen[line] = true

@@ -211,9 +211,6 @@ function M.run(root)
   end
 
   if opts.mutation then
-    -- WHY: a mutant is only meaningful against a suite that passes; against a
-    -- failing one, every mutant would look detected.
-    -- NOT: mutating anyway and reporting the score that comes out.
     if code ~= 0 then
       if opts.list then
         io.stdout:write(text)

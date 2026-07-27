@@ -50,8 +50,6 @@ function M.write(path, summary)
       if a.row ~= b.row then
         return a.row < b.row
       end
-      -- WHY: two sites never share a token, so a row+col tie cannot occur.
-      -- NOT: an operator tiebreak.
       return a.col < b.col
     end)
   end

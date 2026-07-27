@@ -16,19 +16,11 @@ function M.analyze(records)
   local mutants = 0
 
   for _, record in ipairs(records) do
-    -- WHY: a record without a complete killer set stopped at its first kill, so
-    -- counting it would make that one test look like the only one that can
-    -- detect the mutant and wrongly spare it from the list.
-    -- NOT: falling back to `killed_by` for the records the cap left out.
     if record.killers then
       mutants = mutants + 1
       for _, name in ipairs(record.killers) do
         detected[name] = (detected[name] or 0) + 1
       end
-      -- WHY: being some mutant's only killer is what makes a test irreplaceable,
-      -- so a test that is never one has every kill of its own covered elsewhere.
-      -- NOT: comparing kill sets pairwise, which answers the narrower question of
-      -- whether one single other test subsumes it.
       if #record.killers == 1 then
         distinguishing[record.killers[1]] = true
       end

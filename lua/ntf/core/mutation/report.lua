@@ -3,9 +3,6 @@ local redundancy = require("ntf.core.mutation.redundancy")
 
 local M = {}
 
--- WHY: an undetected mutant is the one that says something about the tests; a
--- detected one only moves the score.
--- NOT: a line per mutant for every status in `COUNT_LABELS`.
 local LISTED = {
   survived = { label = "SURVIVED", color = "red" },
   no_coverage = { label = "NO COVERAGE", color = "yellow" },

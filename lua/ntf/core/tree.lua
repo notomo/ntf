@@ -119,9 +119,6 @@ M.finally = function(fn)
   end
 end
 
--- WHY: an execute may nest inside a running test, whose own collector has to
--- survive it.
--- NOT: clearing the collector on the way out.
 --- @param fn fun() runs with a fresh `finally` collector installed; must not throw, the caller catches errors inside
 --- @return (fun())[] collected finally callbacks
 function M.collect_finallies(fn)

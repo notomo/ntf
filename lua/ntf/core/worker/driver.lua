@@ -65,9 +65,6 @@ function M.launch(item, opts, on_done)
     timeout = nil
   end
 
-  -- WHY: the worker script is launched by `-c "luafile"`, after startup, for
-  -- the reason worker/init.lua gives.
-  -- NOT: `-l`.
   local cmd = {
     vim.v.progpath,
     "--clean",
@@ -79,10 +76,6 @@ function M.launch(item, opts, on_done)
     -- exists.
     "--cmd",
     "set noswapfile",
-    -- WHY: the worker script cannot require any ntf module until the ntf root is
-    -- on runtimepath.
-    -- NOT: prepending it from the worker script itself, which is already an ntf
-    -- module.
     "--cmd",
     ("lua vim.opt.runtimepath:prepend(%q)"):format(opts.root),
     "-c",
@@ -114,9 +107,6 @@ function M.launch(item, opts, on_done)
       results = results_of(item, obj, timed_out and timeout or nil),
       coverage = decoded and decoded.coverage or nil,
       timed_out = timed_out or nil,
-      -- WHY: a worker that never loaded the mutated module reports `false`, and
-      -- the controller must be able to tell that from "no report".
-      -- NOT: `or nil`, which would collapse the two.
       mutation_applied = decoded and decoded.mutation_applied,
     }
     if decoded then
