@@ -56,6 +56,21 @@ describe("ntf.core.worker.executor.run", function()
     assert.match("boom", results[2].message)
   end)
 
+  it("reports a build error without a traceback, since its message already carries its own location", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("broken", function()
+  error("boom during build")
+end)
+]]))
+    local results = executor.run(root, nil)
+
+    assert.equal(1, #results)
+    assert.equal("error", results[1].status)
+    assert.is_nil(results[1].traceback)
+    assert.match(":%d+:", results[1].message)
+  end)
+
   it("runs before_each/after_each/finally per test", function()
     local root = tree.build(helper.write_spec(source))
     executor.run(root, nil)

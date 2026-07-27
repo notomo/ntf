@@ -177,6 +177,37 @@ return M
     assert.is_true(only_the_mutated_source_is_positive_at_zero)
   end)
 
+  it("names the mutated chunk after the original path, so tracebacks stay attributable to it", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/mod.lua",
+      [[
+local M = {}
+function M.is_positive(n)
+  return n > 0
+end
+return M
+]]
+    )
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+
+    mutate.install(first_mutation(module, "swap-relational"), cwd)
+    local ok, mod = pcall(require, "mod")
+
+    package.loaded["mod"] = nil
+    for i = #package.loaders, 1, -1 do
+      if not original_loaders[package.loaders[i]] then
+        table.remove(package.loaders, i)
+      end
+    end
+
+    assert(ok, mod)
+    assert.equal("@" .. vim.fs.normalize(module), debug.getinfo(mod.is_positive, "S").source)
+  end)
+
   it("hands a require for an unresolved module to the next loader", function()
     local cwd = helper.test_data.full_path
     local module = helper.test_data:create_file(

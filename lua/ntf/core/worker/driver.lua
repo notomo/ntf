@@ -22,10 +22,6 @@ local M = {}
 local function results_of(item, obj, timed_out_ms)
   local decoded = protocol.parse(obj.stdout)
 
-  -- WHY: the worker runs exactly one requested node, so reporting nothing means
-  -- the node was never found in the rebuilt tree (a mutant broke the id scheme,
-  -- say).
-  -- NOT: reading an empty result list as a clean pass.
   if decoded and decoded.results and #decoded.results > 0 then
     for _, result in ipairs(decoded.results) do
       result.file = item.file

@@ -53,9 +53,6 @@ function M.install(mutation, cwd)
       return nil
     end
 
-    -- WHY: tracebacks and the coverage line hook key on the chunk's `@<path>`,
-    -- so the mutated chunk keeps the original one to stay attributable.
-    -- NOT: naming the chunk after the mutant to tell the two apart.
     local chunk, err = loadstring(mutated, "@" .. mutation.path)
     if not chunk then
       return err
