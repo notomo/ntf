@@ -19,6 +19,40 @@ describe("ntf.core.controller.report.output_block", function()
     assert.match("OUTPUT spec/a_spec.lua group adds", text)
     assert.match("\nnoise", text)
   end)
+
+  it(
+    "ends the block with a blank separator line, since it is streamed live and no later pass can space it out",
+    function()
+      local out = { file = "spec/a_spec.lua", name = "", output = "hello\n" }
+
+      local text = report.output_block(out, false)
+
+      assert.equal("\n\n", text:sub(-2))
+    end
+  )
+
+  it("builds the block from a fast event context, where a Vimscript getcwd() would be forbidden", function()
+    local out = { file = "spec/a_spec.lua", name = "", output = "hello\n" }
+
+    local text, err
+    local timer = assert(vim.uv.new_timer())
+    timer:start(0, 0, function()
+      local ok, result = pcall(report.output_block, out, false)
+      if ok then
+        text = result
+      else
+        err = result
+      end
+      timer:stop()
+      timer:close()
+    end)
+    vim.wait(2000, function()
+      return text ~= nil or err ~= nil
+    end)
+
+    assert.is_nil(err)
+    assert.match("OUTPUT spec/a_spec.lua", text)
+  end)
 end)
 
 describe("ntf.core.controller.report.build", function()

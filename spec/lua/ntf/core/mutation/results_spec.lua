@@ -103,6 +103,18 @@ describe("ntf.core.mutation.results", function()
     assert.is_nil(decoded.files["/x.lua"][2].killers)
   end)
 
+  it("writes an empty file set as a JSON object, which an empty Lua table would encode as `[]` instead", function()
+    local out = helper.test_data:path("ntf-mutation.json")
+
+    results.write(out, {
+      records = {},
+      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      score = nil,
+    })
+
+    assert.match('"files":%s*{}', table.concat(vim.fn.readfile(out), "\n"))
+  end)
+
   it("returns nil for a missing file", function()
     assert.is_nil(results.read(helper.test_data:path("nope.json")))
   end)

@@ -46,6 +46,14 @@ describe("ntf.core.coverage.collector.line_hook", function()
     end
   )
 
+  it("keys the recorded lines by string, since vim.json.encode rejects the sparse array they would form", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+
+    run_hook(hook, "@" .. helper.test_data:path("covered.lua"), { 3, 7 })
+
+    assert.same(data, vim.json.decode(vim.json.encode(data)))
+  end)
+
   it("ignores line numbers below one", function()
     local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
 

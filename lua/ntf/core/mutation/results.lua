@@ -59,9 +59,6 @@ function M.write(path, summary)
     version = VERSION,
     score = summary.score,
     counts = summary.counts,
-    -- WHY: an empty Lua table encodes as `[]`, which `M.read` would not decode
-    -- back as a map.
-    -- NOT: `files = files`.
     files = next(files) and files or vim.empty_dict(),
   }))
   f:close()

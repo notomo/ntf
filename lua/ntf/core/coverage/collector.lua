@@ -154,10 +154,6 @@ function M.line_hook(opts)
       entry = { max = line, lines = {} }
       data[path] = entry
     end
-    -- WHY: the worker serialises this table with `vim.json.encode`, which
-    -- rejects the sparse integer-keyed array it would otherwise be; string keys
-    -- keep it a JSON object.
-    -- NOT: `entry.lines[line]`.
     local key = tostring(line)
     entry.lines[key] = (entry.lines[key] or 0) + 1
     if line > entry.max then
