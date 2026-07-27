@@ -120,7 +120,7 @@ describe("ntf.core.coverage.report.summary", function()
     assert.match("Coverage: n/a", text)
   end)
 
-  it("lists a file whose path is too long for a format width", function()
+  it("lists a file whose name is longer than the width string.format accepts", function()
     local too_long_for_a_format_width = ("d"):rep(120) .. ".lua"
     --- @type SummaryLine[]
     local lines = { { code = "return 1", hit = true, coverable = true } }

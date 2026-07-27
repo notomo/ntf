@@ -124,7 +124,7 @@ describe("ntf.core.tree.is_leaf", function()
     assert.is_false(tree.is_leaf({ type = "describe" }))
   end)
 
-  it("treats a describe whose body errored as a leaf", function()
+  it("treats a describe whose body errored as a leaf, rather than running the arbitrary prefix it collected", function()
     assert.is_true(tree.is_leaf({ type = "describe", load_error = "boom" }))
   end)
 end)

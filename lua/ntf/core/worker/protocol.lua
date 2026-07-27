@@ -68,11 +68,6 @@ function M.parse(stdout)
   return decoded
 end
 
--- WHY: stderr counts as the worker's own output too, since Neovim routes
--- `print`, `vim.api.nvim_echo` and other messages to its message channel rather
--- than to stdout.
--- NOT: interleaving the two in write order, which is unrecoverable once both
--- streams have been collected, so stdout is shown whole and then stderr.
 --- @param stdout string?
 --- @param stderr string?
 --- @return string

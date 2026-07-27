@@ -13,10 +13,6 @@ function M.module_names(path, cwd)
   end
   local relative = path:sub(#cwd + 2)
 
-  -- WHY: package.path can resolve either layout, `lua/?.lua` (runtimepath, where
-  -- the `lua/` prefix is not part of the name) or a plain `./?.lua`.
-  -- NOT: the runtimepath layout alone, which leaves a file outside `lua/`
-  -- unmutatable.
   local stem = relative:match("^lua/(.*)%.lua$") or relative:match("^(.*)%.lua$")
   if not stem then
     return names
@@ -69,8 +65,6 @@ function M.install(mutation, cwd)
     return chunk
   end
 
-  -- WHY: Neovim's runtimepath loader would otherwise resolve the name first.
-  -- NOT: `table.insert(package.loaders, loader)`.
   table.insert(package.loaders, 2, loader)
 
   -- WHY: a module already in package.loaded never reaches a loader, and

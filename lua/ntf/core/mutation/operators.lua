@@ -82,9 +82,6 @@ end
 --- @param sites NtfMutantSite[]
 local function unary_sites(node, src, sites)
   local operand = node:named_child(0)
-  -- WHY: the `not` token's own range stops at the keyword, so splicing it out
-  -- leaves the space before the operand behind.
-  -- NOT: a splice of `node:child(0)`, the `not` token alone.
   if operand and node:child(0):type() == "not" then
     local text = vim.treesitter.get_node_text(node, src)
     table.insert(sites, site(node, "drop-not", text, vim.treesitter.get_node_text(operand, src)))

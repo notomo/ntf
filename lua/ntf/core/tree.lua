@@ -130,10 +130,6 @@ function M.collect_finallies(fn)
   return collected
 end
 
--- WHY: the children a describe collected before its body errored are an
--- arbitrary prefix of what the file meant to declare, so the describe is
--- reported as one error instead.
--- NOT: descending into them and running what did get collected.
 --- @param node NtfNode
 --- @return boolean # true for `it`, `pending`, and any node whose body errored during build
 function M.is_leaf(node)

@@ -34,14 +34,17 @@ describe("ntf.core.coverage.collector.line_hook", function()
     fn(hook, lines)
   end
 
-  it("counts the hooked function's lines under its source path", function()
-    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
-    local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
+  it(
+    "counts the hooked function's lines under its source path, called directly since debug.sethook hooks do not nest",
+    function()
+      local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+      local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
 
-    run_hook(hook, "@" .. path, { 3, 3, 7, 1 })
+      run_hook(hook, "@" .. path, { 3, 3, 7, 1 })
 
-    assert.same({ [path] = { max = 7, lines = { ["1"] = 1, ["3"] = 2, ["7"] = 1 } } }, data)
-  end)
+      assert.same({ [path] = { max = 7, lines = { ["1"] = 1, ["3"] = 2, ["7"] = 1 } } }, data)
+    end
+  )
 
   it("ignores line numbers below one", function()
     local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
@@ -163,7 +166,7 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({}, files)
   end)
 
-  it("treats a file it cannot read as non-meta", function()
+  it("treats a file it cannot read as non-meta, called directly since chmod 0 still allows reads on Windows", function()
     local missing = helper.test_data:path("lua/missing.lua")
 
     assert.is_false(collector.is_meta_file(vim.fs.normalize(missing)))

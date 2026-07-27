@@ -74,8 +74,6 @@ function M.summary(merged, cwd)
       total_coverable
     )
     for _, row in ipairs(rows) do
-      -- WHY: a deep enough path would crash the summary otherwise.
-      -- NOT: a `%-Ns` width, which `string.format` rejects beyond 99.
       local name = row.name .. (" "):rep(width + 2 - #row.name)
       lines[#lines + 1] = ("  %s%5.1f%% (%d/%d)"):format(
         name,

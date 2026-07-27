@@ -86,10 +86,6 @@ local function make_resolver(cwd, excludes)
   end
 end
 
--- WHY: chmod 0 still leaves a file readable on Windows, so a spec cannot reach
--- the unreadable-file branch by measuring one through the walk; it calls this
--- directly with a path it can make fail.
--- NOT: reaching the branch through `M.measurable_files` as the other specs do.
 --- @param path string absolute file path
 --- @return boolean
 function M.is_meta_file(path)
@@ -136,9 +132,6 @@ function M.measurable_files(cwd, excludes)
   return files
 end
 
--- WHY: `debug.sethook` hooks do not nest, so the hook body is invisible to the
--- measurement it performs and no spec going through `M.start` can cover it.
--- NOT: covering it through `M.start`, whose own coverage run cannot see it.
 --- @param opts { cwd: string, excludes?: string[] }
 --- @return fun(event: string, line: integer) # a `debug.sethook` line hook
 --- @return table<string, { max: integer, lines: table<string, integer> }> # filled as the hook records

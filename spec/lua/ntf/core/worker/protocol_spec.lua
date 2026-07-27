@@ -65,11 +65,14 @@ describe("ntf.core.worker.protocol.env -> payload", function()
 end)
 
 describe("ntf.core.worker.protocol.captured_output", function()
-  it("keeps only user writes: stdout before the result block, then stderr", function()
-    local stdout = "written to stdout" .. emitted({ results = {} })
+  it(
+    "keeps only user writes: stdout before the result block, then stderr, where Neovim routes print and echo",
+    function()
+      local stdout = "written to stdout" .. emitted({ results = {} })
 
-    assert.equal("written to stdout\nprinted to stderr", protocol.captured_output(stdout, "printed to stderr\n"))
-  end)
+      assert.equal("written to stdout\nprinted to stderr", protocol.captured_output(stdout, "printed to stderr\n"))
+    end
+  )
 
   it("is empty when the worker wrote nothing of its own", function()
     assert.equal("", protocol.captured_output(emitted({ results = {} }), ""))

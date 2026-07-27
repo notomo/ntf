@@ -119,16 +119,19 @@ describe("ntf.core.coverage.lines.anchor_rows", function()
     assert.same({ 2 }, lines.anchor_rows(node_at(src, 2, 13)))
   end)
 
-  it("anchors a value in a closure-only statement to the closing `end` line", function()
-    local src = table.concat({
-      "local x",
-      "x = nil or function()",
-      "  return 1",
-      "end",
-    }, "\n")
+  it(
+    "anchors a closure-only statement to its own closing `end`, not to an enclosing block that runs whether or not the closure is called",
+    function()
+      local src = table.concat({
+        "local x",
+        "x = nil or function()",
+        "  return 1",
+        "end",
+      }, "\n")
 
-    assert.same({ 4 }, lines.anchor_rows(node_at(src, 1, 4)))
-  end)
+      assert.same({ 4 }, lines.anchor_rows(node_at(src, 1, 4)))
+    end
+  )
 
   it("returns no anchor without a hit-receiving ancestor", function()
     assert.same({}, lines.anchor_rows(node_at("local x", 0, 6)))
