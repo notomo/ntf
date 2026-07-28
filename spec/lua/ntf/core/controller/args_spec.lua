@@ -36,6 +36,12 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("missing value for %-%-filter", err)
   end)
 
+  it("keeps an empty --filter value as the pattern every test matches", function()
+    local opts = args.parse({ "--filter=", "spec" })
+
+    assert.equal("", opts.filter)
+  end)
+
   it("rejects a malformed --filter Lua pattern", function()
     local err = args.parse({ "--filter=%", "spec" })
 
@@ -125,21 +131,27 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("unknown option: %-x", err)
   end)
 
+  it("rejects a value given to a flag that takes none", function()
+    local err = args.parse({ "--list=yes", "spec" })
+
+    assert.match("unknown option: %-%-list=yes", err)
+  end)
+
   it("keeps the given paths instead of defaulting to spec", function()
     assert.same({ "given/path" }, args.parse({ "given/path" }).paths)
   end)
 
-  it("aligns the longest flag name two spaces from its description in usage", function()
+  it("aligns the longest flag label two spaces from its description in usage", function()
     local longest = args.flags[1]
     for _, flag in ipairs(args.flags) do
-      if #flag.name > #longest.name then
+      if #args.flag_label(flag) > #args.flag_label(longest) then
         longest = flag
       end
     end
 
     local lines = vim.split(args.usage(), "\n", { plain = true })
 
-    assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(longest.name, longest.description)))
+    assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(args.flag_label(longest), longest.description)))
   end)
 
   describe("--test-hook", function()
@@ -438,5 +450,34 @@ describe("ntf.core.controller.args.parse", function()
 
       assert.is_true(opts.help)
     end)
+  end)
+end)
+
+describe("ntf.core.controller.args.flag_label", function()
+  --- @param name string
+  --- @return string
+  local label = function(name)
+    for _, flag in ipairs(args.flags) do
+      if flag.name == name then
+        return args.flag_label(flag)
+      end
+    end
+    error("no such flag: " .. name)
+  end
+
+  it("shows a flag taking no value as its bare token", function()
+    assert.equal("--list", label("--list"))
+  end)
+
+  it("joins the aliases before the token", function()
+    assert.equal("-h, --help", label("--help"))
+  end)
+
+  it("appends the placeholder of a required value", function()
+    assert.equal("--timeout=MS", label("--timeout"))
+  end)
+
+  it("brackets the placeholder of an optional value", function()
+    assert.equal("--coverage[=FILE]", label("--coverage"))
   end)
 end)

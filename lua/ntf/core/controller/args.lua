@@ -31,69 +31,218 @@ local DEFAULT_MATRIX_CAP = math.huge
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
 
---- @type { name: string, description: string }[]
+--- @class NtfFlag
+--- @field name string the token the flag is parsed and documented under
+--- @field aliases string[]? further tokens selecting the same flag
+--- @field value string? placeholder for the value it takes; nil for a flag that takes none
+--- @field optional boolean? the value may be left out
+--- @field description string the line shown in usage
+--- @field set fun(opts: NtfOptions, value: string?): string? applies the flag, returning an error message for a value it rejects
+
+--- @type NtfFlag[]
 M.flags = {
-  { name = "--timeout=MS", description = "kill a worker after MS milliseconds (default: 60000; 0 disables)" },
-  { name = "--filter=PATTERN", description = "run only tests whose full name matches the Lua pattern" },
+  {
+    name = "--timeout",
+    value = "MS",
+    description = "kill a worker after MS milliseconds (default: 60000; 0 disables)",
+    set = function(opts, value)
+      local ms = tonumber(value)
+      if ms == nil or ms < 0 then
+        return "invalid --timeout value (expected milliseconds >= 0)"
+      end
+      opts.timeout = ms
+    end,
+  },
+  {
+    name = "--filter",
+    value = "PATTERN",
+    description = "run only tests whose full name matches the Lua pattern",
+    set = function(opts, value)
+      opts.filter = value
+    end,
+  },
   {
     name = "--list",
     description = "list the tests without running them (with --mutation, run the tests and list the mutants with coverage)",
+    set = function(opts)
+      opts.list = true
+    end,
   },
-  { name = "--jobs=N", description = "max parallel nvim workers (default: cpu count)" },
   {
-    name = "--test-hook=FILE",
+    name = "--jobs",
+    value = "N",
+    description = "max parallel nvim workers (default: cpu count)",
+    set = function(opts, value)
+      opts.jobs = tonumber(value)
+    end,
+  },
+  {
+    name = "--test-hook",
+    value = "FILE",
     description = "run a Lua module providing setup/teardown around each test, in its worker",
+    set = function(opts, value)
+      opts.test_hook = value
+    end,
   },
   {
-    name = "--global-hook=FILE",
+    name = "--global-hook",
+    value = "FILE",
     description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
+    set = function(opts, value)
+      opts.global_hook = value
+    end,
   },
   {
-    name = "--exclude-code=PATH",
+    name = "--exclude-code",
+    value = "PATH",
     description = "leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)",
+    set = function(opts, value)
+      table.insert(opts.exclude_code, value)
+    end,
   },
   {
-    name = "--exclude-spec=PATH",
+    name = "--exclude-spec",
+    value = "PATH",
     description = "skip a spec file or directory when discovering tests (repeatable)",
+    set = function(opts, value)
+      table.insert(opts.exclude_spec, value)
+    end,
   },
   {
-    name = "--coverage[=FILE]",
+    name = "--coverage",
+    value = "FILE",
+    optional = true,
     description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
+    set = function(opts, value)
+      opts.coverage = true
+      if value ~= nil then
+        opts.coverage_file = value
+      end
+    end,
   },
   {
-    name = "--mutation[=PATH]",
+    name = "--mutation",
+    value = "PATH",
+    optional = true,
     description = "mutation-test the covered code (only under PATH, if given) once the tests pass",
+    set = function(opts, value)
+      opts.mutation = true
+      opts.mutation_path = value
+    end,
   },
   {
-    name = "--mutation-strict[=LIST]",
+    name = "--mutation-strict",
+    value = "LIST",
+    optional = true,
     description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
+    set = function(opts, value)
+      opts.mutation_strict = {}
+      if value == nil then
+        for _, status in ipairs(STRICT_CATEGORIES) do
+          opts.mutation_strict[status] = true
+        end
+        return
+      end
+      for status in value:gmatch("[^,]+") do
+        if not vim.tbl_contains(STRICT_CATEGORIES, status) then
+          return "invalid --mutation-strict category: "
+            .. status
+            .. " (expected "
+            .. table.concat(STRICT_CATEGORIES, ", ")
+            .. ")"
+        end
+        opts.mutation_strict[status] = true
+      end
+    end,
   },
   {
-    name = "--mutation-matrix[=N]",
+    name = "--mutation-matrix",
+    value = "N",
+    optional = true,
     description = "record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)",
+    set = function(opts, value)
+      opts.mutation_matrix = DEFAULT_MATRIX_CAP
+      if value == nil then
+        return
+      end
+      local cap = tonumber(value)
+      if not cap or cap < 1 then
+        return "invalid --mutation-matrix value (expected a test count >= 1)"
+      end
+      opts.mutation_matrix = cap
+    end,
   },
   {
-    name = "--mutation-baseline=FILE",
+    name = "--mutation-baseline",
+    value = "FILE",
     description = "leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing",
+    set = function(opts, value)
+      opts.mutation_baseline = value
+    end,
   },
   {
     name = "--mutation-verify-baseline",
     description = "run the --mutation-baseline entries instead of trusting them; exit non-zero when a test kills one",
+    set = function(opts)
+      opts.mutation_verify_baseline = true
+    end,
   },
-  { name = "--mutation-results=FILE", description = "mutation results output path (default: ntf-mutation.json)" },
-  { name = "-h, --help", description = "show this help" },
+  {
+    name = "--mutation-results",
+    value = "FILE",
+    description = "mutation results output path (default: ntf-mutation.json)",
+    set = function(opts, value)
+      --- @cast value string
+      opts.mutation_results = value
+    end,
+  },
+  {
+    name = "--help",
+    aliases = { "-h" },
+    description = "show this help",
+    set = function(opts)
+      opts.help = true
+    end,
+  },
 }
+
+--- @param flag NtfFlag
+--- @return string # the flag as usage spells it, e.g. "--coverage[=FILE]"
+function M.flag_label(flag)
+  local tokens = vim.list_extend({}, flag.aliases or {})
+  table.insert(tokens, flag.name)
+  local label = table.concat(tokens, ", ")
+  if flag.value == nil then
+    return label
+  end
+  if flag.optional then
+    return label .. "[=" .. flag.value .. "]"
+  end
+  return label .. "=" .. flag.value
+end
+
+--- @type table<string, NtfFlag>
+local by_token = {}
+for _, flag in ipairs(M.flags) do
+  by_token[flag.name] = flag
+  for _, alias in ipairs(flag.aliases or {}) do
+    by_token[alias] = flag
+  end
+end
 
 --- @return string
 local function usage()
   local width = 0
+  local labels = {}
   for _, flag in ipairs(M.flags) do
-    width = math.max(width, #flag.name)
+    local label = M.flag_label(flag)
+    table.insert(labels, label)
+    width = math.max(width, #label)
   end
 
   local lines = { "Usage: ntf [options] [spec-file-or-dir...]", "", "Options:" }
-  for _, flag in ipairs(M.flags) do
-    table.insert(lines, ("  %-" .. (width + 2) .. "s%s"):format(flag.name, flag.description))
+  for i, flag in ipairs(M.flags) do
+    table.insert(lines, ("  %-" .. (width + 2) .. "s%s"):format(labels[i], flag.description))
   end
   table.insert(lines, "")
   table.insert(lines, "With no paths, runs the *_spec.lua files under ./spec.")
@@ -125,94 +274,34 @@ function M.parse(argv)
     help = false,
   }
 
-  local value_flags = {
-    ["--timeout"] = function(v)
-      opts.timeout = tonumber(v)
-    end,
-    ["--filter"] = function(v)
-      opts.filter = v
-    end,
-    ["--jobs"] = function(v)
-      opts.jobs = tonumber(v)
-    end,
-    ["--test-hook"] = function(v)
-      opts.test_hook = v
-    end,
-    ["--global-hook"] = function(v)
-      opts.global_hook = v
-    end,
-    ["--exclude-code"] = function(v)
-      table.insert(opts.exclude_code, v)
-    end,
-    ["--exclude-spec"] = function(v)
-      table.insert(opts.exclude_spec, v)
-    end,
-    ["--mutation-baseline"] = function(v)
-      opts.mutation_baseline = v
-    end,
-    ["--mutation-results"] = function(v)
-      opts.mutation_results = v
-    end,
-  }
-
+  local seen = {}
   local i = 1
   while i <= #argv do
     local arg = argv[i]
-    local name, inline = arg:match("^(%-%-[%w-]+)=(.*)$")
-    name = name or arg
-    if arg == "-h" or arg == "--help" then
-      opts.help = true
-    elseif arg == "--list" then
-      opts.list = true
-    elseif arg == "--mutation-verify-baseline" then
-      opts.mutation_verify_baseline = true
-    elseif name == "--coverage" then
-      opts.coverage = true
-      if inline ~= nil and inline ~= "" then
-        opts.coverage_file = inline
-      end
-    elseif name == "--mutation" then
-      opts.mutation = true
-      if inline ~= nil and inline ~= "" then
-        opts.mutation_path = inline
-      end
-    elseif name == "--mutation-matrix" then
-      opts.mutation_matrix = DEFAULT_MATRIX_CAP
-      if inline ~= nil and inline ~= "" then
-        local cap = tonumber(inline)
-        if not cap or cap < 1 then
-          return "invalid --mutation-matrix value (expected a test count >= 1)"
-        end
-        opts.mutation_matrix = cap
-      end
-    elseif name == "--mutation-strict" then
-      opts.mutation_strict = {}
-      if inline == nil or inline == "" then
-        for _, status in ipairs(STRICT_CATEGORIES) do
-          opts.mutation_strict[status] = true
-        end
-      else
-        for status in inline:gmatch("[^,]+") do
-          if not vim.tbl_contains(STRICT_CATEGORIES, status) then
-            return "invalid --mutation-strict category: "
-              .. status
-              .. " (expected "
-              .. table.concat(STRICT_CATEGORIES, ", ")
-              .. ")"
-          end
-          opts.mutation_strict[status] = true
-        end
-      end
-    elseif value_flags[name] then
-      local v = inline
-      if v == nil then
+    local token, inline = arg:match("^(%-%-[%w-]+)=(.*)$")
+    token = token or arg
+    --- @type NtfFlag?
+    local flag = by_token[token]
+    if flag and flag.value == nil and inline ~= nil then
+      flag = nil
+    end
+    if flag then
+      local value = inline
+      if flag.value ~= nil and not flag.optional and value == nil then
         i = i + 1
-        v = argv[i]
+        value = argv[i]
+        if value == nil then
+          return "missing value for " .. token .. "\n\n" .. usage()
+        end
       end
-      if v == nil then
-        return "missing value for " .. name .. "\n\n" .. usage()
+      if flag.optional and value == "" then
+        value = nil
       end
-      value_flags[name](v)
+      local err = flag.set(opts, value)
+      if err then
+        return err
+      end
+      seen[flag.name] = true
     elseif arg:sub(1, 1) == "-" then
       return "unknown option: " .. arg .. "\n\n" .. usage()
     else
@@ -230,9 +319,6 @@ function M.parse(argv)
     else
       return "no spec paths given\n\n" .. usage()
     end
-  end
-  if type(opts.timeout) ~= "number" or opts.timeout < 0 then
-    return "invalid --timeout value (expected milliseconds >= 0)"
   end
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter
@@ -260,7 +346,7 @@ function M.parse(argv)
     or opts.mutation_matrix
     or opts.mutation_baseline
     or opts.mutation_verify_baseline
-  if not opts.mutation and (mutation_only_flag or opts.mutation_results ~= "ntf-mutation.json") then
+  if not opts.mutation and (mutation_only_flag or seen["--mutation-results"]) then
     return "--mutation-strict, --mutation-matrix, --mutation-baseline, --mutation-verify-baseline, and --mutation-results require --mutation"
   end
   if opts.mutation_verify_baseline and not opts.mutation_baseline then
