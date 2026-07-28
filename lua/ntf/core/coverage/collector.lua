@@ -107,9 +107,6 @@ function M.measurable_files(cwd, excludes)
   for name, node_type in
     vim.fs.dir(cwd, {
       depth = math.huge,
-      -- WHY: an excluded subtree can hold many files (cloned test deps, say),
-      -- and pruning it walks none of them.
-      -- NOT: filtering those files out one by one after the walk.
       skip = function(rel)
         local prefix = cwd .. "/" .. rel .. "/"
         for _, exclude in ipairs(excludes) do

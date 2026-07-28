@@ -66,11 +66,6 @@ local function enumerate_mutants(cwd, excludes, mutation_path)
     local src_lines = vim.split(src, "\n", { plain = true })
     local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
     for _, site in ipairs(operators.enumerate(src)) do
-      -- WHY: a mutant that does not compile would make every covering test error
-      -- out and so count as detected, inflating the score.
-      -- NOT: trusting the operators to keep the source valid and enumerating the
-      -- site unconditionally; they are meant to, but a grammar surprise is not
-      -- worth a silently inflated score.
       local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
         table.insert(entries, {
@@ -110,12 +105,6 @@ end
 --- @return number?
 local function score_of(summary_counts)
   local detected = summary_counts.killed + summary_counts.timeout
-  -- WHY: a mutant no test reaches counts as undetected, since that is exactly
-  -- what a coverage hole costs, while a mutant that was never actually loaded
-  -- says nothing about the tests, a baseline-equivalent one is undetectable by
-  -- definition, and a baseline-killable one is a broken entry rather than a test
-  -- signal, so those three stay out of the score.
-  -- NOT: excluding the unreached ones along with them.
   local scoreable = detected + summary_counts.survived + summary_counts.no_coverage
   if scoreable == 0 then
     return nil
@@ -161,9 +150,6 @@ function M.run(opts, ctx)
     if matcher.match(entry.relative_path, entry.line_text, mutant) then
       table.insert(records, { mutant = mutant, status = "equivalent" })
 
-      -- WHY: --mutation-verify-baseline distrusts the mark and runs the entry
-      -- for real, so one a test can now kill is caught instead of trusted.
-      -- NOT: running it with the flag off, which is the work the baseline skips.
       if opts.mutation_verify_baseline then
         local trials = covering_trials(ctx, durations, mutant)
         if #trials > 0 then
@@ -200,10 +186,6 @@ function M.run(opts, ctx)
   for task_index, outcome in pairs(outcomes) do
     local record = records[task_records[task_index]]
     if task_verify[task_index] then
-      -- WHY: a killed or timed-out entry is one a test detects, so its
-      -- equivalence mark is wrong; any other outcome means the mark held and the
-      -- record stays equivalent.
-      -- NOT: overwriting the equivalent status when the entry survived as claimed.
       if outcome.status == "killed" or outcome.status == "timeout" then
         record.status = "baseline_killable"
         record.killed_by = outcome.killed_by

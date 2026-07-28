@@ -6,9 +6,6 @@
 
 local protocol = require("ntf.core.worker.protocol")
 
--- WHY: the `xpcall(main, ...)` handler at the bottom reports `payload.file`, so
--- the payload has to exist even when `main` is what threw.
--- NOT: decoding it inside `main`.
 local payload = protocol.payload()
 
 local function main()
@@ -57,11 +54,6 @@ local function main()
   local root_node = tree.build(payload.file)
 
   if root_node.load_error then
-    -- WHY: a spec that failed to load has no meaningful coverage, and this path
-    -- emits no results array, so a teardown error has to ride on the load-error
-    -- message.
-    -- NOT: emitting the coverage collected before the failure, and a
-    -- `teardown_result` beside it as the normal path does.
     if collector then
       collector.stop()
     end

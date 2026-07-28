@@ -37,10 +37,6 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
-  -- WHY: --mutation-verify-baseline only ever produces this status, and it means
-  -- an entry claimed equivalent was actually killed, so the gate must fail
-  -- however the run was otherwise configured.
-  -- NOT: folding it under --mutation-strict, which gates on test quality instead.
   local killable = summary.counts.baseline_killable
   if killable > 0 then
     io.stdout:flush()
@@ -94,9 +90,6 @@ function M.run(root)
 
   require("ntf.core.runtime").setup()
 
-  -- WHY: a malformed baseline file should fail like any other bad flag, not
-  -- after the whole suite has run.
-  -- NOT: loading (and rejecting) it in the mutation phase, where it is used.
   local mutation_baseline --- @type NtfMutationBaselineEntry[]?
   if opts.mutation_baseline then
     local loaded = require("ntf.core.mutation.baseline").load(opts.mutation_baseline)
@@ -142,9 +135,6 @@ function M.run(root)
     end
     os.exit(code)
   end
-  -- WHY: grep/diff consumers of the listing need a stable order, while the
-  -- schedule reordering below is only a run-time optimization.
-  -- NOT: listing the scheduled `items`.
   local planned_items = items
 
   local schedule = require("ntf.core.controller.schedule")
@@ -167,9 +157,6 @@ function M.run(root)
   local color = report.resolve_color()
 
   local cwd = vim.fn.getcwd()
-  -- WHY: the mutation run needs the same exclusion set as the coverage it is
-  -- built on, so both take it from here.
-  -- NOT: deciding it inside the pool, which only the coverage run goes through.
   local collector = require("ntf.core.coverage.collector")
   local coverage_excludes =
     vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))

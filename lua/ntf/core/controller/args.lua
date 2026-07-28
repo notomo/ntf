@@ -3,11 +3,6 @@ local M = {}
 --- @type string[] the mutant statuses `--mutation-strict` can gate on; the bare flag selects all of them
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
--- WHY: a cap sheds tests, not mutants. A test that only ever reaches the hot
--- path never enters the report at all, so capping ntf's own run at 20 covering
--- tests hid 62 of its 199 redundant tests, to save 52s of wall clock against
--- 18s — parallel trials absorb most of what the long tail costs.
--- NOT: a finite default, which trades away a third of the report for time.
 local DEFAULT_MATRIX_CAP = math.huge
 
 --- @class NtfOptions

@@ -10,9 +10,6 @@ local M = {}
 --- @field end_col integer 0-based end column, exclusive
 --- @field anchor_rows integer[] 1-based rows where the hit lands when the site executes (see `lines.anchor_rows`)
 
--- WHY: the grammar names an anonymous operator token after its own text, so the
--- node type is already the spelling to swap on.
--- NOT: `vim.treesitter.get_node_text`, a source slice per candidate node.
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },

@@ -18,9 +18,6 @@ local M = {}
 --- @field killed_by string? full name of the first test that detected the mutant
 --- @field killers string[]? every test that detected the mutant; set only once all its trials ran, so its presence means the set is complete
 
--- WHY: a mutant that turns a loop infinite must not burn a full timeout per
--- trial, so a trial gets a budget scaled to what the test cost in the baseline.
--- NOT: the run's own per-test timeout.
 --- @param baseline_ms number
 --- @param timeout integer the run's per-test timeout in ms (0 disables)
 --- @return integer
@@ -43,9 +40,6 @@ local function classify(outcome)
       return { status = "killed", killed_by = tree.full_name(result.names or {}) }
     end
   end
-  -- WHY: a crashed worker reports nothing at all, and its results have already
-  -- been read as a kill above, so only an explicit `false` means not applied.
-  -- NOT: treating an absent report as not applied.
   if outcome.mutation_applied == false then
     return { status = "not_applied" }
   end
@@ -110,25 +104,13 @@ function M.run(tasks, opts)
         replacement = task.mutant.replacement,
       },
     }, function(outcome)
-      -- WHY: libuv would just log and drop an error raised here, so the first
-      -- one is captured and re-raised after the wait.
-      -- NOT: running the body bare and letting it throw into the libuv callback.
       local ok, err = xpcall(function()
         local settled = classify(outcome)
-        -- WHY: only a kill is worth carrying on for. Continuing past a timeout
-        -- would spend a full budget on every remaining test, and a not-applied
-        -- mutant was never loaded at all, so neither can name another killer —
-        -- stopping there is what keeps a recorded `killers` set complete.
-        -- NOT: running every trial to the end whatever the status says.
         if settled and task.exhaustive and settled.killed_by then
           table.insert(killers, settled.killed_by)
           return run_trial(task_index, trial_index + 1, killers)
         end
         if settled then
-          -- WHY: an earlier trial already detected the mutant, so the verdict a
-          -- run without --mutation-matrix would have reached still stands, and
-          -- the flag never moves the score.
-          -- NOT: letting this later timeout overwrite that kill.
           if #killers > 0 then
             return settle(task_index, { status = "killed", killed_by = killers[1] })
           end

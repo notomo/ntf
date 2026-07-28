@@ -27,10 +27,6 @@ function M.analyze(records)
     end
   end
 
-  -- WHY: iterating in sorted-name order makes the result deterministic even for
-  -- tests of equal detection count, whose relative order table.sort would
-  -- otherwise leave to the nondeterministic pairs() order of the map above.
-  -- NOT: `pairs(detected)`, which reorders the equal-count tests run to run.
   local names = vim.tbl_keys(detected)
   table.sort(names)
   local tests = {}

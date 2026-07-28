@@ -1,7 +1,3 @@
--- WHY: marks go to stderr as workers complete, so a long (or hung) run shows it
--- is alive.
--- NOT: an in-place `\r` redraw, which would not survive non-tty capture (agents,
--- CI).
 local M = {}
 
 local COLORS = {

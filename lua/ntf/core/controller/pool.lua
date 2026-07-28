@@ -3,10 +3,6 @@ local collector = require("ntf.core.coverage.collector")
 
 local M = {}
 
--- WHY: captured output is handed to `on_output` the moment each worker
--- finishes, so a long run shows it as it happens.
--- NOT: holding the blocks and emitting them in spec order at the end, which
--- would be deterministic but silent until the whole run is over.
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results, table coverage merged per-file line hit counts
