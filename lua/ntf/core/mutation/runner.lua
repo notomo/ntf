@@ -1,5 +1,5 @@
 local driver = require("ntf.core.worker.driver")
-local tree = require("ntf.core.tree")
+local verdict = require("ntf.core.mutation.verdict")
 local order = require("ntf.core.mutation.order")
 
 local M = {}
@@ -13,11 +13,6 @@ local M = {}
 --- @field trials NtfMutantTrial[] cheapest first, so a kill is found early
 --- @field exhaustive boolean? keep going after a kill, to learn the mutant's whole killer set
 
---- @class NtfMutantOutcome
---- @field status "killed"|"timeout"|"survived"|"not_applied"
---- @field killed_by string? full name of the first test that detected the mutant
---- @field killers string[]? every test that detected the mutant; set only once all its trials ran, so its presence means the set is complete
-
 --- @param baseline_ms number
 --- @param timeout integer the run's per-test timeout in ms (0 disables)
 --- @return integer
@@ -27,23 +22,6 @@ local function trial_timeout(baseline_ms, timeout)
     budget = math.min(budget, timeout)
   end
   return math.floor(budget)
-end
-
---- @param outcome NtfWorkerOutcome
---- @return NtfMutantOutcome? # nil when this trial did not settle the mutant
-local function classify(outcome)
-  if outcome.timed_out then
-    return { status = "timeout" }
-  end
-  for _, result in ipairs(outcome.results) do
-    if result.status == "failed" or result.status == "error" then
-      return { status = "killed", killed_by = tree.full_name(result.names or {}) }
-    end
-  end
-  if outcome.mutation_applied == false then
-    return { status = "not_applied" }
-  end
-  return nil
 end
 
 -- WHY: each trial runs in its own worker process, exactly as in the baseline
@@ -80,15 +58,12 @@ function M.run(tasks, opts)
 
   --- @param task_index integer
   --- @param trial_index integer
-  --- @param killers string[] the tests that detected the mutant in the trials so far
-  local function run_trial(task_index, trial_index, killers)
+  --- @param progress NtfMutantProgress what the earlier trials showed
+  local function run_trial(task_index, trial_index, progress)
     local task = tasks[task_index]
     local trial = task.trials[trial_index]
     if not trial then
-      if #killers == 0 then
-        return settle(task_index, { status = "survived", killers = task.exhaustive and killers or nil })
-      end
-      return settle(task_index, { status = "killed", killed_by = killers[1], killers = killers })
+      return settle(task_index, verdict.exhausted(progress, task.exhaustive))
     end
 
     driver.launch(trial.item, {
@@ -105,18 +80,11 @@ function M.run(tasks, opts)
       },
     }, function(outcome)
       local ok, err = xpcall(function()
-        local settled = classify(outcome)
-        if settled and task.exhaustive and settled.killed_by then
-          table.insert(killers, settled.killed_by)
-          return run_trial(task_index, trial_index + 1, killers)
-        end
+        local settled, next_progress = verdict.step(outcome, progress, task.exhaustive)
         if settled then
-          if #killers > 0 then
-            return settle(task_index, { status = "killed", killed_by = killers[1] })
-          end
           return settle(task_index, settled)
         end
-        run_trial(task_index, trial_index + 1, killers)
+        run_trial(task_index, trial_index + 1, next_progress)
       end, debug.traceback)
       if not ok then
         fatal = fatal or err
@@ -130,7 +98,7 @@ function M.run(tasks, opts)
       return
     end
     started = started + 1
-    run_trial(dispatch[started], 1, {})
+    run_trial(dispatch[started], 1, verdict.new_progress())
   end
 
   for _ = 1, math.min(jobs, total) do
