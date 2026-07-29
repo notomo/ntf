@@ -33,6 +33,14 @@ local function signs(bufnr)
   return result
 end
 
+--- @param bufnr integer
+--- @return { row: integer, col: integer }[] every coverage extmark, sorted, whatever it draws
+local function placements(bufnr)
+  return vim.tbl_map(function(mark)
+    return { row = mark[2], col = mark[3] }
+  end, vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {}))
+end
+
 --- @param lines CoverageLine[]
 --- @return string path of the written module
 local function create_module(lines)
@@ -88,6 +96,29 @@ describe("ntf.coverage.decorate", function()
 
   it("signs covered and coverable-but-missed lines, skipping non-code lines", function()
     assert.same(expected_signs(MODULE), decorated_signs(MODULE))
+  end)
+
+  it("places one extmark per signed line and nothing on the lines it leaves bare", function()
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    coverage.decorate({ path = stats, buffer = bufnr })
+
+    assert.same({ { row = 0, col = 0 }, { row = 2, col = 0 }, { row = 3, col = 0 } }, placements(bufnr))
+  end)
+
+  it("decorates the current buffer, not the first one, when no buffer is given", function()
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
+    vim.cmd.edit(helper.test_data:create_file("decoy.lua", "return 1"))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    coverage.decorate({ path = stats })
+
+    assert.same(expected_signs(MODULE), signs(bufnr))
   end)
 
   it("places no sign past the buffer's end when the stats file is stale", function()
@@ -185,7 +216,7 @@ describe("ntf.coverage.decorate", function()
     assert.same({}, signs(bufnr))
   end)
 
-  it("errors when the coverage file does not exist", function()
+  it("errors, unprefixed, when the coverage file does not exist", function()
     local src = create_module(MODULE)
     local path = helper.test_data:path("missing.stats.out")
 
@@ -194,7 +225,7 @@ describe("ntf.coverage.decorate", function()
     local ok, err = pcall(coverage.decorate, { path = path, buffer = bufnr })
 
     assert.is_false(ok)
-    assert.match("%[ntf%] coverage file is not found: ", err)
+    assert.equal("[ntf] coverage file is not found: " .. vim.fs.normalize(path), err)
   end)
 
   it("leaves the buffer untouched when its file is not in the stats", function()
@@ -226,6 +257,35 @@ describe("ntf.coverage.is_decorated", function()
 
     coverage.decorate({ enable = false, buffer = bufnr })
     assert.is_false(coverage.is_decorated({ buffer = bufnr }))
+  end)
+
+  it("finds a decoration drawn on the buffer's first line", function()
+    --- @type CoverageLine[]
+    local only_the_first_line = {
+      { code = "local M = {}", hit = true, sign = COVERED },
+      { code = "-- comment", hit = false },
+    }
+    local src = create_module(only_the_first_line)
+    local stats = create_stats(src, hits_of(only_the_first_line))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    coverage.decorate({ path = stats, buffer = bufnr })
+
+    assert.is_true(coverage.is_decorated({ buffer = bufnr }))
+  end)
+
+  it("reports on the current buffer, not the first one, when no buffer is given", function()
+    local src = create_module(MODULE)
+    local stats = create_stats(src, hits_of(MODULE))
+    vim.cmd.edit(helper.test_data:create_file("decoy.lua", "return 1"))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    assert.is_false(coverage.is_decorated())
+
+    coverage.decorate({ path = stats, buffer = bufnr })
+    assert.is_true(coverage.is_decorated())
   end)
 
   it("reports per buffer", function()

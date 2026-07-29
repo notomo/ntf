@@ -455,6 +455,54 @@
       "replacement": "false",
       "line": "  return vim.split(module_name:gsub(\"%.\", \"/\"), \"/\", { plain = true })[1]",
       "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
+    },
+    {
+      "path": "lua/ntf/mutation/init.lua",
+      "col": 50,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)",
+      "rationale": "nvim_buf_clear_namespace treats every negative line_end as the end of the buffer, so -2 clears exactly what -1 does",
+      "invariant_spec": "nvim_buf_clear_namespace clears through the end of the buffer for any negative line_end, not only -1"
+    },
+    {
+      "path": "lua/ntf/mutation/init.lua",
+      "col": 85,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })",
+      "rationale": "the caller only asks whether the list is empty, which a limit of one already settles"
+    },
+    {
+      "path": "lua/ntf/coverage/init.lua",
+      "col": 50,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)",
+      "rationale": "nvim_buf_clear_namespace treats every negative line_end as the end of the buffer, so -2 clears exactly what -1 does",
+      "invariant_spec": "nvim_buf_clear_namespace clears through the end of the buffer for any negative line_end, not only -1"
+    },
+    {
+      "path": "lua/ntf/coverage/init.lua",
+      "col": 61,
+      "operator": "flip-boolean",
+      "original": "false",
+      "replacement": "true",
+      "line": "  local buf_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)",
+      "rationale": "the 0..-1 range is in range by construction, so strict indexing has nothing to reject",
+      "invariant_spec": "nvim_buf_get_lines returns the whole buffer for 0..-1 whether or not indexing is strict"
+    },
+    {
+      "path": "lua/ntf/coverage/init.lua",
+      "col": 85,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })",
+      "rationale": "the caller only asks whether the list is empty, which a limit of one already settles"
     }
   ]
 }

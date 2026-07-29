@@ -29,18 +29,21 @@ local function record(row, status)
 end
 
 --- @param bufnr integer
---- @return table<integer,{sign_hl_group:string,virt_text:string?}> by 0-based row
+--- @return table<integer,{col:integer,sign_hl_group:string,virt_text:string?}> by 0-based row
 local function marks(bufnr)
   local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
   local result = {}
   for _, mark in ipairs(extmarks) do
     result[mark[2]] = {
+      col = mark[3],
       sign_hl_group = mark[4].sign_hl_group,
       virt_text = mark[4].virt_text and mark[4].virt_text[1][1] or nil,
     }
   end
   return result
 end
+
+local SURVIVED_MARK = { col = 0, sign_hl_group = "NtfMutationSurvived", virt_text = " swap-relational: < -> <=" }
 
 --- @param records table[]
 --- @return string src, string results_file
@@ -70,9 +73,29 @@ describe("ntf.mutation.decorate", function()
     local bufnr = vim.api.nvim_get_current_buf()
     mutation.decorate({ path = results_file, buffer = bufnr })
 
-    assert.same({
-      [2] = { sign_hl_group = "NtfMutationSurvived", virt_text = " swap-relational: < -> <=" },
-    }, marks(bufnr))
+    assert.same({ [2] = SURVIVED_MARK }, marks(bufnr))
+  end)
+
+  it("marks a survivor sitting on the buffer's last line", function()
+    local last_line = 5
+    local src, results_file = project({ record(last_line, "survived") })
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    mutation.decorate({ path = results_file, buffer = bufnr })
+
+    assert.same({ [last_line - 1] = SURVIVED_MARK }, marks(bufnr))
+  end)
+
+  it("decorates the current buffer, not the first one, when no buffer is given", function()
+    local src, results_file = project({ record(3, "survived") })
+    vim.cmd.edit(helper.test_data:create_file("decoy.lua", SOURCE))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    mutation.decorate({ path = results_file })
+
+    assert.same({ [2] = SURVIVED_MARK }, marks(bufnr))
   end)
 
   it("draws nothing for a mutant the tests detected", function()
@@ -106,8 +129,9 @@ describe("ntf.mutation.decorate", function()
     assert.same({}, marks(bufnr))
   end)
 
-  it("clears the decoration when disabled", function()
-    local src, results_file = project({ record(3, "survived") })
+  it("clears the decoration when disabled, from the first line through the last", function()
+    local first_line, last_line = 1, 5
+    local src, results_file = project({ record(first_line, "survived"), record(last_line, "survived") })
 
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
@@ -117,17 +141,53 @@ describe("ntf.mutation.decorate", function()
     assert.same({}, marks(bufnr))
   end)
 
-  it("errors when the results file does not exist", function()
-    local ok, err = pcall(mutation.decorate, { path = helper.test_data:path("nope.json") })
+  it("errors, unprefixed, when the results file does not exist", function()
+    local path = helper.test_data:path("nope.json")
+
+    local ok, err = pcall(mutation.decorate, { path = path })
 
     assert.is_false(ok)
-    assert.match("%[ntf%] mutation results file is not found: ", err)
+    assert.equal("[ntf] mutation results file is not found: " .. vim.fs.normalize(path), err)
   end)
 end)
 
 describe("ntf.mutation.is_decorated", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
+
+  it("finds a decoration drawn on the buffer's first line", function()
+    local src, results_file = project({ record(1, "survived") })
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    mutation.decorate({ path = results_file, buffer = bufnr })
+
+    assert.is_true(mutation.is_decorated({ buffer = bufnr }))
+  end)
+
+  it("reports on the current buffer, not the first one, when no buffer is given", function()
+    local src, results_file = project({ record(3, "survived") })
+    vim.cmd.edit(helper.test_data:create_file("decoy.lua", SOURCE))
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    assert.is_false(mutation.is_decorated())
+
+    mutation.decorate({ path = results_file, buffer = bufnr })
+    assert.is_true(mutation.is_decorated())
+  end)
+
+  it("reports per buffer", function()
+    local src, results_file = project({ record(3, "survived") })
+
+    vim.cmd.edit(src)
+    local decorated = vim.api.nvim_get_current_buf()
+    mutation.decorate({ path = results_file, buffer = decorated })
+    local other = vim.api.nvim_create_buf(false, true)
+
+    assert.is_true(mutation.is_decorated({ buffer = decorated }))
+    assert.is_false(mutation.is_decorated({ buffer = other }))
+  end)
 
   it("is true only while the decoration is drawn", function()
     local src, results_file = project({ record(3, "survived") })

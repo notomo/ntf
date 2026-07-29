@@ -40,14 +40,6 @@
     {
       "path": "lua/ntf/core/controller/progress.lua",
       "rationale": "debt: the tty progress line is only driven for part of its states, leaving the rest of its mutants uncovered"
-    },
-    {
-      "path": "lua/ntf/coverage",
-      "rationale": "debt: the editor-facing decoration has no spec asserting the extmarks it draws, so the mutants of its ranges and priorities survive"
-    },
-    {
-      "path": "lua/ntf/mutation",
-      "rationale": "debt: the editor-facing decoration has no spec asserting the extmarks it draws, so the mutants of its ranges and priorities survive"
     }
   ]
 }
