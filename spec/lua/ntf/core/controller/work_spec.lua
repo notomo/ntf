@@ -81,6 +81,16 @@ end)
     assert.equal(nil, items[2].timeout)
   end)
 
+  it("records a spec file that never loaded as a load error, scheduling nothing from it", function()
+    local file = helper.write_spec([[describe((]])
+
+    local items, load_errors = work.plan({ file })
+
+    assert.same({}, planned_ids(items))
+    assert.equal(1, #load_errors)
+    assert.equal(file, load_errors[1].file)
+  end)
+
   it("schedules a describe whose body errored as its own work item", function()
     local file = helper.write_spec([[
 local ntf = require("ntf")

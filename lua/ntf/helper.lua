@@ -1,16 +1,5 @@
 local M = {}
 
-local _adjust_sep
-if vim.fn.has("win32") == 1 then
-  _adjust_sep = function(path)
-    return path:gsub("\\", "/")
-  end
-else
-  _adjust_sep = function(path)
-    return path
-  end
-end
-
 --- Returns plugin root directory full path.
 --- @param plugin_name string: lua module name (`lua/{plugin_name}/*.lua`)
 --- @return string # plugin root directory full path
@@ -20,7 +9,7 @@ function M.find_plugin_root(plugin_name)
   if file == nil then
     error("plugin root is not found by pattern: " .. root_pattern)
   end
-  return vim.split(_adjust_sep(file), "/lua/", { plain = true })[1]
+  return vim.split((file:gsub("\\", "/")), "/lua/", { plain = true })[1]
 end
 
 --- Returns root module name.

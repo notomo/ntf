@@ -38,24 +38,8 @@
       "rationale": "debt: the coverage-summary formatting has specs for its shape but not for every branch, so the remaining mutants survive"
     },
     {
-      "path": "lua/ntf/core/mutation/report.lua",
-      "rationale": "debt: one mutant of the mutation-summary formatting survives; the rest already die, so the exclusion is nearly spent"
-    },
-    {
       "path": "lua/ntf/core/controller/progress.lua",
       "rationale": "debt: the tty progress line is only driven for part of its states, leaving the rest of its mutants uncovered"
-    },
-    {
-      "path": "lua/ntf/core/controller/discover.lua",
-      "rationale": "debt: the file-type branches of spec discovery have no spec of their own, leaving a handful of mutants alive"
-    },
-    {
-      "path": "lua/ntf/core/controller/work.lua",
-      "rationale": "debt: one mutant of the work planning survives; the rest already die, so the exclusion is nearly spent"
-    },
-    {
-      "path": "lua/ntf/helper.lua",
-      "rationale": "debt: the test-support module's platform branch and CLI-runner defaults are asserted by nothing, so their mutants survive"
     },
     {
       "path": "lua/ntf/coverage",

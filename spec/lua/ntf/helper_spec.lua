@@ -8,6 +8,12 @@ describe("ntf.helper.find_plugin_root", function()
     assert.equal(helper.root, plugin_helper.find_plugin_root("ntf"))
   end)
 
+  it("takes a first runtime file nvim returns the same whether or not all matches are asked for", function()
+    local pattern = "lua/ntf/*"
+
+    assert.equal(vim.api.nvim_get_runtime_file(pattern, false)[1], vim.api.nvim_get_runtime_file(pattern, true)[1])
+  end)
+
   it("errors when no module matches the plugin name", function()
     local ok, err = pcall(plugin_helper.find_plugin_root, "ntf_does_not_exist")
     assert.is_false(ok)

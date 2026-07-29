@@ -427,6 +427,34 @@
       "replacement": "false",
       "line": "    if not chunk then",
       "rationale": "enumerate_mutants only dispatches a mutant whose mutated source already compiled via loadstring, so the loader's loadstring of the same source never fails"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 59,
+      "operator": "flip-boolean",
+      "original": "false",
+      "replacement": "true",
+      "line": "  local file = vim.api.nvim_get_runtime_file(root_pattern, false)[1]",
+      "rationale": "the first of all matches is the first match, so nvim returns the same file either way",
+      "invariant_spec": "ntf.helper.find_plugin_root takes a first runtime file nvim returns the same whether or not all matches are asked for"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 62,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  return vim.split((file:gsub(\"\\\\\", \"/\")), \"/lua/\", { plain = true })[1]",
+      "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "col": 63,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  return vim.split(module_name:gsub(\"%.\", \"/\"), \"/\", { plain = true })[1]",
+      "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
     }
   ]
 }

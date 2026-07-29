@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local discover = require("ntf.core.controller.discover")
 local helper = require("ntf.test.helper")
 
@@ -26,6 +27,46 @@ describe("ntf.core.controller.discover.specs", function()
 
     assert.equal(1, #files)
     assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("collects a spec file named on its own, with no directory to glob", function()
+    local file = helper.test_data:create_file("dir/a_spec.lua", "")
+
+    local files = discover.specs({ file })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("keeps globbing the specs a wildignore would otherwise hide", function()
+    local saved = vim.o.wildignore
+    finally(function()
+      vim.o.wildignore = saved
+    end)
+    vim.o.wildignore = "*_spec.lua"
+    helper.test_data:create_file("dir/a_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") })
+
+    assert.equal(1, #files)
+  end)
+
+  it("errors, unprefixed, on a readable file that is not a spec", function()
+    local file = helper.test_data:create_file("dir/plain.lua", "")
+
+    local ok, err = pcall(discover.specs, { file })
+
+    assert.is_false(ok)
+    assert.equal("not a *_spec.lua file: " .. file, err)
+  end)
+
+  it("errors, unprefixed, on a path that is neither a directory nor a readable file", function()
+    local missing = helper.test_data:path("dir/missing_spec.lua")
+
+    local ok, err = pcall(discover.specs, { missing })
+
+    assert.is_false(ok)
+    assert.equal("path not found: " .. missing, err)
   end)
 
   it("skips an excluded file but keeps the rest", function()

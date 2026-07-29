@@ -230,6 +230,26 @@ describe("ntf.core.mutation.report.summary", function()
     assert.no.match(only_killer_of_the_second_mutant, text)
   end)
 
+  it("counts a lone fully tried mutant into the matrix", function()
+    local killed = record(abs("lua/a.lua"), 1, "killed")
+    killed.killers = { "spec a" }
+    local summary = {
+      records = { killed },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+    }
+
+    assert.match("Matrix: 1 mutants fully tried", report.summary(summary, root, { color = false }))
+  end)
+
   it("says nothing about the matrix when no killer set was recorded", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
