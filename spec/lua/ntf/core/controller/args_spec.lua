@@ -480,4 +480,10 @@ describe("ntf.core.controller.args.flag_label", function()
   it("brackets the placeholder of an optional value", function()
     assert.equal("--coverage[=FILE]", label("--coverage"))
   end)
+
+  it("stays longer than one character for every flag, so the usage width seed never survives math.max", function()
+    for _, flag in ipairs(args.flags) do
+      assert.is_true(#args.flag_label(flag) > 1)
+    end
+  end)
 end)

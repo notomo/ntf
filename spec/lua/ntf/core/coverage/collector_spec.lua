@@ -54,6 +54,30 @@ describe("ntf.core.coverage.collector.line_hook", function()
     assert.same(data, vim.json.decode(vim.json.encode(data)))
   end)
 
+  it("keys every recorded line by a string tonumber parses, which its readers rely on", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+    local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
+
+    run_hook(hook, "@" .. path, { 3, 7 })
+
+    local parsed = {}
+    for line in pairs(data[path].lines) do
+      table.insert(parsed, tonumber(line))
+    end
+    table.sort(parsed)
+    assert.same({ 3, 7 }, parsed)
+  end)
+
+  it("reports max as a number of at least one, recording a line before it ever creates the entry", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+    local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
+
+    run_hook(hook, "@" .. path, { 1 })
+
+    assert.equal("number", type(data[path].max))
+    assert.is_true(data[path].max >= 1)
+  end)
+
   it("ignores line numbers below one", function()
     local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
 

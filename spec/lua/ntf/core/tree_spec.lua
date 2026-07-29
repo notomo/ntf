@@ -107,6 +107,16 @@ end)
   end)
 end)
 
+describe("ntf.core.tree.pending", function()
+  it("signals a pending() that has no node to attach to with a table, which lua never prefixes", function()
+    local ok, thrown = pcall(tree.pending, "outside any describe")
+
+    assert.is_false(ok)
+    assert.equal("outside any describe", thrown.message)
+    assert.is_true(thrown[tree.PENDING])
+  end)
+end)
+
 describe("ntf.core.tree.full_name", function()
   it("joins names with a space, dropping empty segments", function()
     assert.equal("outer inner three", tree.full_name({ "outer", "", "inner", "three" }))

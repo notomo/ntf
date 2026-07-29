@@ -18,7 +18,11 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   exit code — kill each survivor with a spec, and reach each no-coverage mutant
   with one (restructuring so the code is callable from a spec if need be, as
   `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
-  undetectable — add a `spec/mutation_baseline.json` entry with its rationale
+  undetectable — add a `spec/mutation_baseline.json` entry with its rationale.
+  When that rationale rests on a fact from another module or from the runtime,
+  add an `invariant_spec` naming the test that pins the fact — the run fails as
+  UNPINNED BASELINE once no test of that name passes. The mutation run excludes
+  `init_spec.lua`, so a pin has to live in a unit spec
 - `make mutation_verify_baseline` — after editing `spec/mutation_baseline.json`:
   must exit 0. It re-runs the listed mutants (`--mutation-verify-baseline`) and
   fails any a test now kills (reported BASELINE KILLABLE) — kill it with a spec

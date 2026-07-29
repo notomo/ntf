@@ -37,6 +37,16 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
+  if #summary.unpinned > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d unpinned baseline entr%s\n"):format(
+        #summary.unpinned,
+        #summary.unpinned == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
   local killable = summary.counts.baseline_killable
   if killable > 0 then
     io.stdout:flush()

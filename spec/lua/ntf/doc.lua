@@ -329,6 +329,15 @@ itself changes the run fails, listing the entry as LOST — the judgement has to
 be made again, by fixing the entry or deleting it. The `rationale` is required;
 it is what that later judgement starts from.
 
+A rationale usually rests on a fact from somewhere else — what the callers pass,
+what shape another module hands over, what the runtime does with a value. That
+fact can stop holding without the marked line moving, and then the entry keeps
+the mutant out of the score for a reason that is no longer true. Name the test
+that pins the fact in the optional `invariant_spec`, by its full name, and ntf
+fails the run — reporting the entry as UNPINNED BASELINE — when no test of that
+name passed. Renaming or deleting the test then has to be answered for, instead
+of quietly unmooring the rationale.
+
 An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
 runs the listed mutants instead of trusting them and exits non-zero, reporting

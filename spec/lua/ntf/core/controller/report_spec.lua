@@ -204,6 +204,17 @@ describe("ntf.core.controller.report.build", function()
   end)
 end)
 
+describe("ntf.core.controller.report.load_error_block", function()
+  it("ends every block with a blank separator line", function()
+    local block = report.load_error_block(
+      { file = "spec/broken_spec.lua", message = "syntax error near 'end'" },
+      report.painter(false)
+    )
+
+    assert.equal("", block[#block])
+  end)
+end)
+
 describe("ntf.core.controller.report.resolve_color", function()
   local function fake_tty()
     local saved = vim.uv.guess_handle

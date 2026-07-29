@@ -20,6 +20,7 @@ local M = {}
 --- @field counts table<string, integer> one entry per status
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
+--- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
 
 --- @param path string any form of a path
 --- @return string
@@ -203,7 +204,13 @@ function M.run(opts, ctx)
     counts[record.status] = counts[record.status] + 1
   end
 
-  return { records = records, counts = counts, score = score_of(counts), lost = matcher.lost() }
+  return {
+    records = records,
+    counts = counts,
+    score = score_of(counts),
+    lost = matcher.lost(),
+    unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
+  }
 end
 
 --- @class NtfMutantListEntry

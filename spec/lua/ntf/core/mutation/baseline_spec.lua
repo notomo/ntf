@@ -63,6 +63,35 @@ describe("ntf.core.mutation.baseline.load", function()
     assert.match("entries%[1%] needs a string line", baseline.load(file))
   end)
 
+  it("loads the optional invariant_spec", function()
+    local file = helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({ version = 1, entries = { entry({ invariant_spec = "mod keeps a and b apart" }) } })
+    )
+
+    local loaded = assert(baseline.load(file))
+
+    assert.equal("mod keeps a and b apart", loaded[1].invariant_spec)
+  end)
+
+  it("rejects an invariant_spec that is not a string", function()
+    local file = helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({ version = 1, entries = { entry({ invariant_spec = 7 }) } })
+    )
+
+    assert.match("entries%[1%] needs a non%-empty string invariant_spec", baseline.load(file))
+  end)
+
+  it("rejects a blank invariant_spec", function()
+    local file = helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({ version = 1, entries = { entry({ invariant_spec = " " }) } })
+    )
+
+    assert.match("entries%[1%] needs a non%-empty string invariant_spec", baseline.load(file))
+  end)
+
   it("rejects a blank rationale", function()
     local file = helper.test_data:create_file(
       "baseline.json",
@@ -95,6 +124,39 @@ describe("ntf.core.mutation.baseline.load", function()
     local file = helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = "nope" }))
 
     assert.match("expected an entries array", baseline.load(file))
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.unpinned", function()
+  it("reports an entry whose invariant_spec matches no test of the run", function()
+    local entries = { entry({ invariant_spec = "mod keeps a and b apart" }) }
+
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } })
+
+    assert.equal(1, #unpinned)
+    assert.equal("mod keeps a and b apart", unpinned[1].invariant_spec)
+  end)
+
+  it("keeps an entry whose invariant_spec passed", function()
+    local entries = { entry({ invariant_spec = "mod takes the min" }) }
+
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } })
+
+    assert.equal(0, #unpinned)
+  end)
+
+  it("reports an entry whose invariant_spec only went pending, since a pending test asserts nothing", function()
+    local entries = { entry({ invariant_spec = "mod takes the min" }) }
+
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "pending" } })
+
+    assert.equal(1, #unpinned)
+  end)
+
+  it("leaves an entry carrying no invariant_spec alone", function()
+    local unpinned = baseline.unpinned({ entry() }, {})
+
+    assert.equal(0, #unpinned)
   end)
 end)
 

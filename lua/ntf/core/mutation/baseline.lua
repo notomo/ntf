@@ -1,3 +1,5 @@
+local tree = require("ntf.core.tree")
+
 local M = {}
 
 local VERSION = 1
@@ -10,6 +12,7 @@ local VERSION = 1
 --- @field replacement string
 --- @field line string exact text of the mutant's start line
 --- @field rationale string why no test can detect the mutant
+--- @field invariant_spec string? full name of the test that fails once the rationale stops holding
 
 --- @param path string working-directory-relative path
 --- @param line string text of the mutant's start line
@@ -37,6 +40,11 @@ local function validate(entry)
   end
   if not entry.rationale:find("%S") then
     return "needs a non-empty rationale"
+  end
+  if entry.invariant_spec ~= nil then
+    if type(entry.invariant_spec) ~= "string" or not entry.invariant_spec:find("%S") then
+      return "needs a non-empty string invariant_spec, or none at all"
+    end
   end
   return nil
 end
@@ -72,6 +80,21 @@ function M.load(path)
     end
   end
   return decoded.entries
+end
+
+--- @param entries NtfMutationBaselineEntry[]
+--- @param results NtfResult[] the results of the run the mutants were enumerated from
+--- @return NtfMutationBaselineEntry[] # entries whose invariant_spec names no test that passed
+function M.unpinned(entries, results)
+  local passed = {} --- @type table<string, true>
+  for _, result in ipairs(results) do
+    if result.status == "passed" then
+      passed[tree.full_name(result.names)] = true
+    end
+  end
+  return vim.tbl_filter(function(entry)
+    return entry.invariant_spec ~= nil and not passed[entry.invariant_spec]
+  end, entries)
 end
 
 --- @param entries NtfMutationBaselineEntry[]

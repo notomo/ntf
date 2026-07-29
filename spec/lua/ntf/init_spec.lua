@@ -957,6 +957,67 @@ describe("ntf --mutation", function()
     assert.match("1 %-%-mutation%-baseline entry matched no mutant", obj.stderr)
   end)
 
+  it("exits non-zero when a --mutation-baseline invariant_spec names no passing test", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({
+        version = 1,
+        entries = {
+          {
+            path = "lua/mod.lua",
+            col = 7,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+            invariant_spec = "mod names a test that was renamed away",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(1, obj.code)
+    assert.match("UNPINNED BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
+    assert.match("mutation gate failed: 1 unpinned baseline entry", obj.stderr)
+  end)
+
+  it("keeps a --mutation-baseline entry whose invariant_spec passed", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "baseline.json",
+      vim.json.encode({
+        version = 1,
+        entries = {
+          {
+            path = "lua/mod.lua",
+            col = 7,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+            invariant_spec = "mod takes the min",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(0, obj.code)
+    assert.no.match("UNPINNED BASELINE", obj.stdout)
+  end)
+
   it("rejects an invalid --mutation-baseline before running the tests", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))

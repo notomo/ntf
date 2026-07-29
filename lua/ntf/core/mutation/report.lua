@@ -86,6 +86,20 @@ function M.summary(summary, cwd, opts)
     end
   end
 
+  for _, entry in ipairs(summary.unpinned or {}) do
+    table.insert(
+      lines,
+      ("%s %s %s: %s -> %s wants a passing %q"):format(
+        paint("red", "UNPINNED BASELINE"),
+        entry.path,
+        entry.operator,
+        entry.original,
+        entry.replacement,
+        entry.invariant_spec
+      )
+    )
+  end
+
   for _, entry in ipairs(summary.lost or {}) do
     table.insert(
       lines,

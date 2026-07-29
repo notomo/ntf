@@ -21,6 +21,13 @@ describe("ntf.core.coverage.stats.write", function()
     assert.equal("3:/x.lua\n2 0 5\n", read_all(out))
   end)
 
+  it("writes two lines per measured file, so the output is never a single line", function()
+    local out = helper.test_data:path("luacov.stats.out")
+    stats.write(out, { ["/x.lua"] = { max = 3, lines = { [1] = 2, [3] = 5 } } })
+
+    assert.equal(2, #vim.split((read_all(out):gsub("\n$", "")), "\n", { plain = true }))
+  end)
+
   it("emits one block per file, sorted by path", function()
     local out = helper.test_data:path("luacov.stats.out")
     stats.write(out, {

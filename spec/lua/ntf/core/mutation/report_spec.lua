@@ -122,6 +122,42 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
   end)
 
+  it("lists the baseline entries whose invariant_spec no test pins", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+      lost = {},
+      unpinned = {
+        {
+          path = "lua/b.lua",
+          col = 3,
+          operator = "flip-boolean",
+          original = "true",
+          replacement = "false",
+          line = "  local x = true",
+          rationale = "unused",
+          invariant_spec = "mod keeps a and b apart",
+        },
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match(
+      'UNPINNED BASELINE lua/b%.lua flip%-boolean: true %-> false wants a passing "mod keeps a and b apart"',
+      text
+    )
+  end)
+
   it("lists a baseline-killable mutant apart from the score", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "baseline_killable") },

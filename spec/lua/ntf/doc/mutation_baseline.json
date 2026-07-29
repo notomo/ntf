@@ -8,7 +8,8 @@
       "original": "0",
       "replacement": "1",
       "line": "  return n > 0",
-      "rationale": "the callers never pass 1, so the shifted boundary is unobservable"
+      "rationale": "the specs only ever ask about 0, whose answer the shifted boundary leaves false",
+      "invariant_spec": "is false at the boundary"
     }
   ]
 }

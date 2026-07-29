@@ -51,6 +51,26 @@ describe("ntf.core.worker.protocol emit -> parse", function()
   end)
 end)
 
+describe("ntf.core.worker.protocol.emit", function()
+  it("writes the begin marker, the JSON, then the end marker, each on its own line", function()
+    local lines = vim.split(emitted({ results = { { id = "1.1", status = "passed" } } }), "\n", { plain = true })
+
+    assert.equal(5, #lines)
+    assert.equal("", lines[1])
+    assert.equal("1.1", vim.json.decode(lines[3]).results[1].id)
+    assert.equal("", lines[5])
+  end)
+
+  it("surrounds the JSON with markers that hold no pattern-magic character", function()
+    local lines = vim.split(emitted({ results = {} }), "\n", { plain = true })
+
+    for _, marker in ipairs({ lines[2], lines[4] }) do
+      assert.is_true(#marker > 0)
+      assert.equal(marker, (marker:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "")))
+    end
+  end)
+end)
+
 describe("ntf.core.worker.protocol.env -> payload", function()
   it("round-trips the payload through the worker's environment", function()
     local sent = { file = "/x_spec.lua", node_id = "1.1", coverage = false, cwd = "/tmp" }

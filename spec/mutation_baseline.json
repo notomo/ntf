@@ -8,7 +8,8 @@
       "original": "0",
       "replacement": "1",
       "line": "  local width = 0",
-      "rationale": "every flag name is longer than one character, so the seed never survives math.max"
+      "rationale": "every flag label is longer than one character, so the seed never survives math.max",
+      "invariant_spec": "ntf.core.controller.args.flag_label stays longer than one character for every flag, so the usage width seed never survives math.max"
     },
     {
       "path": "lua/ntf/core/controller/schedule.lua",
@@ -35,7 +36,8 @@
       "original": "1",
       "replacement": "2",
       "line": "          if prefix:sub(1, #exclude) == exclude then",
-      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards"
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -44,7 +46,8 @@
       "original": "false",
       "replacement": "true",
       "line": "            return false",
-      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards"
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -53,7 +56,8 @@
       "original": "0",
       "replacement": "1",
       "line": "      target = { max = 0, lines = {} }",
-      "rationale": "workers create an entry only after recording a line, so entry.max is at least 1 and the seed never survives math.max"
+      "rationale": "workers create an entry only after recording a line, so entry.max is at least 1 and the seed never survives math.max",
+      "invariant_spec": "ntf.core.coverage.collector.line_hook reports max as a number of at least one, recording a line before it ever creates the entry"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -62,7 +66,8 @@
       "original": "0",
       "replacement": "1",
       "line": "    target.max = math.max(target.max, tonumber(entry.max) or 0)",
-      "rationale": "entry.max arrives as a number (or its JSON string form), so tonumber always succeeds and the fallback is never read"
+      "rationale": "entry.max arrives as a number (or its JSON string form), so tonumber always succeeds and the fallback is never read",
+      "invariant_spec": "ntf.core.coverage.collector.line_hook reports max as a number of at least one, recording a line before it ever creates the entry"
     },
     {
       "path": "lua/ntf/core/coverage/stats.lua",
@@ -71,7 +76,8 @@
       "original": "0",
       "replacement": "1",
       "line": "  if #out > 0 then",
-      "rationale": "out grows by two lines per file, so its length is never 1"
+      "rationale": "out grows by two lines per file, so its length is never 1",
+      "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
     },
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
@@ -161,7 +167,8 @@
       "original": "or",
       "replacement": "and",
       "line": "  info = debug.getinfo(level or 3, \"Sl\")",
-      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read"
+      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read",
+      "invariant_spec": "ntf.core.tree.build records the line a body-less pending() was declared on"
     },
     {
       "path": "lua/ntf/core/tree.lua",
@@ -170,7 +177,8 @@
       "original": "3",
       "replacement": "4",
       "line": "  info = debug.getinfo(level or 3, \"Sl\")",
-      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read"
+      "rationale": "the only caller that reaches this line (new_pending) passes level=3 explicitly, so the fallback is never read",
+      "invariant_spec": "ntf.core.tree.build records the line a body-less pending() was declared on"
     },
     {
       "path": "lua/ntf/core/tree.lua",
@@ -179,7 +187,8 @@
       "original": "0",
       "replacement": "1",
       "line": "    error({ [M.PENDING] = true, message = name }, 0)",
-      "rationale": "Lua prepends position info only to string error values, and this one is a table, so the level argument is never used"
+      "rationale": "Lua prepends position info only to string error values, and this one is a table, so the level argument is never used",
+      "invariant_spec": "ntf.core.tree.pending signals a pending() that has no node to attach to with a table, which lua never prefixes"
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
@@ -188,7 +197,8 @@
       "original": "true",
       "replacement": "false",
       "line": "  local from = stdout and stdout:find(BEGIN, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
@@ -197,7 +207,8 @@
       "original": "true",
       "replacement": "false",
       "line": "  local from = stdout:find(BEGIN, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
@@ -206,7 +217,8 @@
       "original": "true",
       "replacement": "false",
       "line": "  local to = stdout:find(END, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input"
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
@@ -215,7 +227,8 @@
       "original": "1",
       "replacement": "2",
       "line": "  local to = stdout:find(END, 1, true)",
-      "rationale": "starting the search at byte 2 only misses a match at byte 1, and the END marker always follows an emitted BEGIN block, so it can never sit there"
+      "rationale": "starting the search at byte 2 only misses a match at byte 1, and the END marker always follows an emitted BEGIN block, so it can never sit there",
+      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
@@ -224,7 +237,8 @@
       "original": "1",
       "replacement": "2",
       "line": "  local json = stdout:sub(from + #BEGIN, to - 1)",
-      "rationale": "emit writes a newline between the JSON and the END marker, so the shorter slice sheds only whitespace that vim.json.decode ignores"
+      "rationale": "emit writes a newline between the JSON and the END marker, so the shorter slice sheds only whitespace that vim.json.decode ignores",
+      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -242,7 +256,8 @@
       "original": "child:named()",
       "replacement": "true",
       "line": "      if child:named() then",
-      "rationale": "a binary_expression's anonymous children are operator tokens with no closure to find, so widening closure_hit_row to them still returns nil"
+      "rationale": "a binary_expression's anonymous children are operator tokens with no closure to find, so widening closure_hit_row to them still returns nil",
+      "invariant_spec": "lua grammar gives an anonymous node no children, so a walk that skips one reaches no named descendant"
     },
     {
       "path": "lua/ntf/core/coverage/lines.lua",
@@ -251,7 +266,8 @@
       "original": "child:named()",
       "replacement": "true",
       "line": "      if child:named() then",
-      "rationale": "anonymous children are leaf tokens with no hit-receiving row and no named descendants, so walking them adds no coverable line"
+      "rationale": "anonymous children are leaf tokens with no hit-receiving row and no named descendants, so walking them adds no coverable line",
+      "invariant_spec": "lua grammar gives an anonymous node no children, so a walk that skips one reaches no named descendant"
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
@@ -260,7 +276,8 @@
       "original": "number",
       "replacement": "true",
       "line": "      if number then",
-      "rationale": "a tree-sitter number node's text always parses, so tonumber never returns nil and the guard is always true"
+      "rationale": "a tree-sitter number node's text always parses, so tonumber never returns nil and the guard is always true",
+      "invariant_spec": "lua grammar spells every number node so that tonumber parses it"
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
@@ -269,7 +286,8 @@
       "original": "child:named()",
       "replacement": "true",
       "line": "      if child:named() then",
-      "rationale": "anonymous children are leaf tokens with no mutable site and no named descendants, so walking them enumerates nothing"
+      "rationale": "anonymous children are leaf tokens with no mutable site and no named descendants, so walking them enumerates nothing",
+      "invariant_spec": "lua grammar gives an anonymous node no children, so a walk that skips one reaches no named descendant"
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
@@ -323,7 +341,8 @@
       "original": "row",
       "replacement": "true",
       "line": "        if row then",
-      "rationale": "coverage line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only populate lines[nil], which item_indexes, keyed by numeric rows, never reads"
+      "rationale": "coverage line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only populate lines[nil], which item_indexes, keyed by numeric rows, never reads",
+      "invariant_spec": "ntf.core.coverage.collector.line_hook keys every recorded line by a string tonumber parses, which its readers rely on"
     },
     {
       "path": "lua/ntf/core/controller/schedule.lua",
@@ -350,7 +369,8 @@
       "original": "prefix:sub(1, #exclude) == exclude",
       "replacement": "false",
       "line": "          if prefix:sub(1, #exclude) == exclude then",
-      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files"
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -359,7 +379,8 @@
       "original": "n",
       "replacement": "true",
       "line": "      if n then",
-      "rationale": "merge's line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only assign lines[nil], which the max-indexed writer never reads"
+      "rationale": "merge's line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only assign lines[nil], which the max-indexed writer never reads",
+      "invariant_spec": "ntf.core.coverage.collector.line_hook keys every recorded line by a string tonumber parses, which its readers rely on"
     },
     {
       "path": "lua/ntf/core/controller/list.lua",
@@ -368,7 +389,8 @@
       "original": "lines[#lines] == \"\"",
       "replacement": "true",
       "line": "  if lines[#lines] == \"\" then",
-      "rationale": "each load-error block ends with a blank separator line, so the last line is empty whenever one exists; forcing the guard true only ever drops that blank or no-ops on the empty list"
+      "rationale": "each load-error block ends with a blank separator line, so the last line is empty whenever one exists; forcing the guard true only ever drops that blank or no-ops on the empty list",
+      "invariant_spec": "ntf.core.controller.report.load_error_block ends every block with a blank separator line"
     },
     {
       "path": "lua/ntf/core/mutation/order.lua",
