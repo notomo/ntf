@@ -415,6 +415,32 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("require %-%-mutation", err)
     end)
 
+    it("reads the exclude file path", function()
+      local file = helper.test_data:create_file("exclude.json", "{}")
+
+      local opts = args.parse({ "--mutation", "--mutation-exclude=" .. file, "spec" })
+
+      assert.equal(file, opts.mutation_exclude)
+    end)
+
+    it("leaves opts.mutation_exclude nil without --mutation-exclude", function()
+      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_exclude)
+    end)
+
+    it("errors when the --mutation-exclude file does not exist", function()
+      local err = args.parse({ "--mutation", "--mutation-exclude=/no/such.json", "spec" })
+
+      assert.match("%-%-mutation%-exclude file not found", err)
+    end)
+
+    it("errors when --mutation-exclude alone is given without --mutation", function()
+      local file = helper.test_data:create_file("exclude.json", "{}")
+
+      local err = args.parse({ "--mutation-exclude=" .. file, "spec" })
+
+      assert.match("require %-%-mutation", err)
+    end)
+
     it("errors when --mutation-results alone is given without --mutation", function()
       local err = args.parse({ "--mutation-results=out.json", "spec" })
 

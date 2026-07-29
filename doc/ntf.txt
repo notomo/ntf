@@ -20,6 +20,7 @@ USAGE                                                              *ntf-USAGE*
     --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
     --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
     --mutation-baseline=FILE    leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
+    --mutation-exclude=FILE     leave the paths listed in FILE unmutated, each with its reason; exit non-zero when an entry covers nothing
     --mutation-verify-baseline  run the --mutation-baseline entries instead of trusting them; exit non-zero when a test kills one
     --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
     -h, --help                  show this help
@@ -260,6 +261,31 @@ stale judgement the code line never gave away. Run it after editing the baseline
 >sh
   ntf --mutation --mutation-baseline=spec/mutation_baseline.json --mutation-verify-baseline
 <
+A baseline answers for one mutant. Some files instead have to stay out of the
+run whole: code that only ever executes in a process no spec drives, where every
+mutant comes back uncovered rather than detected. `--exclude-code=PATH` does
+that, but it takes no reason, so such a list grows quietly and outlives what put
+each path on it. `--mutation-exclude=FILE` is the same exclusion with a required
+`rationale` per path, and it fails the run — reporting UNUSED EXCLUDE — when an
+entry covers none of the measurable files, so a path that has been renamed or
+already covered by a broader entry has to be answered for:
+>json
+  {
+    "version": 1,
+    "entries": [
+      {
+        "path": "lua/launcher.lua",
+        "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
+      }
+    ]
+  }
+<
+>sh
+  ntf --mutation --mutation-exclude=spec/mutation_exclude.json
+<
+The two flags are not interchangeable. `--exclude-code` drops a path from the
+code under test altogether, which is what a vendored copy wants; an entry here
+drops it from the mutation only, and leaves `--coverage` still measuring it.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*

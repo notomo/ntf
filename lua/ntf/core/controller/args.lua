@@ -22,6 +22,7 @@ local DEFAULT_MATRIX_CAP = math.huge
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
 --- @field mutation_matrix number? record every killer of each mutant covered by at most this many tests (math.huge for all of them); nil records only the first
 --- @field mutation_baseline string? known-equivalent mutants file (JSON)
+--- @field mutation_exclude string? unmutated paths file (JSON)
 --- @field mutation_verify_baseline boolean run the --mutation-baseline entries and fail any that a test can kill
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
@@ -176,6 +177,14 @@ M.flags = {
     end,
   },
   {
+    name = "--mutation-exclude",
+    value = "FILE",
+    description = "leave the paths listed in FILE unmutated, each with its reason; exit non-zero when an entry covers nothing",
+    set = function(opts, value)
+      opts.mutation_exclude = value
+    end,
+  },
+  {
     name = "--mutation-verify-baseline",
     description = "run the --mutation-baseline entries instead of trusting them; exit non-zero when a test kills one",
     set = function(opts)
@@ -264,6 +273,7 @@ function M.parse(argv)
     mutation_strict = nil,
     mutation_matrix = nil,
     mutation_baseline = nil,
+    mutation_exclude = nil,
     mutation_verify_baseline = false,
     mutation_results = "ntf-mutation.json",
     help = false,
@@ -340,9 +350,10 @@ function M.parse(argv)
   local mutation_only_flag = opts.mutation_strict
     or opts.mutation_matrix
     or opts.mutation_baseline
+    or opts.mutation_exclude
     or opts.mutation_verify_baseline
   if not opts.mutation and (mutation_only_flag or seen["--mutation-results"]) then
-    return "--mutation-strict, --mutation-matrix, --mutation-baseline, --mutation-verify-baseline, and --mutation-results require --mutation"
+    return "--mutation-strict, --mutation-matrix, --mutation-baseline, --mutation-exclude, --mutation-verify-baseline, and --mutation-results require --mutation"
   end
   if opts.mutation_verify_baseline and not opts.mutation_baseline then
     return "--mutation-verify-baseline requires --mutation-baseline"
@@ -356,6 +367,9 @@ function M.parse(argv)
   end
   if opts.mutation_baseline and vim.fn.filereadable(opts.mutation_baseline) == 0 then
     return "--mutation-baseline file not found: " .. opts.mutation_baseline
+  end
+  if opts.mutation_exclude and vim.fn.filereadable(opts.mutation_exclude) == 0 then
+    return "--mutation-exclude file not found: " .. opts.mutation_exclude
   end
 
   return opts

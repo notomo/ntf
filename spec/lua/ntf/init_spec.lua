@@ -1018,6 +1018,60 @@ describe("ntf --mutation", function()
     assert.no.match("UNPINNED BASELINE", obj.stdout)
   end)
 
+  it("leaves a --mutation-exclude path unmutated", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "exclude.json",
+      vim.json.encode({
+        version = 1,
+        entries = { { path = "lua/dead.lua", rationale = "no spec drives it, so its mutants measure nothing" } },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(0, obj.code)
+    assert.no.match("lua/dead%.lua", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua", obj.stdout)
+  end)
+
+  it("exits non-zero when a --mutation-exclude entry covers no measurable file", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "exclude.json",
+      vim.json.encode({
+        version = 1,
+        entries = { { path = "lua/gone.lua", rationale = "stale: the file it names is no longer there" } },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(1, obj.code)
+    assert.match("UNUSED EXCLUDE lua/gone%.lua", obj.stdout)
+    assert.match("1 %-%-mutation%-exclude entry covering nothing", obj.stderr)
+  end)
+
+  it("rejects an invalid --mutation-exclude before running the tests", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(2, obj.code)
+    assert.match("entries%[1%] needs a string rationale", obj.stderr)
+  end)
+
   it("rejects an invalid --mutation-baseline before running the tests", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))

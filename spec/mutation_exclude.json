@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "lua/ntf/core/controller/init.lua",
+      "rationale": "structural: the CLI entry point runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
+    },
+    {
+      "path": "lua/ntf/core/mutation/init.lua",
+      "rationale": "structural: the mutation orchestration runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
+    },
+    {
+      "path": "lua/ntf/core/mutation/runner.lua",
+      "rationale": "structural: the trial dispatcher runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
+    },
+    {
+      "path": "lua/ntf/core/worker/init.lua",
+      "rationale": "structural: the worker bootstrap runs before its own loader hook can splice a mutant in and before coverage starts, so its mutants come back not applied or uncovered, never detected"
+    },
+    {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "rationale": "debt: mutants of its timeout handling hang until the trial timeout, and the rest survive for want of specs on the stream and exit handling"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "rationale": "debt: mutants of its dispatch loop hang until the trial timeout, and the rest survive for want of a spec on the scheduling itself"
+    },
+    {
+      "path": "lua/ntf/core/worker/executor.lua",
+      "rationale": "debt: its hook ordering, pending signalling and timing have no direct spec, so those mutants survive; they are reachable from a worker"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "rationale": "debt: the failure-report formatting has specs for its shape but not for every branch, so the remaining mutants survive"
+    },
+    {
+      "path": "lua/ntf/core/coverage/report.lua",
+      "rationale": "debt: the coverage-summary formatting has specs for its shape but not for every branch, so the remaining mutants survive"
+    },
+    {
+      "path": "lua/ntf/core/mutation/report.lua",
+      "rationale": "debt: one mutant of the mutation-summary formatting survives; the rest already die, so the exclusion is nearly spent"
+    },
+    {
+      "path": "lua/ntf/core/controller/progress.lua",
+      "rationale": "debt: the tty progress line is only driven for part of its states, leaving the rest of its mutants uncovered"
+    },
+    {
+      "path": "lua/ntf/core/controller/discover.lua",
+      "rationale": "debt: the file-type branches of spec discovery have no spec of their own, leaving a handful of mutants alive"
+    },
+    {
+      "path": "lua/ntf/core/controller/work.lua",
+      "rationale": "debt: one mutant of the work planning survives; the rest already die, so the exclusion is nearly spent"
+    },
+    {
+      "path": "lua/ntf/helper.lua",
+      "rationale": "debt: the test-support module's platform branch and CLI-runner defaults are asserted by nothing, so their mutants survive"
+    },
+    {
+      "path": "lua/ntf/coverage",
+      "rationale": "debt: the editor-facing decoration has no spec asserting the extmarks it draws, so the mutants of its ranges and priorities survive"
+    },
+    {
+      "path": "lua/ntf/mutation",
+      "rationale": "debt: the editor-facing decoration has no spec asserting the extmarks it draws, so the mutants of its ranges and priorities survive"
+    }
+  ]
+}

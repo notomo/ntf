@@ -22,7 +22,13 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   When that rationale rests on a fact from another module or from the runtime,
   add an `invariant_spec` naming the test that pins the fact — the run fails as
   UNPINNED BASELINE once no test of that name passes. The mutation run excludes
-  `init_spec.lua`, so a pin has to live in a unit spec
+  `init_spec.lua`, so a pin has to live in a unit spec.
+  A whole file stays out of the run only through `spec/mutation_exclude.json`
+  (`--mutation-exclude`), which requires a rationale per path and fails as
+  UNUSED EXCLUDE when an entry covers no measurable file. Measure before adding
+  one — `$(NTF) --mutation=PATH --exclude-spec=spec/lua/ntf/init_spec.lua spec`
+  reports what that path's mutants actually do — and say in the rationale
+  whether the exclusion is structural or debt
 - `make mutation_verify_baseline` — after editing `spec/mutation_baseline.json`:
   must exit 0. It re-runs the listed mutants (`--mutation-verify-baseline`) and
   fails any a test now kills (reported BASELINE KILLABLE) — kill it with a spec

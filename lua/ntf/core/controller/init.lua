@@ -1,7 +1,7 @@
 local M = {}
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
 function M.mutate(opts, ctx)
   local progress = require("ntf.core.controller.progress").mutation({
@@ -19,6 +19,7 @@ function M.mutate(opts, ctx)
     items = ctx.items,
     baseline_results = ctx.results,
     baseline = ctx.baseline,
+    mutation_exclude = ctx.mutation_exclude,
     coverage_map = ctx.coverage_map,
     coverage_excludes = ctx.coverage_excludes,
     on_start = progress.on_start,
@@ -34,6 +35,16 @@ function M.mutate(opts, ctx)
     io.stdout:flush()
     io.stderr:write(
       ("%d --mutation-baseline entr%s matched no mutant\n"):format(#summary.lost, #summary.lost == 1 and "y" or "ies")
+    )
+    code = 1
+  end
+  if #summary.unused_excludes > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d --mutation-exclude entr%s covering nothing\n"):format(
+        #summary.unused_excludes,
+        #summary.unused_excludes == 1 and "y" or "ies"
+      )
     )
     code = 1
   end
@@ -108,6 +119,16 @@ function M.run(root)
       os.exit(2)
     end
     mutation_baseline = loaded
+  end
+
+  local mutation_exclude --- @type NtfMutationExcludeEntry[]?
+  if opts.mutation_exclude then
+    local loaded = require("ntf.core.mutation.exclude").load(opts.mutation_exclude)
+    if type(loaded) == "string" then
+      io.stderr:write(loaded .. "\n")
+      os.exit(2)
+    end
+    mutation_exclude = loaded
   end
 
   local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths, opts.exclude_spec)
@@ -222,6 +243,7 @@ function M.run(root)
       local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
         cwd = cwd,
         baseline = mutation_baseline,
+        mutation_exclude = mutation_exclude,
         coverage_map = coverage_map,
         coverage_excludes = coverage_excludes,
       }))
@@ -234,6 +256,7 @@ function M.run(root)
         items = items,
         results = results,
         baseline = mutation_baseline,
+        mutation_exclude = mutation_exclude,
         coverage_map = coverage_map,
         coverage_excludes = coverage_excludes,
         color = color,

@@ -77,6 +77,16 @@ vim.fn.writefile({
   "end",
   "return M",
 }, vim.fs.joinpath(project_dir, "lua/vendor/dep.lua"))
+vim.fn.writefile({
+  "local M = {}",
+  "function M.main(argv)",
+  "  if #argv > 0 then",
+  "    return 1",
+  "  end",
+  "  return 0",
+  "end",
+  "return M",
+}, vim.fs.joinpath(project_dir, "lua/launcher.lua"))
 
 run_ntf({ "--coverage=" .. vim.fn.tempname(), "spec" }, { cwd = project_dir })
 local coverage_command = "ntf --coverage"
@@ -125,6 +135,16 @@ run_ntf({
 }, { cwd = project_dir })
 local mutation_matrix_command = "ntf --mutation --mutation-matrix"
 
+local mutation_exclude_path = doc_dir .. "/mutation_exclude.json"
+vim.fn.writefile(vim.fn.readfile(mutation_exclude_path), vim.fs.joinpath(project_dir, "spec/mutation_exclude.json"))
+run_ntf({
+  "--mutation",
+  "--mutation-results=" .. vim.fn.tempname(),
+  "--mutation-exclude=spec/mutation_exclude.json",
+  "spec",
+}, { cwd = project_dir })
+local mutation_exclude_command = "ntf --mutation --mutation-exclude=spec/mutation_exclude.json"
+
 local documented_flags = {} --- @type table<string, true> keyed by the `args.flags` token
 for _, f in ipairs(args.flags) do
   documented_flags[f.name] = true
@@ -140,6 +160,7 @@ for _, command in ipairs({
   mutation_baseline_command,
   mutation_verify_baseline_command,
   mutation_matrix_command,
+  mutation_exclude_command,
 }) do
   for token in command:gmatch("%-%-[%w-]+") do
     if not documented_flags[token] then
@@ -344,6 +365,21 @@ runs the listed mutants instead of trusting them and exits non-zero, reporting
 each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
 stale judgement the code line never gave away. Run it after editing the baseline:]],
           util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
+          [[
+A baseline answers for one mutant. Some files instead have to stay out of the
+run whole: code that only ever executes in a process no spec drives, where every
+mutant comes back uncovered rather than detected. `--exclude-code=PATH` does
+that, but it takes no reason, so such a list grows quietly and outlives what put
+each path on it. `--mutation-exclude=FILE` is the same exclusion with a required
+`rationale` per path, and it fails the run — reporting UNUSED EXCLUDE — when an
+entry covers none of the measurable files, so a path that has been renamed or
+already covered by a broader entry has to be answered for:]],
+          util.help_code_block_from_file(mutation_exclude_path, { language = "json" }),
+          util.help_code_block(mutation_exclude_command, { language = "sh" }),
+          [[
+The two flags are not interchangeable. `--exclude-code` drops a path from the
+code under test altogether, which is what a vendored copy wants; an entry here
+drops it from the mutation only, and leaves `--coverage` still measuring it.]],
         }, "\n")
       end,
     },

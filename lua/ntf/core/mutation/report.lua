@@ -86,6 +86,10 @@ function M.summary(summary, cwd, opts)
     end
   end
 
+  for _, entry in ipairs(summary.unused_excludes or {}) do
+    table.insert(lines, ("%s %s"):format(paint("red", "UNUSED EXCLUDE"), entry.path))
+  end
+
   for _, entry in ipairs(summary.unpinned or {}) do
     table.insert(
       lines,
