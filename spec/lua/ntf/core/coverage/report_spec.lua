@@ -114,6 +114,68 @@ describe("ntf.core.coverage.report.summary", function()
     assert.match(file_pattern("mod.lua", lines), text)
   end)
 
+  it("lays each row out padded to the longest name, sorted, under the run total", function()
+    local one_line = helper.test_data:create_file("a.lua", "return 1")
+    local two_lines = helper.test_data:create_file("bb.lua", table.concat({ "local x = 1", "return x" }, "\n"))
+    local merged = {
+      [vim.fs.normalize(one_line)] = { max = 1, lines = { [1] = 1 } },
+      [vim.fs.normalize(two_lines)] = { max = 1, lines = { [1] = 1 } },
+    }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    assert.equal(
+      table.concat({
+        "Coverage: 66.7% (2/3 lines)",
+        "  a.lua   100.0% (1/1)",
+        "  bb.lua   50.0% (1/2)",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("leaves out a measured file that can no longer be read", function()
+    local merged = { [vim.fs.normalize(helper.test_data:path("gone.lua"))] = { max = 1, lines = { [1] = 1 } } }
+
+    assert.match("Coverage: n/a", report.summary(merged, helper.test_data.full_path))
+  end)
+
+  it("leaves a file with no coverable line out of the listing", function()
+    local measured = helper.test_data:create_file("a.lua", "return 1")
+    local comment_only = helper.test_data:create_file("b.lua", "-- just a comment")
+    local merged = {
+      [vim.fs.normalize(measured)] = { max = 1, lines = { [1] = 1 } },
+      [vim.fs.normalize(comment_only)] = { max = 0, lines = {} },
+    }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    assert.equal(table.concat({ "Coverage: 100.0% (1/1 lines)", "  a.lua  100.0% (1/1)", "" }, "\n"), text)
+  end)
+
+  it("shows names relative to a working directory handed over with a trailing slash", function()
+    local measured = helper.test_data:create_file("a.lua", "return 1")
+    local merged = { [vim.fs.normalize(measured)] = { max = 1, lines = { [1] = 1 } } }
+
+    local text = report.summary(merged, helper.test_data.full_path .. "/")
+
+    assert.equal(table.concat({ "Coverage: 100.0% (1/1 lines)", "  a.lua  100.0% (1/1)", "" }, "\n"), text)
+  end)
+
+  it("shows a measured file outside the working directory by its absolute path", function()
+    helper.test_data:create_file("inside/keep.lua", "")
+    local outside = vim.fs.normalize(helper.test_data:create_file("outside.lua", "return 1"))
+    local merged = { [outside] = { max = 1, lines = { [1] = 1 } } }
+
+    local text = report.summary(merged, helper.test_data:path("inside"))
+
+    assert.equal(
+      table.concat({ "Coverage: 100.0% (1/1 lines)", ("  %s  100.0%% (1/1)"):format(outside), "" }, "\n"),
+      text
+    )
+  end)
+
   it("reports n/a when nothing was measured", function()
     local text = report.summary({}, helper.test_data.full_path)
 

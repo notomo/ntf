@@ -7,9 +7,19 @@ describe("ntf.core.controller.report.output_block", function()
     local out = { file = "spec/a_spec.lua", name = "", output = "hello\nworld\n" }
     local text = report.output_block(out, false)
 
-    assert.match("OUTPUT spec/a_spec.lua", text)
-    assert.match("\nhello", text)
-    assert.match("\nworld", text)
+    assert.equal("OUTPUT spec/a_spec.lua\nhello\nworld\n\n", text)
+  end)
+
+  it("paints the header dim and the name bold when color is enabled", function()
+    local out = { file = "spec/a_spec.lua", name = "group adds", output = "noise\n" }
+
+    local text = report.output_block(out, true)
+
+    local dim, bold, reset = "\27[90m", "\27[1m", "\27[0m"
+    assert.equal(
+      ("%sOUTPUT %s%sspec/a_spec.lua%s %sgroup adds%s\nnoise\n\n"):format(dim, reset, dim, reset, bold, reset),
+      text
+    )
   end)
 
   it("labels a single-test worker by its file followed by its full name", function()
@@ -72,9 +82,7 @@ describe("ntf.core.controller.report.build", function()
     }
     local text, code = report.build(results, {}, { color = false })
 
-    assert.match("2 tests: 2 passed", text)
-    assert.no.match("failed", text)
-    assert.no.match("pending", text)
+    assert.equal("2 tests: 2 passed\n", text)
     assert.equal(0, code)
   end)
 
@@ -116,10 +124,24 @@ describe("ntf.core.controller.report.build", function()
     local results = {
       { status = "error", names = { "broken" }, message = "runtime kaboom" },
     }
-    local text = report.build(results, {}, { color = false })
+    local text, code = report.build(results, {}, { color = false })
 
     assert.match("ERROR broken", text)
     assert.match("runtime kaboom", text)
+    assert.equal(1, code)
+  end)
+
+  it("renders a problem that carries no message without a blank message line", function()
+    local results = {
+      { status = "error", names = { "broken" }, trace = { source = "@spec/x_spec.lua", line = 3 } },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.equal(
+      table.concat({ "ERROR broken", "  spec/x_spec.lua:3", "", "1 tests: 0 passed  1 errors", "" }, "\n"),
+      text
+    )
   end)
 
   it("shows '?' as the source when a problem has no trace", function()
@@ -156,6 +178,26 @@ describe("ntf.core.controller.report.build", function()
     assert.match("spec/math_spec.lua:12", text)
     assert.no.match("/lua/ntf/", text)
     assert.no.match("xpcall", text)
+  end)
+
+  it("drops an ntf, xpcall or error frame that starts at the line's very first byte", function()
+    local traceback = table.concat({
+      "stack traceback:",
+      "/lua/ntf/core/worker/executor.lua:1: in function 'run'",
+      "in function 'xpcall'",
+      "in function 'error'",
+      "\tspec/math_spec.lua:12: in function <spec/math_spec.lua:11>",
+    }, "\n")
+    local results = {
+      { status = "failed", names = { "math" }, message = "boom", traceback = traceback },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.match("spec/math_spec.lua:12", text)
+    assert.no.match("/lua/ntf/", text)
+    assert.no.match("xpcall", text)
+    assert.no.match("in function 'error'", text)
   end)
 
   it("omits the traceback when only its header would survive cleaning", function()
@@ -221,8 +263,8 @@ describe("ntf.core.controller.report.resolve_color", function()
     finally(function()
       vim.uv.guess_handle = saved
     end)
-    vim.uv.guess_handle = function()
-      return "tty"
+    vim.uv.guess_handle = function(fd)
+      return fd == 1 and "tty" or "pipe"
     end
   end
 

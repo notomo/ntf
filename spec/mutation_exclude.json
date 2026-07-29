@@ -28,18 +28,6 @@
     {
       "path": "lua/ntf/core/worker/executor.lua",
       "rationale": "debt: its hook ordering, pending signalling and timing have no direct spec, so those mutants survive; they are reachable from a worker"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
-      "rationale": "debt: the failure-report formatting has specs for its shape but not for every branch, so the remaining mutants survive"
-    },
-    {
-      "path": "lua/ntf/core/coverage/report.lua",
-      "rationale": "debt: the coverage-summary formatting has specs for its shape but not for every branch, so the remaining mutants survive"
-    },
-    {
-      "path": "lua/ntf/core/controller/progress.lua",
-      "rationale": "debt: the tty progress line is only driven for part of its states, leaving the rest of its mutants uncovered"
     }
   ]
 }

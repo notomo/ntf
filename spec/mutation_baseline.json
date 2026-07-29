@@ -503,6 +503,96 @@
       "replacement": "2",
       "line": "  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })",
       "rationale": "the caller only asks whether the list is empty, which a limit of one already settles"
+    },
+    {
+      "path": "lua/ntf/core/coverage/report.lua",
+      "col": 17,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    seen[line] = true",
+      "rationale": "the seen set is only ever walked with pairs, so the stored boolean is never read"
+    },
+    {
+      "path": "lua/ntf/core/coverage/report.lua",
+      "col": 17,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    seen[line] = true",
+      "rationale": "the seen set is only ever walked with pairs, so the stored boolean is never read"
+    },
+    {
+      "path": "lua/ntf/core/coverage/report.lua",
+      "col": 16,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "  local width = 0",
+      "rationale": "a listed row's name is a file path, so it is never shorter than one character and the seed never survives math.max"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 5,
+      "operator": "force-branch",
+      "original": "not cwd",
+      "replacement": "false",
+      "line": "  if not cwd then",
+      "rationale": "every caller hands strip_cwd a working directory, so the nil guard is never taken"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 67,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  for _, line in ipairs(vim.split(traceback or \"\", \"\\n\", { plain = true })) do",
+      "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 43,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    local drop = line:find(\"/lua/ntf/\", 1, true)",
+      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 46,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "      or line:find(\"in function 'xpcall'\", 1, true)",
+      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 45,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "      or line:find(\"in function 'error'\", 1, true)",
+      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 54,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local lines = vim.split(text or \"\", \"\\n\", { plain = true })",
+      "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 54,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "    counts[result.status] = (counts[result.status] or 0) + 1",
+      "rationale": "the four counted statuses are seeded in the table, so the fallback only ever starts a count nothing reads"
     }
   ]
 }

@@ -59,3 +59,58 @@ describe("ntf.core.controller.progress", function()
     assert.equal("\27[31mF\27[0m", table.concat(buf))
   end)
 end)
+
+describe("ntf.core.controller.progress.mutation", function()
+  it("writes the total, one character per settled mutant, then a closing newline", function()
+    local buf, write = collector()
+    local prog = progress.mutation({ write = write, enabled = true, color = false })
+
+    prog.on_start(4)
+    prog.on_task({ status = "killed" })
+    prog.on_task({ status = "timeout" })
+    prog.on_task({ status = "survived" })
+    prog.on_task({ status = "not_applied" })
+    prog.finish()
+
+    assert.equal("mutants (4): .TS?\n", table.concat(buf))
+  end)
+
+  it("writes nothing at all when disabled", function()
+    local buf, write = collector()
+    local prog = progress.mutation({ write = write, enabled = false, color = true })
+
+    prog.on_start(2)
+    prog.on_task({ status = "survived" })
+    prog.finish()
+
+    assert.equal("", table.concat(buf))
+  end)
+
+  it("paints a survivor red when color is enabled, leaving a mark with no color of its own bare", function()
+    local buf, write = collector()
+    local prog = progress.mutation({ write = write, enabled = true, color = true })
+
+    prog.on_task({ status = "survived" })
+    prog.on_task({ status = "killed" })
+
+    assert.equal("\27[31mS\27[0m.", table.concat(buf))
+  end)
+
+  it("leaves a survivor bare when color is disabled", function()
+    local buf, write = collector()
+    local prog = progress.mutation({ write = write, enabled = true, color = false })
+
+    prog.on_task({ status = "survived" })
+
+    assert.equal("S", table.concat(buf))
+  end)
+
+  it("marks an outcome it has no character for as a survivor, the one that must not go unseen", function()
+    local buf, write = collector()
+    local prog = progress.mutation({ write = write, enabled = true, color = false })
+
+    prog.on_task({ status = "no_coverage" })
+
+    assert.equal("S", table.concat(buf))
+  end)
+end)
