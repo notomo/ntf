@@ -593,6 +593,105 @@
       "replacement": "1",
       "line": "    counts[result.status] = (counts[result.status] or 0) + 1",
       "rationale": "the four counted statuses are seeded in the table, so the fallback only ever starts a count nothing reads"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 25,
+      "operator": "swap-logical",
+      "original": "or",
+      "replacement": "and",
+      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
+      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 94,
+      "operator": "swap-logical",
+      "original": "or",
+      "replacement": "and",
+      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
+      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 97,
+      "operator": "perturb-number",
+      "original": "4",
+      "replacement": "5",
+      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
+      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 7,
+      "operator": "force-branch",
+      "original": "started >= total",
+      "replacement": "false",
+      "line": "    if started >= total then",
+      "rationale": "the wait has already counted every item finished, so a spawn past the end reports nothing back before the run returns"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 15,
+      "operator": "swap-relational",
+      "original": ">=",
+      "replacement": ">",
+      "line": "    if started >= total then",
+      "rationale": "the wait has already counted every item finished, so a spawn past the end reports nothing back before the run returns"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 9,
+      "operator": "force-branch",
+      "original": "not ok",
+      "replacement": "true",
+      "line": "      if not ok then",
+      "rationale": "xpcall leaves err nil when the callback succeeded, so the fallback records nothing either way"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 11,
+      "operator": "perturb-number",
+      "original": "10",
+      "replacement": "11",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 16,
+      "operator": "perturb-number",
+      "original": "60",
+      "replacement": "61",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 21,
+      "operator": "perturb-number",
+      "original": "1000",
+      "replacement": "1001",
+      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
+    },
+    {
+      "path": "lua/ntf/core/controller/pool.lua",
+      "col": 7,
+      "operator": "perturb-number",
+      "original": "20",
+      "replacement": "21",
+      "line": "  end, 20)",
+      "rationale": "the poll interval only sets how often the wait re-checks a predicate that is already true by then"
+    },
+    {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "col": 25,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "    timer:start(timeout, 0, function()",
+      "rationale": "the callback only kills a process already being killed, and the exit callback closes the timer, so repeating it changes nothing"
     }
   ]
 }

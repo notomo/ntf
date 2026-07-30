@@ -4,12 +4,40 @@ local driver = require("ntf.core.worker.driver")
 local work = require("ntf.core.controller.work")
 local helper = require("ntf.test.helper")
 
-local function launch(item)
+local ONE_TEST = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("runs", function() end)
+end)
+]]
+
+local NEVER_FINISHES = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("spins", function()
+    while true do end
+  end)
+end)
+]]
+
+--- @param source string
+--- @return table # one NtfWorkItem
+local function item_of(source)
+  return work.plan({ helper.write_spec(source) })[1]
+end
+
+--- @param item table one NtfWorkItem
+--- @param opts table? launch options merged over the defaults
+--- @param wait_ms integer? how long to wait for the worker (default 30000)
+--- @return table # one NtfWorkerOutcome
+local function launch(item, opts, wait_ms)
   local done
-  driver.launch(item, { root = helper.root, cwd = helper.test_data.full_path, timeout = 30000 }, function(outcome)
+  local launch_opts =
+    vim.tbl_extend("force", { root = helper.root, cwd = helper.test_data.full_path, timeout = 30000 }, opts or {})
+  driver.launch(item, launch_opts, function(outcome)
     done = outcome
   end)
-  vim.wait(30000, function()
+  vim.wait(wait_ms or 30000, function()
     return done ~= nil
   end, 20)
   return assert(done, "the worker did not finish")
@@ -20,30 +48,14 @@ describe("ntf.core.worker.driver.launch", function()
   after_each(helper.after_each)
 
   it("reports one result for the node it asked for", function()
-    local item = work.plan({
-      helper.write_spec([[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("runs", function() end)
-end)
-]]),
-    })[1]
-
-    local outcome = launch(item)
+    local outcome = launch(item_of(ONE_TEST))
 
     assert.equal(1, #outcome.results)
     assert.equal("passed", outcome.results[1].status)
   end)
 
   it("errors on a worker that reported no result, since it was asked for exactly one node", function()
-    local item = work.plan({
-      helper.write_spec([[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("runs", function() end)
-end)
-]]),
-    })[1]
+    local item = item_of(ONE_TEST)
     item.node_id = "a node the rebuilt tree does not hold"
 
     local outcome = launch(item)
@@ -51,5 +63,116 @@ end)
     assert.equal(1, #outcome.results)
     assert.equal("error", outcome.results[1].status)
     assert.match("no result", outcome.results[1].message)
+  end)
+
+  it("measures no coverage for a run that did not ask for any", function()
+    local outcome = launch(item_of(ONE_TEST))
+
+    assert.is_nil(outcome.coverage)
+  end)
+
+  it("hands back a printing worker's output under the test's full name", function()
+    local outcome = launch(item_of([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("prints", function()
+    print("hello from the worker")
+  end)
+end)
+]]))
+
+    assert.match("hello from the worker", outcome.output.output)
+    assert.equal("x prints", outcome.output.name)
+  end)
+
+  it("normalizes the line endings of a worker that wrote carriage returns", function()
+    local outcome = launch(item_of([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("prints crlf", function()
+    io.write("first\r\nsecond\r\n")
+  end)
+end)
+]]))
+
+    assert.match("first\nsecond", outcome.output.output)
+    assert.no.match("\r", outcome.output.output)
+  end)
+
+  it("closes the timeout timer once the worker is done, leaving none behind", function()
+    local function live_timers()
+      local count = 0
+      vim.uv.walk(function(handle)
+        if handle:get_type() == "timer" and not handle:is_closing() then
+          count = count + 1
+        end
+      end)
+      return count
+    end
+    local before = live_timers()
+
+    launch(item_of(ONE_TEST), { timeout = 30000 })
+
+    assert.equal(before, live_timers())
+  end)
+
+  it("hands back nothing for a worker that stayed silent", function()
+    local outcome = launch(item_of(ONE_TEST))
+
+    assert.is_nil(outcome.output)
+  end)
+
+  it("hands back nothing for a worker that died before emitting its block", function()
+    local item = item_of(ONE_TEST)
+    vim.fn.writefile({ 'io.stderr:write("worker exploded")', "os.exit(1)" }, item.file)
+
+    local outcome = launch(item)
+
+    assert.is_nil(outcome.output)
+    assert.equal("error", outcome.results[1].status)
+    assert.match("worker exploded", outcome.results[1].message)
+  end)
+
+  it("reports the exit code of a worker that said nothing at all", function()
+    local item = item_of(ONE_TEST)
+    vim.fn.writefile({ "os.exit(3)" }, item.file)
+
+    local outcome = launch(item)
+
+    assert.equal("worker exited with code 3", outcome.results[1].message)
+  end)
+
+  it("reports the load error of a spec the worker could not load", function()
+    local item = item_of(ONE_TEST)
+    vim.fn.writefile({ "this is not lua" }, item.file)
+
+    local outcome = launch(item)
+
+    assert.equal("error", outcome.results[1].status)
+    assert.match("temp_spec%.lua", outcome.results[1].message)
+  end)
+
+  it("kills a worker that will not finish and reports how long it was given", function()
+    local outcome = launch(item_of(NEVER_FINISHES), { timeout = 1000 }, 10000)
+
+    assert.is_true(outcome.timed_out)
+    assert.equal("error", outcome.results[1].status)
+    assert.equal("worker timed out after 1000ms", outcome.results[1].message)
+  end)
+
+  it("gives a worker the item's own timeout ahead of the run's", function()
+    local item = item_of(NEVER_FINISHES)
+    item.timeout = 500
+
+    local outcome = launch(item, { timeout = 20000 }, 10000)
+
+    assert.equal("worker timed out after 500ms", outcome.results[1].message)
+  end)
+
+  it("lets a worker run untimed when the timeout is zero", function()
+    local outcome = launch(item_of(ONE_TEST), { timeout = 0 })
+
+    assert.equal("passed", outcome.results[1].status)
+    assert.is_nil(outcome.timed_out)
   end)
 end)

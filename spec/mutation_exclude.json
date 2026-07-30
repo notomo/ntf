@@ -18,14 +18,6 @@
       "rationale": "structural: the worker bootstrap runs before its own loader hook can splice a mutant in and before coverage starts, so its mutants come back not applied or uncovered, never detected"
     },
     {
-      "path": "lua/ntf/core/worker/driver.lua",
-      "rationale": "debt: mutants of its timeout handling hang until the trial timeout, and the rest survive for want of specs on the stream and exit handling"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "rationale": "debt: mutants of its dispatch loop hang until the trial timeout, and the rest survive for want of a spec on the scheduling itself"
-    },
-    {
       "path": "lua/ntf/core/worker/executor.lua",
       "rationale": "structural: the worker reports a trial's verdict through this very module, so a mutant that stops it reporting failures reports none of its own — with its failure branch disabled the whole suite still comes back green. What is left over is the has_selected prune, which only skips work the leaf gate decides again, and a divisor whose shift is below the timing's own precision"
     }

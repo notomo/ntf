@@ -114,15 +114,13 @@ function M.launch(item, opts, on_done)
     on_done(outcome)
   end)
   if timeout then
-    timer = vim.uv.new_timer()
-    if timer then
-      timer:start(timeout, 0, function()
-        timed_out = true
-        pcall(function()
-          proc:kill(9)
-        end)
+    timer = assert(vim.uv.new_timer())
+    timer:start(timeout, 0, function()
+      timed_out = true
+      pcall(function()
+        proc:kill(9)
       end)
-    end
+    end)
   end
 end
 

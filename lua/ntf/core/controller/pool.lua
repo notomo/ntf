@@ -13,13 +13,10 @@ function M.run(items, opts)
 
   local results = {}
   local merged_coverage = {}
-  local coverage_excludes = {}
-  if opts.coverage then
-    local spec_files = vim.tbl_map(function(item)
-      return item.file
-    end, items)
-    coverage_excludes = opts.coverage_excludes or collector.exclude_roots(spec_files, cwd)
-  end
+  local spec_files = vim.tbl_map(function(item)
+    return item.file
+  end, items)
+  local coverage_excludes = opts.coverage_excludes or collector.exclude_roots(spec_files, cwd)
   local started = 0
   local finished = 0
   local fatal
