@@ -27,7 +27,7 @@
     },
     {
       "path": "lua/ntf/core/worker/executor.lua",
-      "rationale": "debt: its hook ordering, pending signalling and timing have no direct spec, so those mutants survive; they are reachable from a worker"
+      "rationale": "structural: the worker reports a trial's verdict through this very module, so a mutant that stops it reporting failures reports none of its own — with its failure branch disabled the whole suite still comes back green. What is left over is the has_selected prune, which only skips work the leaf gate decides again, and a divisor whose shift is below the timing's own precision"
     }
   ]
 }
