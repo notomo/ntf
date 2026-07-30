@@ -118,7 +118,7 @@ function M.launch(item, opts, on_done)
     timer:start(timeout, 0, function()
       timed_out = true
       pcall(function()
-        proc:kill(9)
+        proc:kill("sigkill")
       end)
     end)
   end

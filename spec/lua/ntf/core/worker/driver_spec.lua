@@ -86,11 +86,15 @@ end)
   end)
 
   it("normalizes the line endings of a worker that wrote carriage returns", function()
+    -- WHY: the C runtime opens a worker's stdout in text mode on Windows, where
+    -- it writes a carriage return of its own before every newline, so a written
+    -- pair arrives there as a doubled one that outlives the normalization.
+    -- NOT: io.write, which goes through that runtime.
     local outcome = launch(item_of([[
 local ntf = require("ntf")
 ntf.describe("x", function()
   ntf.it("prints crlf", function()
-    io.write("first\r\nsecond\r\n")
+    vim.uv.fs_write(1, "first\r\nsecond\r\n")
   end)
 end)
 ]]))
