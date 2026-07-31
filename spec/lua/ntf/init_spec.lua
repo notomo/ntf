@@ -1059,6 +1059,74 @@ describe("ntf --mutation", function()
     assert.match("1 exclude entry covering nothing", obj.stderr)
   end)
 
+  it("runs a --mutation-config exclude_spec path, but never picks its tests as a trial", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/e2e_only.lua", MUTATION_MODULE)
+    helper.test_data:create_file("spec/e2e_spec.lua", (MUTATION_SPEC:gsub('require%("mod"%)', 'require("e2e_only")')))
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        exclude_spec = {
+          {
+            path = "spec/e2e_spec.lua",
+            rationale = "end-to-end, so running it once per mutant costs more than it finds",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(0, obj.code)
+    assert.match("4 tests: 4 passed", obj.stdout)
+    assert.match("NO COVERAGE lua/e2e_only%.lua:", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6", obj.stdout)
+  end)
+
+  it("stops the run when a --mutation-config exclude_spec path fails", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/e2e_spec.lua", FAILING)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        exclude_spec = { { path = "spec/e2e_spec.lua", rationale = "end-to-end, so it never drives a mutant" } },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(1, obj.code)
+    assert.match("mutation run skipped: the tests must pass first", obj.stderr)
+  end)
+
+  it("exits non-zero when a --mutation-config exclude_spec entry covers no spec file", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        exclude_spec = { { path = "spec/gone_spec.lua", rationale = "stale: the spec it names is no longer there" } },
+      })
+    )
+
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
+      root
+    )
+
+    assert.equal(1, obj.code)
+    assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", obj.stdout)
+    assert.match("1 exclude_spec entry covering nothing", obj.stderr)
+  end)
+
   it("rejects an invalid --mutation-config exclude before running the tests", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, exclude = { { path = "x" } } }))

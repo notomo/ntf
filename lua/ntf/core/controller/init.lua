@@ -1,7 +1,7 @@
 local M = {}
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
 function M.mutate(opts, ctx)
   local progress = require("ntf.core.controller.progress").mutation({
@@ -20,6 +20,7 @@ function M.mutate(opts, ctx)
     baseline_results = ctx.results,
     baseline = ctx.baseline,
     mutation_exclude = ctx.mutation_exclude,
+    unused_spec_excludes = ctx.unused_spec_excludes,
     coverage_map = ctx.coverage_map,
     coverage_excludes = ctx.coverage_excludes,
     on_start = progress.on_start,
@@ -44,6 +45,16 @@ function M.mutate(opts, ctx)
       ("mutation gate failed: %d exclude entr%s covering nothing\n"):format(
         #summary.unused_excludes,
         #summary.unused_excludes == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  if #summary.unused_spec_excludes > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d exclude_spec entr%s covering nothing\n"):format(
+        #summary.unused_spec_excludes,
+        #summary.unused_spec_excludes == 1 and "y" or "ies"
       )
     )
     code = 1
@@ -122,6 +133,7 @@ function M.run(root)
   end
   local mutation_baseline = mutation_config and mutation_config.baseline
   local mutation_exclude = mutation_config and mutation_config.exclude
+  local mutation_exclude_spec = mutation_config and mutation_config.exclude_spec or {}
 
   local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths, opts.exclude_spec)
   if not ok then
@@ -183,7 +195,11 @@ function M.run(root)
   local collector = require("ntf.core.coverage.collector")
   local coverage_excludes =
     vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
-  local coverage_map = require("ntf.core.mutation.coverage_map").new()
+  local exclude = require("ntf.core.mutation.exclude")
+  local _, unused_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
+  local coverage_map = require("ntf.core.mutation.coverage_map").new({
+    ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
+  })
 
   local results, coverage = require("ntf.core.controller.pool").run(items, {
     root = root,
@@ -249,6 +265,7 @@ function M.run(root)
         results = results,
         baseline = mutation_baseline,
         mutation_exclude = mutation_exclude,
+        unused_spec_excludes = unused_spec_excludes,
         coverage_map = coverage_map,
         coverage_excludes = coverage_excludes,
         color = color,

@@ -233,6 +233,12 @@ the reason — in the `baseline` of a config file and pass it with
         "path": "lua/launcher.lua",
         "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
       }
+    ],
+    "exclude_spec": [
+      {
+        "path": "spec/cli_spec.lua",
+        "rationale": "drives the built command end to end, so as a trial it pays a whole run to reach code the unit specs already reach in-process"
+      }
     ]
   }
 <
@@ -240,7 +246,7 @@ the reason — in the `baseline` of a config file and pass it with
   ntf --mutation --mutation-config=spec/mutation.json
 <
 The file carries the whole mutation policy, one section per kind of judgement —
-`exclude` is the second, covered below — and either section may be left out.
+`exclude` and `exclude_spec` are covered below — and any section may be left out.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
 can then reach 100 and be held there with `--mutation-strict`. An entry is
@@ -283,6 +289,20 @@ for.
 The two are not interchangeable. `--exclude-code` drops a path from the code
 under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.
+
+The `exclude_spec` section answers for a test rather than for a file under test.
+A mutant is run against the tests that reach it, so an end-to-end spec — one that
+drives the whole CLI, or a real editor — is picked as a trial for most of the
+code and pays a full run each time to reach what a unit spec already reaches.
+Listing its path there keeps it out of every trial, and out of the coverage that
+decides which mutants are covered at all, so a mutant only it reaches is reported
+NO COVERAGE. It still runs with the rest of the suite, and the run still stops
+when it fails, which is what lets one mutation run stand in for a plain test run
+in CI. `--exclude-spec=PATH` is the blunt form: it drops the spec from the run
+altogether, so a gate built on it has to run the suite a second time to cover
+what it dropped. Like `exclude`, an `exclude_spec` entry takes a required
+`rationale` and fails the run — reporting UNUSED EXCLUDE SPEC — when it covers
+none of the discovered spec files.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*

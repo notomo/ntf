@@ -36,11 +36,12 @@ describe("ntf.core.mutation.config.load", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
-  it("loads both sections", function()
+  it("loads every section", function()
     local file = create_file({
       version = 1,
       baseline = { baseline_entry() },
       exclude = { exclude_entry() },
+      exclude_spec = { exclude_entry({ path = "spec/e2e_spec.lua" }) },
     })
 
     local loaded = assert(config.load(file))
@@ -50,6 +51,8 @@ describe("ntf.core.mutation.config.load", function()
     assert.equal(7, loaded.baseline[1].col)
     assert.equal(1, #loaded.exclude)
     assert.equal("lua/mod", loaded.exclude[1].path)
+    assert.equal(1, #loaded.exclude_spec)
+    assert.equal("spec/e2e_spec.lua", loaded.exclude_spec[1].path)
   end)
 
   it("leaves a section out as empty", function()
@@ -58,6 +61,7 @@ describe("ntf.core.mutation.config.load", function()
     local loaded = assert(config.load(file))
 
     assert.same({}, loaded.baseline)
+    assert.same({}, loaded.exclude_spec)
     assert.equal(1, #loaded.exclude)
   end)
 
@@ -109,5 +113,13 @@ describe("ntf.core.mutation.config.load", function()
     local file = create_file({ version = 1, exclude = { exclude_entry(), incomplete } })
 
     assert.match("exclude%[2%] needs a string rationale", config.load(file))
+  end)
+
+  it("reports which exclude_spec entry is invalid", function()
+    local incomplete = exclude_entry()
+    incomplete.rationale = nil
+    local file = create_file({ version = 1, exclude_spec = { exclude_entry(), incomplete } })
+
+    assert.match("exclude_spec%[2%] needs a string rationale", config.load(file))
   end)
 end)

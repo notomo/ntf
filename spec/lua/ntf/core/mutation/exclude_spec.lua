@@ -99,3 +99,34 @@ describe("ntf.core.mutation.exclude.partition", function()
     assert.same({}, unused)
   end)
 end)
+
+describe("ntf.core.mutation.exclude.item_indexes", function()
+  local cwd = "/project"
+
+  --- @param file string
+  --- @return table
+  local function item(file)
+    return { file = file, node_id = "1", names = { "test" } }
+  end
+
+  it("returns the indexes of every item a directory entry covers", function()
+    local items =
+      { item("/project/spec/e2e/a_spec.lua"), item("/project/spec/b_spec.lua"), item("/project/spec/e2e/a_spec.lua") }
+
+    local indexes = exclude.item_indexes(items, { entry({ path = "spec/e2e" }) }, cwd)
+
+    assert.same({ [1] = true, [3] = true }, indexes)
+  end)
+
+  it("returns no index when no entry is given", function()
+    local items = { item("/project/spec/a_spec.lua") }
+
+    assert.same({}, exclude.item_indexes(items, {}, cwd))
+  end)
+
+  it("returns no index when the entry covers no item", function()
+    local items = { item("/project/spec/a_spec.lua") }
+
+    assert.same({}, exclude.item_indexes(items, { entry({ path = "spec/gone_spec.lua" }) }, cwd))
+  end)
+end)

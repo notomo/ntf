@@ -23,6 +23,7 @@ local M = {}
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
 --- @field unused_excludes NtfMutationExcludeEntry[] --mutation-config exclude entries covering none of the measurable files
+--- @field unused_spec_excludes NtfMutationExcludeEntry[] --mutation-config exclude_spec entries covering none of the discovered spec files
 
 --- @param path string any form of a path
 --- @return string
@@ -137,7 +138,7 @@ local function covering_trials(ctx, durations, mutant)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
 function M.run(opts, ctx)
   local cwd = normalize(ctx.cwd)
@@ -221,6 +222,7 @@ function M.run(opts, ctx)
     lost = matcher.lost(),
     unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
     unused_excludes = unused_excludes,
+    unused_spec_excludes = ctx.unused_spec_excludes or {},
   }
 end
 

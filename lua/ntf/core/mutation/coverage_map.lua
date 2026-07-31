@@ -4,12 +4,18 @@ local M = {}
 --- @field add fun(item_index: integer, coverage: table?) record one worker's line hits
 --- @field item_indexes fun(path: string, rows: integer[]): integer[] items that hit any of the rows
 
+--- @param opts { ignore_items: table<integer, true>? }? item indexes whose coverage the map drops, so their tests are never picked as trials
 --- @return NtfMutationCoverageMap which tests reach which lines, so a mutant is only run against the tests that can possibly detect it
-function M.new()
+function M.new(opts)
+  local ignore_items = (opts or {}).ignore_items or {}
+
   --- @type table<string, table<integer, table<integer, true>>>
   local by_path = {}
 
   local function add(item_index, coverage)
+    if ignore_items[item_index] then
+      return
+    end
     for path, entry in pairs(coverage or {}) do
       local lines = by_path[path]
       if not lines then

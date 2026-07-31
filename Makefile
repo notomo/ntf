@@ -7,7 +7,7 @@ NTF=./bin/ntf
 endif
 
 REQUIRE_LINT_CONFIG=spec/require_lint.json
-CI_TARGETS=require_lint comment_lint test mutation mutation_verify_baseline
+CI_TARGETS=require_lint comment_lint requireall mutation mutation_verify_baseline
 
 include spec/.shared/neovim-plugin.mk
 
@@ -21,10 +21,7 @@ REQUIREALL_IGNORE_MODULES=ntf.core.worker
 # baseline but not its --mutation-strict gate, since it reports rather than gates.
 MUTATION_TARGETS=mutation mutation_list mutation_matrix mutation_verify_baseline
 
-# Skip init_spec.lua rather than run the whole suite: its bin/ntf end-to-end.
-$(MUTATION_TARGETS): MUTATION_FLAGS += \
-	--exclude-spec=spec/lua/${PLUGIN_NAME}/init_spec.lua \
-	--mutation-config=spec/mutation.json
+$(MUTATION_TARGETS): MUTATION_FLAGS += --mutation-config=spec/mutation.json
 
 mutation: MUTATION_FLAGS += --mutation-strict
 

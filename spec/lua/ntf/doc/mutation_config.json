@@ -17,5 +17,11 @@
       "path": "lua/launcher.lua",
       "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
     }
+  ],
+  "exclude_spec": [
+    {
+      "path": "spec/cli_spec.lua",
+      "rationale": "drives the built command end to end, so as a trial it pays a whole run to reach code the unit specs already reach in-process"
+    }
   ]
 }

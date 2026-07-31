@@ -145,6 +145,30 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("UNUSED EXCLUDE lua/gone", text)
   end)
 
+  it("lists the exclude_spec entries that cover no discovered spec file", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+      lost = {},
+      unpinned = {},
+      unused_excludes = {},
+      unused_spec_excludes = { { path = "spec/gone_spec.lua", rationale = "unused" } },
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", text)
+  end)
+
   it("lists the baseline entries whose invariant_spec no test pins", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },

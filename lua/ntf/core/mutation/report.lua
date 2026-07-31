@@ -90,6 +90,10 @@ function M.summary(summary, cwd, opts)
     table.insert(lines, ("%s %s"):format(paint("red", "UNUSED EXCLUDE"), entry.path))
   end
 
+  for _, entry in ipairs(summary.unused_spec_excludes or {}) do
+    table.insert(lines, ("%s %s"):format(paint("red", "UNUSED EXCLUDE SPEC"), entry.path))
+  end
+
   for _, entry in ipairs(summary.unpinned or {}) do
     table.insert(
       lines,

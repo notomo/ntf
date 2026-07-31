@@ -715,5 +715,11 @@
       "path": "lua/ntf/core/worker/executor.lua",
       "rationale": "structural: the worker reports a trial's verdict through this very module, so a mutant that stops it reporting failures reports none of its own — with its failure branch disabled the whole suite still comes back green. What is left over is the has_selected prune, which only skips work the leaf gate decides again, and a divisor whose shift is below the timing's own precision"
     }
+  ],
+  "exclude_spec": [
+    {
+      "path": "spec/lua/ntf/init_spec.lua",
+      "rationale": "structural: every test in it drives ntf through bin/ntf, so as a trial it spends a whole CLI run to reach code a unit spec already reaches in-process. It stays in the run itself, which is what lets the mutation gate stand in for a plain test run"
+    }
   ]
 }

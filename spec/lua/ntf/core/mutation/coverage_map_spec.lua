@@ -33,4 +33,20 @@ describe("ntf.core.mutation.coverage_map", function()
 
     assert.same({}, map.item_indexes("/x.lua", { 1 }))
   end)
+
+  it("drops the coverage of an ignored item, keeping the rest", function()
+    local map = coverage_map.new({ ignore_items = { [1] = true } })
+    map.add(1, { ["/x.lua"] = { max = 2, lines = { ["1"] = 1, ["2"] = 1 } } })
+    map.add(2, { ["/x.lua"] = { max = 2, lines = { ["2"] = 1 } } })
+
+    assert.same({}, map.item_indexes("/x.lua", { 1 }))
+    assert.same({ 2 }, map.item_indexes("/x.lua", { 2 }))
+  end)
+
+  it("keeps every item when no ignored index is given", function()
+    local map = coverage_map.new({})
+    map.add(1, { ["/x.lua"] = { max = 1, lines = { ["1"] = 1 } } })
+
+    assert.same({ 1 }, map.item_indexes("/x.lua", { 1 }))
+  end)
 end)

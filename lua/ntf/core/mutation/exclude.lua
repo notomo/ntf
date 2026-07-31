@@ -1,8 +1,8 @@
 local M = {}
 
---- @class NtfMutationExcludeEntry a path whose mutants the run does not enumerate
+--- @class NtfMutationExcludeEntry a path the run leaves out
 --- @field path string working-directory-relative file or directory
---- @field rationale string why its mutants are not worth running
+--- @field rationale string why what it names is left out
 
 local STRING_FIELDS = { "path", "rationale" }
 
@@ -55,6 +55,30 @@ function M.partition(files, entries, cwd)
     end
   end
   return kept, unused
+end
+
+--- @param items NtfWorkItem[] work items, in the order the run dispatches them
+--- @param entries NtfMutationExcludeEntry[] spec paths whose tests do not drive the mutants
+--- @param cwd string working directory
+--- @return table<integer, true> # indexes of the items declared in a covered spec file
+function M.item_indexes(items, entries, cwd)
+  local files = vim.tbl_map(function(item)
+    return item.file
+  end, items)
+  local kept_files = M.partition(files, entries, cwd)
+
+  local kept = {}
+  for _, file in ipairs(kept_files) do
+    kept[file] = true
+  end
+
+  local indexes = {}
+  for index, item in ipairs(items) do
+    if not kept[item.file] then
+      indexes[index] = true
+    end
+  end
+  return indexes
 end
 
 return M

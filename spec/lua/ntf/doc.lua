@@ -69,6 +69,12 @@ vim.fn.writefile({
   '  ntf.assert.is_false(require("mymod").is_positive(0))',
   "end)",
 }, vim.fs.joinpath(project_dir, "spec/mymod_spec.lua"))
+vim.fn.writefile({
+  'local ntf = require("ntf")',
+  'ntf.it("runs the built command end to end", function()',
+  '  ntf.assert.is_true(require("mymod").is_positive(1))',
+  "end)",
+}, vim.fs.joinpath(project_dir, "spec/cli_spec.lua"))
 vim.fn.mkdir(vim.fs.joinpath(project_dir, "lua/vendor"), "p")
 vim.fn.writefile({
   "local M = {}",
@@ -337,7 +343,7 @@ the reason — in the `baseline` of a config file and pass it with
           util.help_code_block(mutation_config_command, { language = "sh" }),
           [[
 The file carries the whole mutation policy, one section per kind of judgement —
-`exclude` is the second, covered below — and either section may be left out.
+`exclude` and `exclude_spec` are covered below — and any section may be left out.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
 can then reach 100 and be held there with `--mutation-strict`. An entry is
@@ -378,7 +384,21 @@ for.
 
 The two are not interchangeable. `--exclude-code` drops a path from the code
 under test altogether, which is what a vendored copy wants; an `exclude` entry
-drops it from the mutation only, and leaves `--coverage` still measuring it.]],
+drops it from the mutation only, and leaves `--coverage` still measuring it.
+
+The `exclude_spec` section answers for a test rather than for a file under test.
+A mutant is run against the tests that reach it, so an end-to-end spec — one that
+drives the whole CLI, or a real editor — is picked as a trial for most of the
+code and pays a full run each time to reach what a unit spec already reaches.
+Listing its path there keeps it out of every trial, and out of the coverage that
+decides which mutants are covered at all, so a mutant only it reaches is reported
+NO COVERAGE. It still runs with the rest of the suite, and the run still stops
+when it fails, which is what lets one mutation run stand in for a plain test run
+in CI. `--exclude-spec=PATH` is the blunt form: it drops the spec from the run
+altogether, so a gate built on it has to run the suite a second time to cover
+what it dropped. Like `exclude`, an `exclude_spec` entry takes a required
+`rationale` and fails the run — reporting UNUSED EXCLUDE SPEC — when it covers
+none of the discovered spec files.]],
         }, "\n")
       end,
     },
