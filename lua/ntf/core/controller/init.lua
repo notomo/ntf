@@ -34,14 +34,14 @@ function M.mutate(opts, ctx)
   if #summary.lost > 0 then
     io.stdout:flush()
     io.stderr:write(
-      ("%d --mutation-baseline entr%s matched no mutant\n"):format(#summary.lost, #summary.lost == 1 and "y" or "ies")
+      ("%d baseline entr%s matched no mutant\n"):format(#summary.lost, #summary.lost == 1 and "y" or "ies")
     )
     code = 1
   end
   if #summary.unused_excludes > 0 then
     io.stdout:flush()
     io.stderr:write(
-      ("mutation gate failed: %d --mutation-exclude entr%s covering nothing\n"):format(
+      ("mutation gate failed: %d exclude entr%s covering nothing\n"):format(
         #summary.unused_excludes,
         #summary.unused_excludes == 1 and "y" or "ies"
       )
@@ -111,25 +111,17 @@ function M.run(root)
 
   require("ntf.core.runtime").setup()
 
-  local mutation_baseline --- @type NtfMutationBaselineEntry[]?
-  if opts.mutation_baseline then
-    local loaded = require("ntf.core.mutation.baseline").load(opts.mutation_baseline)
+  local mutation_config --- @type NtfMutationConfig?
+  if opts.mutation_config then
+    local loaded = require("ntf.core.mutation.config").load(opts.mutation_config)
     if type(loaded) == "string" then
       io.stderr:write(loaded .. "\n")
       os.exit(2)
     end
-    mutation_baseline = loaded
+    mutation_config = loaded
   end
-
-  local mutation_exclude --- @type NtfMutationExcludeEntry[]?
-  if opts.mutation_exclude then
-    local loaded = require("ntf.core.mutation.exclude").load(opts.mutation_exclude)
-    if type(loaded) == "string" then
-      io.stderr:write(loaded .. "\n")
-      os.exit(2)
-    end
-    mutation_exclude = loaded
-  end
+  local mutation_baseline = mutation_config and mutation_config.baseline
+  local mutation_exclude = mutation_config and mutation_config.exclude
 
   local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths, opts.exclude_spec)
   if not ok then

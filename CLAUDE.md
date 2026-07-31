@@ -18,18 +18,19 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   exit code — kill each survivor with a spec, and reach each no-coverage mutant
   with one (restructuring so the code is callable from a spec if need be, as
   `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
-  undetectable — add a `spec/mutation_baseline.json` entry with its rationale.
+  undetectable — add a `baseline` entry with its rationale to `spec/mutation.json`,
+  the one mutation policy file (`--mutation-config`).
   When that rationale rests on a fact from another module or from the runtime,
   add an `invariant_spec` naming the test that pins the fact — the run fails as
   UNPINNED BASELINE once no test of that name passes. The mutation run excludes
   `init_spec.lua`, so a pin has to live in a unit spec.
-  A whole file stays out of the run only through `spec/mutation_exclude.json`
-  (`--mutation-exclude`), which requires a rationale per path and fails as
+  A whole file stays out of the run only through that file's `exclude` section,
+  which requires a rationale per path and fails as
   UNUSED EXCLUDE when an entry covers no measurable file. Measure before adding
   one — `$(NTF) --mutation=PATH --exclude-spec=spec/lua/ntf/init_spec.lua spec`
   reports what that path's mutants actually do — and say in the rationale
   whether the exclusion is structural or debt
-- `make mutation_verify_baseline` — after editing `spec/mutation_baseline.json`:
+- `make mutation_verify_baseline` — after editing the `baseline` of `spec/mutation.json`:
   must exit 0. It re-runs the listed mutants (`--mutation-verify-baseline`) and
   fails any a test now kills (reported BASELINE KILLABLE) — kill it with a spec
   instead, or fix the entry. Kept out of `make mutation` so its hot path stays

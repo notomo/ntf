@@ -363,24 +363,28 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("require %-%-mutation", err)
     end)
 
-    it("reads the baseline file path", function()
-      local file = helper.test_data:create_file("baseline.json", "{}")
+    it("reads the config file path", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({ "--mutation", "--mutation-baseline=" .. file, "spec" })
+      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "spec" })
 
-      assert.equal(file, opts.mutation_baseline)
+      assert.equal(file, opts.mutation_config)
     end)
 
-    it("errors when the --mutation-baseline file does not exist", function()
-      local err = args.parse({ "--mutation", "--mutation-baseline=/no/such.json", "spec" })
+    it("leaves opts.mutation_config nil without --mutation-config", function()
+      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_config)
+    end)
 
-      assert.match("%-%-mutation%-baseline file not found", err)
+    it("errors when the --mutation-config file does not exist", function()
+      local err = args.parse({ "--mutation", "--mutation-config=/no/such.json", "spec" })
+
+      assert.match("%-%-mutation%-config file not found", err)
     end)
 
     it("verifies the baseline entries with --mutation-verify-baseline", function()
-      local file = helper.test_data:create_file("baseline.json", "{}")
+      local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({ "--mutation", "--mutation-baseline=" .. file, "--mutation-verify-baseline", "spec" })
+      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline", "spec" })
 
       assert.is_true(opts.mutation_verify_baseline)
     end)
@@ -389,10 +393,10 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_false(args.parse({ "--mutation", "spec" }).mutation_verify_baseline)
     end)
 
-    it("errors when --mutation-verify-baseline is given without --mutation-baseline", function()
+    it("errors when --mutation-verify-baseline is given without --mutation-config", function()
       local err = args.parse({ "--mutation", "--mutation-verify-baseline", "spec" })
 
-      assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-baseline", err)
+      assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-config", err)
     end)
 
     it("errors when --mutation-verify-baseline alone is given without --mutation", function()
@@ -407,36 +411,10 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("require %-%-mutation", err)
     end)
 
-    it("errors when --mutation-baseline alone is given without --mutation", function()
-      local file = helper.test_data:create_file("baseline.json", "{}")
+    it("errors when --mutation-config alone is given without --mutation", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local err = args.parse({ "--mutation-baseline=" .. file, "spec" })
-
-      assert.match("require %-%-mutation", err)
-    end)
-
-    it("reads the exclude file path", function()
-      local file = helper.test_data:create_file("exclude.json", "{}")
-
-      local opts = args.parse({ "--mutation", "--mutation-exclude=" .. file, "spec" })
-
-      assert.equal(file, opts.mutation_exclude)
-    end)
-
-    it("leaves opts.mutation_exclude nil without --mutation-exclude", function()
-      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_exclude)
-    end)
-
-    it("errors when the --mutation-exclude file does not exist", function()
-      local err = args.parse({ "--mutation", "--mutation-exclude=/no/such.json", "spec" })
-
-      assert.match("%-%-mutation%-exclude file not found", err)
-    end)
-
-    it("errors when --mutation-exclude alone is given without --mutation", function()
-      local file = helper.test_data:create_file("exclude.json", "{}")
-
-      local err = args.parse({ "--mutation-exclude=" .. file, "spec" })
+      local err = args.parse({ "--mutation-config=" .. file, "spec" })
 
       assert.match("require %-%-mutation", err)
     end)

@@ -892,13 +892,13 @@ describe("ntf --mutation", function()
     assert.equal(0, obj.code)
   end)
 
-  it("leaves a mutant listed in --mutation-baseline out of the score as equivalent", function()
+  it("leaves a mutant listed in the --mutation-config baseline out of the score as equivalent", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
-      "baseline.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = {
+        baseline = {
           {
             path = "lua/mod.lua",
             col = 7,
@@ -913,7 +913,7 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
@@ -927,13 +927,13 @@ describe("ntf --mutation", function()
     assert.equal(0, results.counts.survived)
   end)
 
-  it("exits non-zero when a --mutation-baseline entry matches nothing", function()
+  it("exits non-zero when a --mutation-config baseline entry matches nothing", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
-      "baseline.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = {
+        baseline = {
           {
             path = "lua/mod.lua",
             col = 7,
@@ -948,22 +948,22 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
     assert.equal(1, obj.code)
     assert.match("LOST BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
-    assert.match("1 %-%-mutation%-baseline entry matched no mutant", obj.stderr)
+    assert.match("1 baseline entry matched no mutant", obj.stderr)
   end)
 
-  it("exits non-zero when a --mutation-baseline invariant_spec names no passing test", function()
+  it("exits non-zero when a --mutation-config baseline invariant_spec names no passing test", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
-      "baseline.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = {
+        baseline = {
           {
             path = "lua/mod.lua",
             col = 7,
@@ -979,7 +979,7 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
@@ -988,13 +988,13 @@ describe("ntf --mutation", function()
     assert.match("mutation gate failed: 1 unpinned baseline entry", obj.stderr)
   end)
 
-  it("keeps a --mutation-baseline entry whose invariant_spec passed", function()
+  it("keeps a --mutation-config baseline entry whose invariant_spec passed", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
-      "baseline.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = {
+        baseline = {
           {
             path = "lua/mod.lua",
             col = 7,
@@ -1010,7 +1010,7 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
@@ -1018,19 +1018,19 @@ describe("ntf --mutation", function()
     assert.no.match("UNPINNED BASELINE", obj.stdout)
   end)
 
-  it("leaves a --mutation-exclude path unmutated", function()
+  it("leaves a --mutation-config exclude path unmutated", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
     helper.test_data:create_file(
-      "exclude.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = { { path = "lua/dead.lua", rationale = "no spec drives it, so its mutants measure nothing" } },
+        exclude = { { path = "lua/dead.lua", rationale = "no spec drives it, so its mutants measure nothing" } },
       })
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
@@ -1039,50 +1039,50 @@ describe("ntf --mutation", function()
     assert.match("SURVIVED lua/mod%.lua", obj.stdout)
   end)
 
-  it("exits non-zero when a --mutation-exclude entry covers no measurable file", function()
+  it("exits non-zero when a --mutation-config exclude entry covers no measurable file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
-      "exclude.json",
+      "mutation.json",
       vim.json.encode({
         version = 1,
-        entries = { { path = "lua/gone.lua", rationale = "stale: the file it names is no longer there" } },
+        exclude = { { path = "lua/gone.lua", rationale = "stale: the file it names is no longer there" } },
       })
     )
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
     assert.equal(1, obj.code)
     assert.match("UNUSED EXCLUDE lua/gone%.lua", obj.stdout)
-    assert.match("1 %-%-mutation%-exclude entry covering nothing", obj.stderr)
+    assert.match("1 exclude entry covering nothing", obj.stderr)
   end)
 
-  it("rejects an invalid --mutation-exclude before running the tests", function()
+  it("rejects an invalid --mutation-config exclude before running the tests", function()
     local root, results_file = mutation_project()
-    helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))
+    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, exclude = { { path = "x" } } }))
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-exclude=exclude.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
     assert.equal(2, obj.code)
-    assert.match("entries%[1%] needs a string rationale", obj.stderr)
+    assert.match("exclude%[1%] needs a string rationale", obj.stderr)
   end)
 
-  it("rejects an invalid --mutation-baseline before running the tests", function()
+  it("rejects an invalid --mutation-config baseline before running the tests", function()
     local root, results_file = mutation_project()
-    helper.test_data:create_file("baseline.json", vim.json.encode({ version = 1, entries = { { path = "x" } } }))
+    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, baseline = { { path = "x" } } }))
 
     local obj = helper.run_cli(
-      { "--mutation", "--mutation-baseline=baseline.json", "--mutation-results=" .. results_file, "spec" },
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
       root
     )
 
     assert.equal(2, obj.code)
-    assert.match("entries%[1%]", obj.stderr)
+    assert.match("baseline%[1%]", obj.stderr)
     assert.no.match("passed", obj.stdout)
   end)
 

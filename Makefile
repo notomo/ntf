@@ -24,8 +24,7 @@ MUTATION_TARGETS=mutation mutation_list mutation_matrix mutation_verify_baseline
 # Skip init_spec.lua rather than run the whole suite: its bin/ntf end-to-end.
 $(MUTATION_TARGETS): MUTATION_FLAGS += \
 	--exclude-spec=spec/lua/${PLUGIN_NAME}/init_spec.lua \
-	--mutation-baseline=spec/mutation_baseline.json \
-	--mutation-exclude=spec/mutation_exclude.json
+	--mutation-config=spec/mutation.json
 
 mutation: MUTATION_FLAGS += --mutation-strict
 

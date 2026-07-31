@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "entries": [
+  "baseline": [
     {
       "path": "lua/mymod.lua",
       "col": 13,
@@ -10,6 +10,12 @@
       "line": "  return n > 0",
       "rationale": "the specs only ever ask about 0, whose answer the shifted boundary leaves false",
       "invariant_spec": "is false at the boundary"
+    }
+  ],
+  "exclude": [
+    {
+      "path": "lua/launcher.lua",
+      "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
     }
   ]
 }

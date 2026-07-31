@@ -106,26 +106,26 @@ run_ntf({
 local mutation_command = "ntf --mutation"
 local mutation_strict_command = "ntf --mutation --mutation-strict"
 
-local mutation_baseline_path = doc_dir .. "/mutation_baseline.json"
-vim.fn.writefile(vim.fn.readfile(mutation_baseline_path), vim.fs.joinpath(project_dir, "spec/mutation_baseline.json"))
+local mutation_config_path = doc_dir .. "/mutation_config.json"
+vim.fn.writefile(vim.fn.readfile(mutation_config_path), vim.fs.joinpath(project_dir, "spec/mutation.json"))
 run_ntf({
   "--mutation=lua/mymod.lua",
   "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-baseline=spec/mutation_baseline.json",
+  "--mutation-config=spec/mutation.json",
   "--mutation-strict",
   "spec",
 }, { cwd = project_dir })
-local mutation_baseline_command = "ntf --mutation --mutation-baseline=spec/mutation_baseline.json"
+local mutation_config_command = "ntf --mutation --mutation-config=spec/mutation.json"
 
 run_ntf({
   "--mutation=lua/mymod.lua",
   "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-baseline=spec/mutation_baseline.json",
+  "--mutation-config=spec/mutation.json",
   "--mutation-verify-baseline",
   "spec",
 }, { cwd = project_dir })
 local mutation_verify_baseline_command =
-  "ntf --mutation --mutation-baseline=spec/mutation_baseline.json --mutation-verify-baseline"
+  "ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline"
 
 run_ntf({
   "--mutation=lua/mymod.lua",
@@ -135,15 +135,12 @@ run_ntf({
 }, { cwd = project_dir })
 local mutation_matrix_command = "ntf --mutation --mutation-matrix"
 
-local mutation_exclude_path = doc_dir .. "/mutation_exclude.json"
-vim.fn.writefile(vim.fn.readfile(mutation_exclude_path), vim.fs.joinpath(project_dir, "spec/mutation_exclude.json"))
 run_ntf({
   "--mutation",
   "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-exclude=spec/mutation_exclude.json",
+  "--mutation-config=spec/mutation.json",
   "spec",
 }, { cwd = project_dir })
-local mutation_exclude_command = "ntf --mutation --mutation-exclude=spec/mutation_exclude.json"
 
 local documented_flags = {} --- @type table<string, true> keyed by the `args.flags` token
 for _, f in ipairs(args.flags) do
@@ -157,10 +154,9 @@ for _, command in ipairs({
   exclude_code_command,
   mutation_command,
   mutation_strict_command,
-  mutation_baseline_command,
+  mutation_config_command,
   mutation_verify_baseline_command,
   mutation_matrix_command,
-  mutation_exclude_command,
 }) do
   for token in command:gmatch("%-%-[%w-]+") do
     if not documented_flags[token] then
@@ -335,20 +331,24 @@ Two limits are worth knowing. A mutant is spliced in when the module is
 its original source and is reported as not applied — never as a survivor. And
 some mutants are equivalent to the code they replace, which no test can detect.
 Rather than re-reviewing those survivors on every run, record each one — with
-the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:]],
-          util.help_code_block_from_file(mutation_baseline_path, { language = "json" }),
-          util.help_code_block(mutation_baseline_command, { language = "sh" }),
+the reason — in the `baseline` of a config file and pass it with
+`--mutation-config=FILE`:]],
+          util.help_code_block_from_file(mutation_config_path, { language = "json" }),
+          util.help_code_block(mutation_config_command, { language = "sh" }),
           [[
-A listed mutant is reported as equivalent and leaves the score, which can then
-reach 100 and be held there with `--mutation-strict`. An entry is copied from
-the survivor's record in the results file (`path` relative to the working
-directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
-the mutated `line`; ntf only reads the file, so keep it in the repository and
-edit it by hand. An entry names its mutant by the line's text rather than its
-number: it keeps matching while the code merely moves, and when the marked line
-itself changes the run fails, listing the entry as LOST — the judgement has to
-be made again, by fixing the entry or deleting it. The `rationale` is required;
-it is what that later judgement starts from.
+The file carries the whole mutation policy, one section per kind of judgement —
+`exclude` is the second, covered below — and either section may be left out.
+
+A listed `baseline` mutant is reported as equivalent and leaves the score, which
+can then reach 100 and be held there with `--mutation-strict`. An entry is
+copied from the survivor's record in the results file (`path` relative to the
+working directory, `col`, `operator`, `original`, `replacement`) plus the exact
+text of the mutated `line`; ntf only reads the file, so keep it in the
+repository and edit it by hand. An entry names its mutant by the line's text
+rather than its number: it keeps matching while the code merely moves, and when
+the marked line itself changes the run fails, listing the entry as LOST — the
+judgement has to be made again, by fixing the entry or deleting it. The
+`rationale` is required; it is what that later judgement starts from.
 
 A rationale usually rests on a fact from somewhere else — what the callers pass,
 what shape another module hands over, what the runtime does with a value. That
@@ -370,15 +370,14 @@ A baseline answers for one mutant. Some files instead have to stay out of the
 run whole: code that only ever executes in a process no spec drives, where every
 mutant comes back uncovered rather than detected. `--exclude-code=PATH` does
 that, but it takes no reason, so such a list grows quietly and outlives what put
-each path on it. `--mutation-exclude=FILE` is the same exclusion with a required
-`rationale` per path, and it fails the run — reporting UNUSED EXCLUDE — when an
-entry covers none of the measurable files, so a path that has been renamed or
-already covered by a broader entry has to be answered for:]],
-          util.help_code_block_from_file(mutation_exclude_path, { language = "json" }),
-          util.help_code_block(mutation_exclude_command, { language = "sh" }),
-          [[
-The two flags are not interchangeable. `--exclude-code` drops a path from the
-code under test altogether, which is what a vendored copy wants; an entry here
+each path on it. The config file's `exclude` section — shown above — is the same
+exclusion with a required `rationale` per path, and it fails the run — reporting
+UNUSED EXCLUDE — when an entry covers none of the measurable files, so a path
+that has been renamed or already covered by a broader entry has to be answered
+for.
+
+The two are not interchangeable. `--exclude-code` drops a path from the code
+under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.]],
         }, "\n")
       end,

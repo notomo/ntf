@@ -1,7 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local exclude = require("ntf.core.mutation.exclude")
-local helper = require("ntf.test.helper")
 
 --- @param overrides table?
 --- @return table
@@ -12,63 +11,24 @@ local function entry(overrides)
   }, overrides or {})
 end
 
-describe("ntf.core.mutation.exclude.load", function()
-  before_each(helper.before_each)
-  after_each(helper.after_each)
-
-  it("loads the entries", function()
-    local file = helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = { entry() } }))
-
-    local loaded = assert(exclude.load(file))
-
-    assert.equal(1, #loaded)
-    assert.equal("lua/mod", loaded[1].path)
-  end)
-
-  it("rejects a file that is not JSON", function()
-    local file = helper.test_data:create_file("exclude.json", "not json")
-
-    assert.match("invalid JSON", exclude.load(file))
-  end)
-
-  it("rejects an unsupported version", function()
-    local file = helper.test_data:create_file("exclude.json", vim.json.encode({ version = 2, entries = {} }))
-
-    assert.match("expected version 1", exclude.load(file))
+describe("ntf.core.mutation.exclude.validate", function()
+  it("accepts an entry", function()
+    assert.is_nil(exclude.validate(entry()))
   end)
 
   it("rejects an entry that lacks a field", function()
     local incomplete = entry()
     incomplete.path = nil
-    local file =
-      helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = { incomplete } }))
 
-    assert.match("entries%[1%] needs a string path", exclude.load(file))
+    assert.match("needs a string path", exclude.validate(incomplete))
   end)
 
   it("rejects a blank rationale", function()
-    local file = helper.test_data:create_file(
-      "exclude.json",
-      vim.json.encode({ version = 1, entries = { entry({ rationale = " " }) } })
-    )
-
-    assert.match("entries%[1%] needs a non%-empty rationale", exclude.load(file))
+    assert.match("needs a non%-empty rationale", exclude.validate(entry({ rationale = " " })))
   end)
 
   it("rejects an entry that is not an object", function()
-    local file = helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = { "nope" } }))
-
-    assert.match("entries%[1%] is not an object", exclude.load(file))
-  end)
-
-  it("rejects a file that cannot be read", function()
-    assert.match("cannot be read", exclude.load(vim.fs.joinpath(helper.test_data.full_path, "missing.json")))
-  end)
-
-  it("rejects a document whose entries are not an array", function()
-    local file = helper.test_data:create_file("exclude.json", vim.json.encode({ version = 1, entries = "nope" }))
-
-    assert.match("expected an entries array", exclude.load(file))
+    assert.match("is not an object", exclude.validate("nope"))
   end)
 end)
 

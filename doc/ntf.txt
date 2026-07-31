@@ -19,9 +19,8 @@ USAGE                                                              *ntf-USAGE*
     --mutation[=PATH]           mutation-test the covered code (only under PATH, if given) once the tests pass
     --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
     --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
-    --mutation-baseline=FILE    leave the known-equivalent mutants listed in FILE out of the score; exit non-zero when an entry matches nothing
-    --mutation-exclude=FILE     leave the paths listed in FILE unmutated, each with its reason; exit non-zero when an entry covers nothing
-    --mutation-verify-baseline  run the --mutation-baseline entries instead of trusting them; exit non-zero when a test kills one
+    --mutation-config=FILE      take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+    --mutation-verify-baseline  run the --mutation-config baseline entries instead of trusting them; exit non-zero when a test kills one
     --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
     -h, --help                  show this help
 
@@ -212,11 +211,12 @@ Two limits are worth knowing. A mutant is spliced in when the module is
 its original source and is reported as not applied — never as a survivor. And
 some mutants are equivalent to the code they replace, which no test can detect.
 Rather than re-reviewing those survivors on every run, record each one — with
-the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:
+the reason — in the `baseline` of a config file and pass it with
+`--mutation-config=FILE`:
 >json
   {
     "version": 1,
-    "entries": [
+    "baseline": [
       {
         "path": "lua/mymod.lua",
         "col": 13,
@@ -227,22 +227,31 @@ the reason — in a baseline file and pass it with `--mutation-baseline=FILE`:
         "rationale": "the specs only ever ask about 0, whose answer the shifted boundary leaves false",
         "invariant_spec": "is false at the boundary"
       }
+    ],
+    "exclude": [
+      {
+        "path": "lua/launcher.lua",
+        "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
+      }
     ]
   }
 <
 >sh
-  ntf --mutation --mutation-baseline=spec/mutation_baseline.json
+  ntf --mutation --mutation-config=spec/mutation.json
 <
-A listed mutant is reported as equivalent and leaves the score, which can then
-reach 100 and be held there with `--mutation-strict`. An entry is copied from
-the survivor's record in the results file (`path` relative to the working
-directory, `col`, `operator`, `original`, `replacement`) plus the exact text of
-the mutated `line`; ntf only reads the file, so keep it in the repository and
-edit it by hand. An entry names its mutant by the line's text rather than its
-number: it keeps matching while the code merely moves, and when the marked line
-itself changes the run fails, listing the entry as LOST — the judgement has to
-be made again, by fixing the entry or deleting it. The `rationale` is required;
-it is what that later judgement starts from.
+The file carries the whole mutation policy, one section per kind of judgement —
+`exclude` is the second, covered below — and either section may be left out.
+
+A listed `baseline` mutant is reported as equivalent and leaves the score, which
+can then reach 100 and be held there with `--mutation-strict`. An entry is
+copied from the survivor's record in the results file (`path` relative to the
+working directory, `col`, `operator`, `original`, `replacement`) plus the exact
+text of the mutated `line`; ntf only reads the file, so keep it in the
+repository and edit it by hand. An entry names its mutant by the line's text
+rather than its number: it keeps matching while the code merely moves, and when
+the marked line itself changes the run fails, listing the entry as LOST — the
+judgement has to be made again, by fixing the entry or deleting it. The
+`rationale` is required; it is what that later judgement starts from.
 
 A rationale usually rests on a fact from somewhere else — what the callers pass,
 what shape another module hands over, what the runtime does with a value. That
@@ -259,32 +268,20 @@ runs the listed mutants instead of trusting them and exits non-zero, reporting
 each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
 stale judgement the code line never gave away. Run it after editing the baseline:
 >sh
-  ntf --mutation --mutation-baseline=spec/mutation_baseline.json --mutation-verify-baseline
+  ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline
 <
 A baseline answers for one mutant. Some files instead have to stay out of the
 run whole: code that only ever executes in a process no spec drives, where every
 mutant comes back uncovered rather than detected. `--exclude-code=PATH` does
 that, but it takes no reason, so such a list grows quietly and outlives what put
-each path on it. `--mutation-exclude=FILE` is the same exclusion with a required
-`rationale` per path, and it fails the run — reporting UNUSED EXCLUDE — when an
-entry covers none of the measurable files, so a path that has been renamed or
-already covered by a broader entry has to be answered for:
->json
-  {
-    "version": 1,
-    "entries": [
-      {
-        "path": "lua/launcher.lua",
-        "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
-      }
-    ]
-  }
-<
->sh
-  ntf --mutation --mutation-exclude=spec/mutation_exclude.json
-<
-The two flags are not interchangeable. `--exclude-code` drops a path from the
-code under test altogether, which is what a vendored copy wants; an entry here
+each path on it. The config file's `exclude` section — shown above — is the same
+exclusion with a required `rationale` per path, and it fails the run — reporting
+UNUSED EXCLUDE — when an entry covers none of the measurable files, so a path
+that has been renamed or already covered by a broader entry has to be answered
+for.
+
+The two are not interchangeable. `--exclude-code` drops a path from the code
+under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.
 
 ==============================================================================

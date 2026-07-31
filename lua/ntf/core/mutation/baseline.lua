@@ -2,8 +2,6 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
-local VERSION = 1
-
 --- @class NtfMutationBaselineEntry a mutant judged impossible to kill
 --- @field path string working-directory-relative path of the mutated file
 --- @field col integer 0-based start column
@@ -26,7 +24,7 @@ local STRING_FIELDS = { "path", "operator", "original", "replacement", "line", "
 
 --- @param entry any
 --- @return string? # what is wrong with the entry
-local function validate(entry)
+function M.validate(entry)
   if type(entry) ~= "table" then
     return "is not an object"
   end
@@ -47,39 +45,6 @@ local function validate(entry)
     end
   end
   return nil
-end
-
---- @param path string
---- @return NtfMutationBaselineEntry[]|string # entries, or an error message
-function M.load(path)
-  local invalid = function(message)
-    return ("--mutation-baseline %s: %s"):format(path, message)
-  end
-
-  local f = io.open(path, "r")
-  if not f then
-    return invalid("cannot be read")
-  end
-  local content = f:read("*a")
-  f:close()
-
-  local ok, decoded = pcall(vim.json.decode, content)
-  if not ok then
-    return invalid("invalid JSON: " .. decoded)
-  end
-  if type(decoded) ~= "table" or decoded.version ~= VERSION then
-    return invalid(("expected version %d"):format(VERSION))
-  end
-  if type(decoded.entries) ~= "table" then
-    return invalid("expected an entries array")
-  end
-  for index, entry in ipairs(decoded.entries) do
-    local err = validate(entry)
-    if err then
-      return invalid(("entries[%d] %s"):format(index, err))
-    end
-  end
-  return decoded.entries
 end
 
 --- @param entries NtfMutationBaselineEntry[]
