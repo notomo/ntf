@@ -11,7 +11,6 @@ local M = {}
 --- @class NtfMutantTask one mutant and the tests that can detect it
 --- @field mutant NtfMutant
 --- @field trials NtfMutantTrial[] cheapest first, so a kill is found early
---- @field exhaustive boolean? keep going after a kill, to learn the mutant's whole killer set
 
 --- @param baseline_ms number
 --- @param timeout integer the run's per-test timeout in ms (0 disables)
@@ -63,7 +62,7 @@ function M.run(tasks, opts)
     local task = tasks[task_index]
     local trial = task.trials[trial_index]
     if not trial then
-      return settle(task_index, verdict.exhausted(progress, task.exhaustive))
+      return settle(task_index, verdict.exhausted(progress))
     end
 
     driver.launch(trial.item, {
@@ -80,7 +79,7 @@ function M.run(tasks, opts)
       },
     }, function(outcome)
       local ok, err = xpcall(function()
-        local settled, next_progress = verdict.step(outcome, progress, task.exhaustive)
+        local settled, next_progress = verdict.step(outcome, progress)
         if settled then
           return settle(task_index, settled)
         end

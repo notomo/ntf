@@ -86,23 +86,6 @@ describe("ntf.core.mutation.results", function()
     assert.is_nil(decoded.score)
   end)
 
-  it("round-trips the killer set of a matrix run", function()
-    local out = helper.test_data:path("ntf-mutation.json")
-    local killed = record("/x.lua", 1, "flip-boolean", "killed")
-    killed.killers = { "spec a", "spec b" }
-    local summary = {
-      records = { killed, record("/x.lua", 2, "flip-boolean", "killed") },
-      counts = { killed = 2, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
-      score = 100,
-    }
-
-    results.write(out, summary)
-
-    local decoded = assert(results.read(out))
-    assert.same({ "spec a", "spec b" }, decoded.files["/x.lua"][1].killers)
-    assert.is_nil(decoded.files["/x.lua"][2].killers)
-  end)
-
   it("writes an empty file set as a JSON object, which an empty Lua table would encode as `[]` instead", function()
     local out = helper.test_data:path("ntf-mutation.json")
 

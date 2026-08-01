@@ -16,18 +16,11 @@ spec/.shared/neovim-plugin.mk:
 
 REQUIREALL_IGNORE_MODULES=ntf.core.worker
 
-# mutation_matrix reuses the same self-hosting setup to report which specs never
-# solely detect a mutant (--mutation-matrix); it shares mutation's exclusions and
-# baseline but not its --mutation-strict gate, since it reports rather than gates.
-MUTATION_TARGETS=mutation mutation_list mutation_matrix mutation_verify_baseline mutation_ci
+MUTATION_TARGETS=mutation mutation_list mutation_verify_baseline mutation_ci
 
 $(MUTATION_TARGETS): MUTATION_FLAGS += --mutation-config=spec/mutation.json
 
 mutation: MUTATION_FLAGS += --mutation-strict
-
-mutation_matrix: MUTATION_FLAGS += --mutation-matrix
-mutation_matrix: FORCE deps
-	$(NTF) ${MUTATION_FLAGS} ${EXCLUDE_CODE_FLAGS} ${SPEC_DIR}
 
 # mutation_verify_baseline re-runs the baseline entries alone
 # (--mutation-verify-baseline=only) and fails any a test can now kill. Kept out

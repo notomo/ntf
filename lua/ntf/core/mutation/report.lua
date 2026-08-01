@@ -1,5 +1,4 @@
 local painter = require("ntf.core.controller.report").painter
-local redundancy = require("ntf.core.mutation.redundancy")
 
 local M = {}
 
@@ -76,17 +75,6 @@ function M.summary(summary, cwd, opts)
           mutant.original,
           mutant.replacement
         )
-      )
-    end
-  end
-
-  local redundant = redundancy.analyze(summary.records)
-  if redundant.mutants > 0 then
-    table.insert(lines, ("Matrix: %d mutants fully tried"):format(redundant.mutants))
-    for _, test in ipairs(redundant.tests) do
-      table.insert(
-        lines,
-        ("%s %s (detected %d, none of them alone)"):format(paint("yellow", "REDUNDANT"), test.name, test.detected)
       )
     end
   end

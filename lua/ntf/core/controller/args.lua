@@ -3,8 +3,6 @@ local M = {}
 --- @type string[] the mutant statuses `--mutation-strict` can gate on; the bare flag selects all of them
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
-local DEFAULT_MATRIX_CAP = math.huge
-
 --- @type string the `--mutation-verify-baseline` value leaving every other mutant unrun
 local VERIFY_BASELINE_ONLY = "only"
 
@@ -23,7 +21,6 @@ local VERIFY_BASELINE_ONLY = "only"
 --- @field mutation boolean mutation-test the covered code after a passing run
 --- @field mutation_path string? restrict the mutated files to this file or directory
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
---- @field mutation_matrix number? record every killer of each mutant covered by at most this many tests (math.huge for all of them); nil records only the first
 --- @field mutation_config string? mutation policy file (JSON): the known-equivalent mutants and the unmutated paths
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
@@ -155,23 +152,6 @@ M.flags = {
     end,
   },
   {
-    name = "--mutation-matrix",
-    value = "N",
-    optional = true,
-    description = "record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)",
-    set = function(opts, value)
-      opts.mutation_matrix = DEFAULT_MATRIX_CAP
-      if value == nil then
-        return
-      end
-      local cap = tonumber(value)
-      if not cap or cap < 1 then
-        return "invalid --mutation-matrix value (expected a test count >= 1)"
-      end
-      opts.mutation_matrix = cap
-    end,
-  },
-  {
     name = "--mutation-config",
     value = "FILE",
     description = "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing",
@@ -277,7 +257,6 @@ function M.parse(argv)
     mutation = false,
     mutation_path = nil,
     mutation_strict = nil,
-    mutation_matrix = nil,
     mutation_config = nil,
     mutation_verify_baseline = false,
     mutation_verify_baseline_only = false,
@@ -353,20 +332,17 @@ function M.parse(argv)
       return "--exclude-spec path not found: " .. path
     end
   end
-  local mutation_only_flag = opts.mutation_strict
-    or opts.mutation_matrix
-    or opts.mutation_config
-    or opts.mutation_verify_baseline
+  local mutation_only_flag = opts.mutation_strict or opts.mutation_config or opts.mutation_verify_baseline
   if not opts.mutation and (mutation_only_flag or seen["--mutation-results"]) then
-    return "--mutation-strict, --mutation-matrix, --mutation-config, --mutation-verify-baseline, and --mutation-results require --mutation"
+    return "--mutation-strict, --mutation-config, --mutation-verify-baseline, and --mutation-results require --mutation"
   end
   if opts.mutation_verify_baseline and not opts.mutation_config then
     return "--mutation-verify-baseline requires --mutation-config"
   end
-  if opts.mutation_verify_baseline_only and (opts.mutation_strict or opts.mutation_matrix) then
+  if opts.mutation_verify_baseline_only and opts.mutation_strict then
     return "--mutation-verify-baseline="
       .. VERIFY_BASELINE_ONLY
-      .. " leaves the other mutants unrun, so --mutation-strict and --mutation-matrix have nothing to report"
+      .. " leaves the other mutants unrun, so --mutation-strict has nothing to report"
   end
   if
     opts.mutation_path

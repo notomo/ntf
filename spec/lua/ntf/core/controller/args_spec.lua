@@ -331,38 +331,6 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_nil(opts.mutation_path)
     end)
 
-    it("leaves the matrix uncapped for bare --mutation-matrix", function()
-      local opts = args.parse({ "--mutation", "--mutation-matrix", "spec" })
-
-      assert.equal(math.huge, opts.mutation_matrix)
-    end)
-
-    it("treats --mutation-matrix= with an empty value as bare --mutation-matrix", function()
-      local opts = args.parse({ "--mutation", "--mutation-matrix=", "spec" })
-
-      assert.equal(math.huge, opts.mutation_matrix)
-    end)
-
-    it("reads the cap from --mutation-matrix=N", function()
-      assert.equal(1, args.parse({ "--mutation", "--mutation-matrix=1", "spec" }).mutation_matrix)
-      assert.equal(50, args.parse({ "--mutation", "--mutation-matrix=50", "spec" }).mutation_matrix)
-    end)
-
-    it("errors on a --mutation-matrix cap below one test", function()
-      assert.match("invalid %-%-mutation%-matrix value", args.parse({ "--mutation", "--mutation-matrix=0", "spec" }))
-      assert.match("invalid %-%-mutation%-matrix value", args.parse({ "--mutation", "--mutation-matrix=x", "spec" }))
-    end)
-
-    it("records only the first killer without --mutation-matrix", function()
-      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_matrix)
-    end)
-
-    it("errors when --mutation-matrix alone is given without --mutation", function()
-      local err = args.parse({ "--mutation-matrix", "spec" })
-
-      assert.match("require %-%-mutation", err)
-    end)
-
     it("reads the config file path", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
@@ -446,21 +414,7 @@ describe("ntf.core.controller.args.parse", function()
         "spec",
       })
 
-      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
-    end)
-
-    it("errors when --mutation-verify-baseline=only is combined with --mutation-matrix", function()
-      local file = helper.test_data:create_file("mutation.json", "{}")
-
-      local err = args.parse({
-        "--mutation",
-        "--mutation-config=" .. file,
-        "--mutation-verify-baseline=only",
-        "--mutation-matrix",
-        "spec",
-      })
-
-      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
+      assert.match("%-%-mutation%-strict has nothing to report", err)
     end)
 
     it("errors when --mutation-verify-baseline alone is given without --mutation", function()

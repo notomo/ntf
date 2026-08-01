@@ -37,7 +37,6 @@ Options:
   --coverage[=FILE]                  measure line coverage; write luacov.stats.out (or FILE) and print a summary
   --mutation[=PATH]                  mutation-test the covered code (only under PATH, if given) once the tests pass
   --mutation-strict[=LIST]           exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
-  --mutation-matrix[=N]              record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
   --mutation-config=FILE             take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
   --mutation-verify-baseline[=only]  run the --mutation-config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one (=only leaves the other mutants unrun, scoring nothing and writing no results file)
   --mutation-results=FILE            mutation results output path (default: ntf-mutation.json)
