@@ -227,6 +227,33 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("BASELINE KILLABLE lua/a%.lua:2 swap%-relational: < %-> <=", text)
   end)
 
+  it("counts the baseline entries re-run in place of a score when verifying the baseline", function()
+    local summary = {
+      records = {
+        record(abs("lua/a.lua"), 1, "equivalent"),
+        record(abs("lua/a.lua"), 2, "equivalent"),
+        record(abs("lua/a.lua"), 3, "baseline_killable"),
+      },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 2,
+        baseline_killable = 1,
+      },
+      verified = 2,
+    }
+
+    local text = report.summary(summary, root, { color = false })
+
+    assert.match("Baseline: 2/3 entries re%-run\n", text)
+    assert.match("BASELINE KILLABLE lua/a%.lua:3 swap%-relational: < %-> <=", text)
+    local score_line = "Mutation:"
+    assert.no.match(score_line, text)
+  end)
+
   it("lists the redundant tests once the killer sets are known", function()
     local killed = record(abs("lua/a.lua"), 1, "killed")
     killed.killers = { "spec a", "spec b" }

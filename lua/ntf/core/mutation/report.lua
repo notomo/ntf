@@ -40,7 +40,12 @@ function M.summary(summary, cwd, opts)
   local counts = summary.counts
 
   local lines = {}
-  if not summary.score then
+  if summary.verified then
+    table.insert(
+      lines,
+      ("Baseline: %d/%d entries re-run"):format(summary.verified, counts.equivalent + counts.baseline_killable)
+    )
+  elseif not summary.score then
     table.insert(lines, "Mutation: n/a (no mutants)")
   else
     local detected = counts.killed + counts.timeout

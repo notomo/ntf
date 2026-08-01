@@ -20,7 +20,7 @@ USAGE                                                              *ntf-USAGE*
     --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
     --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
     --mutation-config=FILE      take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
-    --mutation-verify-baseline  run the --mutation-config baseline entries instead of trusting them; exit non-zero when a test kills one
+    --mutation-verify-baseline  run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one
     --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
     -h, --help                  show this help
 
@@ -272,7 +272,9 @@ An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
 runs the listed mutants instead of trusting them and exits non-zero, reporting
 each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
-stale judgement the code line never gave away. Run it after editing the baseline:
+stale judgement the code line never gave away. It runs those entries alone,
+scoring no other mutant and writing no results file, so it stays a step next to
+the scored run rather than a second one. Run it after editing the baseline:
 >sh
   ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline
 <

@@ -177,7 +177,7 @@ M.flags = {
   },
   {
     name = "--mutation-verify-baseline",
-    description = "run the --mutation-config baseline entries instead of trusting them; exit non-zero when a test kills one",
+    description = "run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one",
     set = function(opts)
       opts.mutation_verify_baseline = true
     end,
@@ -346,6 +346,9 @@ function M.parse(argv)
   end
   if opts.mutation_verify_baseline and not opts.mutation_config then
     return "--mutation-verify-baseline requires --mutation-config"
+  end
+  if opts.mutation_verify_baseline and (opts.mutation_strict or opts.mutation_matrix) then
+    return "--mutation-verify-baseline runs the baseline entries alone, so --mutation-strict and --mutation-matrix have nothing to report"
   end
   if
     opts.mutation_path

@@ -39,7 +39,7 @@ Options:
   --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
   --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
   --mutation-config=FILE      take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
-  --mutation-verify-baseline  run the --mutation-config baseline entries instead of trusting them; exit non-zero when a test kills one
+  --mutation-verify-baseline  run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one
   --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
   -h, --help                  show this help
 

@@ -20,6 +20,7 @@ local M = {}
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status
 --- @field score number? percent detected; nil when nothing was scoreable
+--- @field verified integer? baseline entries re-run; nil unless --mutation-verify-baseline asked for it
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
 --- @field unused_excludes NtfMutationExcludeEntry[] --mutation-config exclude entries covering none of the measurable files
@@ -170,7 +171,7 @@ function M.run(opts, ctx)
           table.insert(task_verify, true)
         end
       end
-    else
+    elseif not opts.mutation_verify_baseline then
       table.insert(records, { mutant = mutant, status = "no_coverage" })
 
       local trials = covering_trials(ctx, durations, mutant)
@@ -219,6 +220,7 @@ function M.run(opts, ctx)
     records = records,
     counts = counts,
     score = score_of(counts),
+    verified = opts.mutation_verify_baseline and #tasks or nil,
     lost = matcher.lost(),
     unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
     unused_excludes = unused_excludes,

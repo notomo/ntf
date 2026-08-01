@@ -399,6 +399,34 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-config", err)
     end)
 
+    it("errors when --mutation-verify-baseline is combined with --mutation-strict", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "--mutation",
+        "--mutation-config=" .. file,
+        "--mutation-verify-baseline",
+        "--mutation-strict",
+        "spec",
+      })
+
+      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
+    end)
+
+    it("errors when --mutation-verify-baseline is combined with --mutation-matrix", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "--mutation",
+        "--mutation-config=" .. file,
+        "--mutation-verify-baseline",
+        "--mutation-matrix",
+        "spec",
+      })
+
+      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
+    end)
+
     it("errors when --mutation-verify-baseline alone is given without --mutation", function()
       local err = args.parse({ "--mutation-verify-baseline", "spec" })
 

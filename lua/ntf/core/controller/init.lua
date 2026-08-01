@@ -28,7 +28,9 @@ function M.mutate(opts, ctx)
   })
   progress.finish()
 
-  require("ntf.core.mutation.results").write(opts.mutation_results, summary)
+  if not opts.mutation_verify_baseline then
+    require("ntf.core.mutation.results").write(opts.mutation_results, summary)
+  end
   io.stdout:write("\n" .. require("ntf.core.mutation.report").summary(summary, ctx.cwd, { color = ctx.color }))
 
   local code = 0

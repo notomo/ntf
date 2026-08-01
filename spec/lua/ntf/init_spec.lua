@@ -927,6 +927,70 @@ describe("ntf --mutation", function()
     assert.equal(0, results.counts.survived)
   end)
 
+  it("runs the baseline entries alone with --mutation-verify-baseline, writing no results file", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 7,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "--mutation",
+      "--mutation-config=mutation.json",
+      "--mutation-verify-baseline",
+      "--mutation-results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
+    local mutant_outside_the_baseline = "NO COVERAGE lua/dead%.lua:"
+    assert.no.match(mutant_outside_the_baseline, obj.stdout)
+    assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+
+  it("exits non-zero when --mutation-verify-baseline finds a baseline entry a test kills", function()
+    local root = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 11,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "stale: the boundary case is asserted",
+          },
+        },
+      })
+    )
+
+    local obj =
+      helper.run_cli({ "--mutation", "--mutation-config=mutation.json", "--mutation-verify-baseline", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
+    assert.match("mutation gate failed: 1 baseline entry killable", obj.stderr)
+  end)
+
   it("exits non-zero when a --mutation-config baseline entry matches nothing", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(

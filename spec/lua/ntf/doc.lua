@@ -125,7 +125,6 @@ local mutation_config_command = "ntf --mutation --mutation-config=spec/mutation.
 
 run_ntf({
   "--mutation=lua/mymod.lua",
-  "--mutation-results=" .. vim.fn.tempname(),
   "--mutation-config=spec/mutation.json",
   "--mutation-verify-baseline",
   "spec",
@@ -369,7 +368,9 @@ An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
 runs the listed mutants instead of trusting them and exits non-zero, reporting
 each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
-stale judgement the code line never gave away. Run it after editing the baseline:]],
+stale judgement the code line never gave away. It runs those entries alone,
+scoring no other mutant and writing no results file, so it stays a step next to
+the scored run rather than a second one. Run it after editing the baseline:]],
           util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
           [[
 A baseline answers for one mutant. Some files instead have to stay out of the
