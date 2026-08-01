@@ -55,6 +55,22 @@ end)
     assert.equal(#items, #results)
   end)
 
+  it("keeps waiting for the item a single worker only starts once the first is done", function()
+    local items = work.plan({
+      helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("one", function() end)
+  ntf.it("two", function() end)
+end)
+]]),
+    })
+
+    local results = pool.run(items, { root = helper.root, jobs = 1 })
+
+    assert.equal(#items, #results)
+  end)
+
   it("merges nothing and calls no coverage callback when coverage is off", function()
     local items = work.plan({ helper.write_spec(one_test) })
     local called = false
