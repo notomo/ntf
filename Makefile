@@ -7,7 +7,7 @@ NTF=./bin/ntf
 endif
 
 REQUIRE_LINT_CONFIG=spec/require_lint.json
-CI_TARGETS=require_lint comment_lint requireall mutation mutation_verify_baseline
+CI_TARGETS=require_lint comment_lint requireall mutation_ci
 
 include spec/.shared/neovim-plugin.mk
 
@@ -19,7 +19,7 @@ REQUIREALL_IGNORE_MODULES=ntf.core.worker
 # mutation_matrix reuses the same self-hosting setup to report which specs never
 # solely detect a mutant (--mutation-matrix); it shares mutation's exclusions and
 # baseline but not its --mutation-strict gate, since it reports rather than gates.
-MUTATION_TARGETS=mutation mutation_list mutation_matrix mutation_verify_baseline
+MUTATION_TARGETS=mutation mutation_list mutation_matrix mutation_verify_baseline mutation_ci
 
 $(MUTATION_TARGETS): MUTATION_FLAGS += --mutation-config=spec/mutation.json
 
@@ -29,9 +29,16 @@ mutation_matrix: MUTATION_FLAGS += --mutation-matrix
 mutation_matrix: FORCE deps
 	$(NTF) ${MUTATION_FLAGS} ${EXCLUDE_CODE_FLAGS} ${SPEC_DIR}
 
-# mutation_verify_baseline re-runs the baseline entries (--mutation-verify-baseline)
-# and fails any a test can now kill. Kept out of the mutation gate to spare its
-# hot path; CI runs it as the backstop.
-mutation_verify_baseline: MUTATION_FLAGS += --mutation-verify-baseline
+# mutation_verify_baseline re-runs the baseline entries alone
+# (--mutation-verify-baseline=only) and fails any a test can now kill. Kept out
+# of the mutation gate to spare its hot path.
+mutation_verify_baseline: MUTATION_FLAGS += --mutation-verify-baseline=only
 mutation_verify_baseline: FORCE deps
+	$(NTF) ${MUTATION_FLAGS} ${EXCLUDE_CODE_FLAGS} ${SPEC_DIR}
+
+# mutation_ci is what CI runs in place of mutation and mutation_verify_baseline:
+# one pass scores the mutants and re-runs the baseline entries, sparing the
+# second run of the whole suite the two targets each need to map its coverage.
+mutation_ci: MUTATION_FLAGS += --mutation-strict --mutation-verify-baseline
+mutation_ci: FORCE deps
 	$(NTF) ${MUTATION_FLAGS} ${EXCLUDE_CODE_FLAGS} ${SPEC_DIR}

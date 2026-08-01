@@ -927,7 +927,7 @@ describe("ntf --mutation", function()
     assert.equal(0, results.counts.survived)
   end)
 
-  it("runs the baseline entries alone with --mutation-verify-baseline, writing no results file", function()
+  it("runs the baseline entries alone with --mutation-verify-baseline=only, writing no results file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
     helper.test_data:create_file(
@@ -951,7 +951,7 @@ describe("ntf --mutation", function()
     local obj = helper.run_cli({
       "--mutation",
       "--mutation-config=mutation.json",
-      "--mutation-verify-baseline",
+      "--mutation-verify-baseline=only",
       "--mutation-results=" .. results_file,
       "spec",
     }, root)
@@ -963,7 +963,44 @@ describe("ntf --mutation", function()
     assert.equal(0, vim.fn.filereadable(results_file))
   end)
 
-  it("exits non-zero when --mutation-verify-baseline finds a baseline entry a test kills", function()
+  it("scores the other mutants in the same pass as a plain --mutation-verify-baseline", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 11,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "stale: the boundary case is asserted",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "--mutation",
+      "--mutation-config=mutation.json",
+      "--mutation-verify-baseline",
+      "--mutation-results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("Mutation: %d+%.%d%%", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.survived)
+  end)
+
+  it("exits non-zero when --mutation-verify-baseline=only finds a baseline entry a test kills", function()
     local root = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -983,8 +1020,10 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj =
-      helper.run_cli({ "--mutation", "--mutation-config=mutation.json", "--mutation-verify-baseline", "spec" }, root)
+    local obj = helper.run_cli(
+      { "--mutation", "--mutation-config=mutation.json", "--mutation-verify-baseline=only", "spec" },
+      root
+    )
 
     assert.equal(1, obj.code)
     assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)

@@ -30,14 +30,19 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   reports what that path's mutants actually do — and say in the rationale
   whether the exclusion is structural or debt.
   `init_spec.lua` is listed in `exclude_spec`, so it still runs — the mutation
-  gate is a superset of `make test`, which is why CI runs `make mutation` instead
-  of both — but it is never picked as a mutant's trial, so a mutant only it
-  reaches comes back NO COVERAGE and has to be reached by a unit spec
+  gate is a superset of `make test`, which is why CI runs a mutation target
+  instead of both — but it is never picked as a mutant's trial, so a mutant only
+  it reaches comes back NO COVERAGE and has to be reached by a unit spec
 - `make mutation_verify_baseline` — after editing the `baseline` of `spec/mutation.json`:
-  must exit 0. It re-runs the listed mutants (`--mutation-verify-baseline`) and
-  fails any a test now kills (reported BASELINE KILLABLE) — kill it with a spec
-  instead, or fix the entry. Kept out of `make mutation` so its hot path stays
-  cheap; CI runs it as the backstop
+  must exit 0. It re-runs the listed mutants and nothing else
+  (`--mutation-verify-baseline=only`) and fails any a test now kills (reported
+  BASELINE KILLABLE) — kill it with a spec instead, or fix the entry. Kept out of
+  `make mutation` so its hot path stays cheap
+- `make mutation_ci` — what CI runs in place of the two above: one pass both
+  scores the mutants and verifies the baseline entries
+  (`--mutation-strict --mutation-verify-baseline`), so the suite is run once
+  rather than once per target to map its coverage. Locally prefer the two
+  narrower targets; run this only to reproduce a CI failure
 - `make doc` — only after changing CLI flags or the test API; regenerates
   `README.md` and `doc/ntf.txt`
 

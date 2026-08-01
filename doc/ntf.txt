@@ -7,22 +7,22 @@ USAGE                                                              *ntf-USAGE*
   Usage: ntf [options] [spec-file-or-dir...]
 
   Options:
-    --timeout=MS                kill a worker after MS milliseconds (default: 60000; 0 disables)
-    --filter=PATTERN            run only tests whose full name matches the Lua pattern
-    --list                      list the tests without running them (with --mutation, run the tests and list the mutants with coverage)
-    --jobs=N                    max parallel nvim workers (default: cpu count)
-    --test-hook=FILE            run a Lua module providing setup/teardown around each test, in its worker
-    --global-hook=FILE          run a Lua module providing setup/teardown once around the whole run, in the launcher process
-    --exclude-code=PATH         leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
-    --exclude-spec=PATH         skip a spec file or directory when discovering tests (repeatable)
-    --coverage[=FILE]           measure line coverage; write luacov.stats.out (or FILE) and print a summary
-    --mutation[=PATH]           mutation-test the covered code (only under PATH, if given) once the tests pass
-    --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
-    --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
-    --mutation-config=FILE      take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
-    --mutation-verify-baseline  run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one
-    --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
-    -h, --help                  show this help
+    --timeout=MS                       kill a worker after MS milliseconds (default: 60000; 0 disables)
+    --filter=PATTERN                   run only tests whose full name matches the Lua pattern
+    --list                             list the tests without running them (with --mutation, run the tests and list the mutants with coverage)
+    --jobs=N                           max parallel nvim workers (default: cpu count)
+    --test-hook=FILE                   run a Lua module providing setup/teardown around each test, in its worker
+    --global-hook=FILE                 run a Lua module providing setup/teardown once around the whole run, in the launcher process
+    --exclude-code=PATH                leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
+    --exclude-spec=PATH                skip a spec file or directory when discovering tests (repeatable)
+    --coverage[=FILE]                  measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    --mutation[=PATH]                  mutation-test the covered code (only under PATH, if given) once the tests pass
+    --mutation-strict[=LIST]           exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
+    --mutation-matrix[=N]              record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
+    --mutation-config=FILE             take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+    --mutation-verify-baseline[=only]  run the --mutation-config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one (=only leaves the other mutants unrun, scoring nothing and writing no results file)
+    --mutation-results=FILE            mutation results output path (default: ntf-mutation.json)
+    -h, --help                         show this help
 
   With no paths, runs the *_spec.lua files under ./spec.
 <
@@ -272,11 +272,16 @@ An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
 runs the listed mutants instead of trusting them and exits non-zero, reporting
 each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
-stale judgement the code line never gave away. It runs those entries alone,
-scoring no other mutant and writing no results file, so it stays a step next to
-the scored run rather than a second one. Run it after editing the baseline:
+stale judgement the code line never gave away. Adding `=only` leaves every other
+mutant unrun, scoring nothing and writing no results file, which is what you want
+right after editing the baseline:
 >sh
-  ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline
+  ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline=only
+<
+Without it the entries are verified in the same pass that scores the rest, so a
+gate that wants both answers pays for one run of the suite instead of two:
+>sh
+  ntf --mutation --mutation-config=spec/mutation.json --mutation-strict --mutation-verify-baseline
 <
 A baseline answers for one mutant. Some files instead have to stay out of the
 run whole: code that only ever executes in a process no spec drives, where every

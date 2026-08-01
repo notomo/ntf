@@ -5,6 +5,9 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
 local DEFAULT_MATRIX_CAP = math.huge
 
+--- @type string the `--mutation-verify-baseline` value leaving every other mutant unrun
+local VERIFY_BASELINE_ONLY = "only"
+
 --- @class NtfOptions
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
@@ -23,6 +26,7 @@ local DEFAULT_MATRIX_CAP = math.huge
 --- @field mutation_matrix number? record every killer of each mutant covered by at most this many tests (math.huge for all of them); nil records only the first
 --- @field mutation_config string? mutation policy file (JSON): the known-equivalent mutants and the unmutated paths
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
+--- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
 --- @field mutation_results string mutation results output path (JSON)
 --- @field help boolean show usage and exit
 
@@ -177,9 +181,20 @@ M.flags = {
   },
   {
     name = "--mutation-verify-baseline",
-    description = "run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one",
-    set = function(opts)
+    value = VERIFY_BASELINE_ONLY,
+    optional = true,
+    description = "run the --mutation-config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one (="
+      .. VERIFY_BASELINE_ONLY
+      .. " leaves the other mutants unrun, scoring nothing and writing no results file)",
+    set = function(opts, value)
       opts.mutation_verify_baseline = true
+      if value == nil then
+        return
+      end
+      if value ~= VERIFY_BASELINE_ONLY then
+        return "invalid --mutation-verify-baseline value (expected " .. VERIFY_BASELINE_ONLY .. ")"
+      end
+      opts.mutation_verify_baseline_only = true
     end,
   },
   {
@@ -265,6 +280,7 @@ function M.parse(argv)
     mutation_matrix = nil,
     mutation_config = nil,
     mutation_verify_baseline = false,
+    mutation_verify_baseline_only = false,
     mutation_results = "ntf-mutation.json",
     help = false,
   }
@@ -347,8 +363,10 @@ function M.parse(argv)
   if opts.mutation_verify_baseline and not opts.mutation_config then
     return "--mutation-verify-baseline requires --mutation-config"
   end
-  if opts.mutation_verify_baseline and (opts.mutation_strict or opts.mutation_matrix) then
-    return "--mutation-verify-baseline runs the baseline entries alone, so --mutation-strict and --mutation-matrix have nothing to report"
+  if opts.mutation_verify_baseline_only and (opts.mutation_strict or opts.mutation_matrix) then
+    return "--mutation-verify-baseline="
+      .. VERIFY_BASELINE_ONLY
+      .. " leaves the other mutants unrun, so --mutation-strict and --mutation-matrix have nothing to report"
   end
   if
     opts.mutation_path

@@ -26,22 +26,22 @@ end
 Usage: ntf [options] [spec-file-or-dir...]
 
 Options:
-  --timeout=MS                kill a worker after MS milliseconds (default: 60000; 0 disables)
-  --filter=PATTERN            run only tests whose full name matches the Lua pattern
-  --list                      list the tests without running them (with --mutation, run the tests and list the mutants with coverage)
-  --jobs=N                    max parallel nvim workers (default: cpu count)
-  --test-hook=FILE            run a Lua module providing setup/teardown around each test, in its worker
-  --global-hook=FILE          run a Lua module providing setup/teardown once around the whole run, in the launcher process
-  --exclude-code=PATH         leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
-  --exclude-spec=PATH         skip a spec file or directory when discovering tests (repeatable)
-  --coverage[=FILE]           measure line coverage; write luacov.stats.out (or FILE) and print a summary
-  --mutation[=PATH]           mutation-test the covered code (only under PATH, if given) once the tests pass
-  --mutation-strict[=LIST]    exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
-  --mutation-matrix[=N]       record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
-  --mutation-config=FILE      take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
-  --mutation-verify-baseline  run the --mutation-config baseline entries alone instead of trusting them, scoring no other mutant and writing no results file; exit non-zero when a test kills one
-  --mutation-results=FILE     mutation results output path (default: ntf-mutation.json)
-  -h, --help                  show this help
+  --timeout=MS                       kill a worker after MS milliseconds (default: 60000; 0 disables)
+  --filter=PATTERN                   run only tests whose full name matches the Lua pattern
+  --list                             list the tests without running them (with --mutation, run the tests and list the mutants with coverage)
+  --jobs=N                           max parallel nvim workers (default: cpu count)
+  --test-hook=FILE                   run a Lua module providing setup/teardown around each test, in its worker
+  --global-hook=FILE                 run a Lua module providing setup/teardown once around the whole run, in the launcher process
+  --exclude-code=PATH                leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)
+  --exclude-spec=PATH                skip a spec file or directory when discovering tests (repeatable)
+  --coverage[=FILE]                  measure line coverage; write luacov.stats.out (or FILE) and print a summary
+  --mutation[=PATH]                  mutation-test the covered code (only under PATH, if given) once the tests pass
+  --mutation-strict[=LIST]           exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
+  --mutation-matrix[=N]              record every test that detects a mutant and report the tests that detect nothing on their own (N restricts it to the mutants covered by at most N tests)
+  --mutation-config=FILE             take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+  --mutation-verify-baseline[=only]  run the --mutation-config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one (=only leaves the other mutants unrun, scoring nothing and writing no results file)
+  --mutation-results=FILE            mutation results output path (default: ntf-mutation.json)
+  -h, --help                         show this help
 
 With no paths, runs the *_spec.lua files under ./spec.
 ```

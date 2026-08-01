@@ -381,16 +381,37 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("%-%-mutation%-config file not found", err)
     end)
 
-    it("verifies the baseline entries with --mutation-verify-baseline", function()
+    it("verifies the baseline entries alongside the scored mutants with --mutation-verify-baseline", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
       local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline", "spec" })
 
       assert.is_true(opts.mutation_verify_baseline)
+      assert.is_false(opts.mutation_verify_baseline_only)
+    end)
+
+    it("leaves the other mutants unrun with --mutation-verify-baseline=only", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline=only", "spec" })
+
+      assert.is_true(opts.mutation_verify_baseline)
+      assert.is_true(opts.mutation_verify_baseline_only)
+    end)
+
+    it("errors on a --mutation-verify-baseline value other than only", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline=all", "spec" })
+
+      assert.match("invalid %-%-mutation%-verify%-baseline value %(expected only%)", err)
     end)
 
     it("leaves the baseline trusted without --mutation-verify-baseline", function()
-      assert.is_false(args.parse({ "--mutation", "spec" }).mutation_verify_baseline)
+      local opts = args.parse({ "--mutation", "spec" })
+
+      assert.is_false(opts.mutation_verify_baseline)
+      assert.is_false(opts.mutation_verify_baseline_only)
     end)
 
     it("errors when --mutation-verify-baseline is given without --mutation-config", function()
@@ -399,10 +420,10 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-config", err)
     end)
 
-    it("errors when --mutation-verify-baseline is combined with --mutation-strict", function()
+    it("gates the scored mutants when --mutation-verify-baseline is combined with --mutation-strict", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local err = args.parse({
+      local opts = args.parse({
         "--mutation",
         "--mutation-config=" .. file,
         "--mutation-verify-baseline",
@@ -410,16 +431,31 @@ describe("ntf.core.controller.args.parse", function()
         "spec",
       })
 
-      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
+      assert.is_true(opts.mutation_verify_baseline)
+      assert.is_true(opts.mutation_strict.survived)
     end)
 
-    it("errors when --mutation-verify-baseline is combined with --mutation-matrix", function()
+    it("errors when --mutation-verify-baseline=only is combined with --mutation-strict", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
       local err = args.parse({
         "--mutation",
         "--mutation-config=" .. file,
-        "--mutation-verify-baseline",
+        "--mutation-verify-baseline=only",
+        "--mutation-strict",
+        "spec",
+      })
+
+      assert.match("%-%-mutation%-strict and %-%-mutation%-matrix have nothing to report", err)
+    end)
+
+    it("errors when --mutation-verify-baseline=only is combined with --mutation-matrix", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "--mutation",
+        "--mutation-config=" .. file,
+        "--mutation-verify-baseline=only",
         "--mutation-matrix",
         "spec",
       })
