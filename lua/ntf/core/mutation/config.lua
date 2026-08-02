@@ -10,7 +10,7 @@ local VERSION = 1
 --- @param decoded table
 --- @param key string name of the section in the document
 --- @param validate fun(entry: any): string? what is wrong with one of its entries
---- @return any # the section's entries, or a string saying what is wrong with it
+--- @return table[]|string # the section's entries, or a string saying what is wrong with it
 local function load_section(decoded, key, validate)
   local entries = decoded[key]
   if entries == nil then
@@ -64,7 +64,7 @@ function M.load(path)
     return invalid(exclude_spec)
   end
 
-  return { baseline = baseline, exclude = exclude, exclude_spec = exclude_spec }
+  return { baseline = baseline, exclude = exclude, exclude_spec = exclude_spec } --[[@as NtfMutationConfig]]
 end
 
 return M
