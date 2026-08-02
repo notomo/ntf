@@ -1,6 +1,7 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local driver = require("ntf.core.worker.driver")
+local watchdog = require("ntf.core.worker.watchdog")
 local work = require("ntf.core.controller.work")
 local helper = require("ntf.test.helper")
 
@@ -178,5 +179,53 @@ end)
 
     assert.equal("passed", outcome.results[1].status)
     assert.is_nil(outcome.timed_out)
+  end)
+end)
+
+describe("ntf.core.worker.driver.payload", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("gives a worker a deadline of its own to be killed at", function()
+    local payload, timeout = driver.payload(item_of(ONE_TEST), { cwd = helper.root, timeout = 1000 })
+
+    assert.equal(1000, timeout)
+    assert.equal(watchdog.deadline(1000), payload.watchdog_ms)
+  end)
+
+  it("gives an untimed worker no deadline of its own", function()
+    local payload, timeout = driver.payload(item_of(ONE_TEST), { cwd = helper.root, timeout = 0 })
+
+    assert.is_nil(timeout)
+    assert.is_nil(payload.watchdog_ms)
+  end)
+end)
+
+describe("ntf.core.worker.driver.kill_all", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("kills a worker still running, so none of them outlives the run", function()
+    local done
+    driver.launch(
+      item_of(NEVER_FINISHES),
+      { root = helper.root, cwd = helper.test_data.full_path, timeout = 0 },
+      function(outcome)
+        done = outcome
+      end
+    )
+
+    assert.equal(1, driver.kill_all())
+
+    vim.wait(30000, function()
+      return done ~= nil
+    end, 20)
+    assert(done, "the worker outlived kill_all")
+  end)
+
+  it("has nothing left to kill once its workers exited on their own", function()
+    launch(item_of(ONE_TEST))
+
+    assert.equal(0, driver.kill_all())
   end)
 end)

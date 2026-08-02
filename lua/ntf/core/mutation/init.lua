@@ -197,7 +197,13 @@ function M.run(opts, ctx)
   for task_index, outcome in pairs(outcomes) do
     local record = records[task_records[task_index]]
     if task_verify[task_index] then
-      if outcome.status == "killed" or outcome.status == "timeout" then
+      -- WHY: a trial that ran out of its budget detected nothing, and under load
+      -- every trial runs out of it, which would make an equivalence report as
+      -- killable on a busy machine and hold on an idle one.
+      -- NOT: counting it as detected the way the score does, where reading a
+      -- timeout as a kill understates the surviving mutants and here it invents
+      -- a failure instead.
+      if outcome.status == "killed" then
         record.status = "baseline_killable"
         record.killed_by = outcome.killed_by
       end

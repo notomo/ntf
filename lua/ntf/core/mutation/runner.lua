@@ -108,6 +108,7 @@ function M.run(tasks, opts)
   vim.wait(budget, function()
     return finished >= total or fatal ~= nil
   end, 20)
+  driver.kill_all()
 
   if fatal then
     error(fatal, 0)

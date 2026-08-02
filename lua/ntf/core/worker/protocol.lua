@@ -11,6 +11,7 @@ local M = {}
 --- @field coverage_excludes string[]? absolute dir prefixes to exclude
 --- @field mutation NtfWorkerMutation? apply this mutation when the module is required
 --- @field cwd string working directory shared with the controller
+--- @field watchdog_ms integer? kill this process after this long, whatever became of the run (absent when the run is untimed)
 
 --- @class NtfWorkerResult the block a worker emits as its last stdout write
 --- @field results NtfResult[]? per-leaf results (absent when the spec failed to load)

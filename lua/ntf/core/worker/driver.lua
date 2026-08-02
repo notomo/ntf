@@ -1,7 +1,11 @@
 local tree = require("ntf.core.tree")
 local protocol = require("ntf.core.worker.protocol")
+local watchdog = require("ntf.core.worker.watchdog")
 
 local M = {}
+
+--- @type table<integer, table> the workers that have not exited yet, vim.SystemObj by pid
+local running = {}
 
 --- @class NtfWorkerOutput
 --- @field file string spec file path
@@ -51,15 +55,53 @@ local function results_of(item, obj, timed_out_ms)
 end
 
 --- @param item NtfWorkItem
+--- @param opts { cwd: string, timeout: integer?, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
+--- @return NtfWorkerPayload
+--- @return integer? # ms after which the run kills the worker, nil when it is untimed
+function M.payload(item, opts)
+  local timeout = item.timeout or opts.timeout
+  if timeout == 0 then
+    timeout = nil
+  end
+
+  local watchdog_ms
+  if timeout then
+    watchdog_ms = watchdog.deadline(timeout)
+  end
+
+  return {
+    file = item.file,
+    node_id = item.node_id,
+    test_hook = opts.test_hook,
+    coverage = opts.coverage or false,
+    coverage_excludes = opts.coverage_excludes,
+    mutation = opts.mutation,
+    cwd = opts.cwd,
+    watchdog_ms = watchdog_ms,
+  },
+    timeout
+end
+
+--- @return integer # workers signalled, so a caller can tell a clean finish from a torn-down one
+function M.kill_all()
+  local killed = 0
+  for _, proc in pairs(running) do
+    pcall(function()
+      proc:kill("sigkill")
+    end)
+    killed = killed + 1
+  end
+  running = {}
+  return killed
+end
+
+--- @param item NtfWorkItem
 --- @param opts { root: string, cwd: string, timeout: integer?, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
 --- @param on_done fun(outcome: NtfWorkerOutcome) called from the process-exit callback (a fast event context)
 function M.launch(item, opts, on_done)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
 
-  local timeout = item.timeout or opts.timeout
-  if timeout == 0 then
-    timeout = nil
-  end
+  local payload, timeout = M.payload(item, opts)
 
   local cmd = {
     vim.v.progpath,
@@ -77,22 +119,16 @@ function M.launch(item, opts, on_done)
     "-c",
     ("lua vim.cmd.luafile({ args = { %q }, magic = { file = false } })"):format(worker),
   }
-  local env = protocol.env({
-    file = item.file,
-    node_id = item.node_id,
-    test_hook = opts.test_hook,
-    coverage = opts.coverage or false,
-    coverage_excludes = opts.coverage_excludes,
-    mutation = opts.mutation,
-    cwd = opts.cwd,
-  })
+  local env = protocol.env(payload)
 
   -- WHY: a worker spinning in pure Lua never reaches Neovim's event loop to
   -- handle SIGTERM, so only SIGKILL is guaranteed to stop a hung test.
   -- NOT: vim.system's `timeout` option, which sends SIGTERM.
   local timed_out = false
   local timer
-  local proc = vim.system(cmd, { cwd = opts.cwd, env = env, text = true }, function(obj)
+  local proc
+  proc = vim.system(cmd, { cwd = opts.cwd, env = env, text = true }, function(obj)
+    running[proc.pid] = nil
     if timer then
       timer:stop()
       timer:close()
@@ -113,6 +149,7 @@ function M.launch(item, opts, on_done)
     end
     on_done(outcome)
   end)
+  running[proc.pid] = proc
   if timeout then
     timer = assert(vim.uv.new_timer())
     timer:start(timeout, 0, function()
