@@ -51,6 +51,25 @@ describe("ntf.core.controller.discover.specs", function()
     assert.equal(1, #files)
   end)
 
+  it("does not descend into a dot-prefixed directory while globbing", function()
+    helper.test_data:create_file("dir/a_spec.lua", "")
+    helper.test_data:create_file("dir/.hidden/b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("collects the specs under a dot-prefixed directory named as a path, which a glob would have skipped", function()
+    helper.test_data:create_file(".hidden/a_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path(".hidden") })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
   it("errors, unprefixed, on a readable file that is not a spec", function()
     local file = helper.test_data:create_file("dir/plain.lua", "")
 
