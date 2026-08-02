@@ -1,16 +1,13 @@
 local M = {}
 
---- @type string[] the mutant statuses `--mutation-strict` can gate on; the bare flag selects all of them
+--- @type string[] the mutant statuses `--strict` can gate on; the bare flag selects all of them
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
---- @type string the `--mutation-verify-baseline` value leaving every other mutant unrun
-local VERIFY_BASELINE_ONLY = "only"
-
 --- @class NtfOptions
+--- @field command string the resolved command: run, list, mutation.run, mutation.list or mutation.verify-baseline
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
---- @field list boolean list the tests instead of reporting a run
 --- @field jobs integer? max parallel workers
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
@@ -18,8 +15,7 @@ local VERIFY_BASELINE_ONLY = "only"
 --- @field exclude_spec string[] spec files or directories to skip during discovery
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
---- @field mutation boolean mutation-test the covered code after a passing run
---- @field mutation_path string? restrict the mutated files to this file or directory
+--- @field mutation_target string? restrict the mutated files to this file or directory
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
 --- @field mutation_config string? mutation policy file (JSON): the known-equivalent mutants and the unmutated paths
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
@@ -35,166 +31,312 @@ local VERIFY_BASELINE_ONLY = "only"
 --- @field description string the line shown in usage
 --- @field set fun(opts: NtfOptions, value: string?): string? applies the flag, returning an error message for a value it rejects
 
---- @type NtfFlag[]
-M.flags = {
-  {
-    name = "--timeout",
-    value = "MS",
-    description = "kill a worker after MS milliseconds (default: 60000; 0 disables)",
-    set = function(opts, value)
-      local ms = tonumber(value)
-      if ms == nil or ms < 0 then
-        return "invalid --timeout value (expected milliseconds >= 0)"
-      end
-      opts.timeout = ms
-    end,
-  },
-  {
-    name = "--filter",
-    value = "PATTERN",
-    description = "run only tests whose full name matches the Lua pattern",
-    set = function(opts, value)
-      opts.filter = value
-    end,
-  },
-  {
-    name = "--list",
-    description = "list the tests without running them (with --mutation, run the tests and list the mutants with coverage)",
-    set = function(opts)
-      opts.list = true
-    end,
-  },
-  {
-    name = "--jobs",
-    value = "N",
-    description = "max parallel nvim workers (default: cpu count)",
-    set = function(opts, value)
-      opts.jobs = tonumber(value)
-    end,
-  },
-  {
-    name = "--test-hook",
-    value = "FILE",
-    description = "run a Lua module providing setup/teardown around each test, in its worker",
-    set = function(opts, value)
-      opts.test_hook = value
-    end,
-  },
-  {
-    name = "--global-hook",
-    value = "FILE",
-    description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
-    set = function(opts, value)
-      opts.global_hook = value
-    end,
-  },
-  {
-    name = "--exclude-code",
-    value = "PATH",
-    description = "leave a file or directory out of the code --coverage measures and --mutation mutates (repeatable)",
-    set = function(opts, value)
-      table.insert(opts.exclude_code, value)
-    end,
-  },
-  {
-    name = "--exclude-spec",
-    value = "PATH",
-    description = "skip a spec file or directory when discovering tests (repeatable)",
-    set = function(opts, value)
-      table.insert(opts.exclude_spec, value)
-    end,
-  },
-  {
-    name = "--coverage",
-    value = "FILE",
-    optional = true,
-    description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
-    set = function(opts, value)
-      opts.coverage = true
-      if value ~= nil then
-        opts.coverage_file = value
-      end
-    end,
-  },
-  {
-    name = "--mutation",
-    value = "PATH",
-    optional = true,
-    description = "mutation-test the covered code (only under PATH, if given) once the tests pass",
-    set = function(opts, value)
-      opts.mutation = true
-      opts.mutation_path = value
-    end,
-  },
-  {
-    name = "--mutation-strict",
-    value = "LIST",
-    optional = true,
-    description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
-    set = function(opts, value)
-      opts.mutation_strict = {}
-      if value == nil then
-        for _, status in ipairs(STRICT_CATEGORIES) do
-          opts.mutation_strict[status] = true
-        end
-        return
-      end
-      for status in value:gmatch("[^,]+") do
-        if not vim.tbl_contains(STRICT_CATEGORIES, status) then
-          return "invalid --mutation-strict category: "
-            .. status
-            .. " (expected "
-            .. table.concat(STRICT_CATEGORIES, ", ")
-            .. ")"
-        end
+--- @class NtfCommand
+--- @field name string the token the command is parsed and documented under
+--- @field description string? the line the command is listed under; the root is never listed, so it has none
+--- @field id string? the value the command sets on NtfOptions.command; leaf commands only
+--- @field defaults table<string, any>? option values the command itself implies, applied before its flags
+--- @field flags NtfFlag[]? the flags it accepts, which is what makes a combination legal; leaf commands only
+--- @field validate (fun(opts: NtfOptions): string?)? the check only this command can make
+--- @field subcommands NtfCommand[]? the commands below it
+--- @field default string? the subcommand taken when the next token names none
+
+--- @type NtfFlag
+local timeout = {
+  name = "--timeout",
+  value = "MS",
+  description = "kill a worker after MS milliseconds (default: 60000; 0 disables)",
+  set = function(opts, value)
+    local ms = tonumber(value)
+    if ms == nil or ms < 0 then
+      return "invalid --timeout value (expected milliseconds >= 0)"
+    end
+    opts.timeout = ms
+  end,
+}
+
+--- @type NtfFlag
+local filter = {
+  name = "--filter",
+  value = "PATTERN",
+  description = "run only tests whose full name matches the Lua pattern",
+  set = function(opts, value)
+    opts.filter = value
+  end,
+}
+
+--- @type NtfFlag
+local jobs = {
+  name = "--jobs",
+  value = "N",
+  description = "max parallel nvim workers (default: cpu count)",
+  set = function(opts, value)
+    opts.jobs = tonumber(value)
+  end,
+}
+
+--- @type NtfFlag
+local test_hook = {
+  name = "--test-hook",
+  value = "FILE",
+  description = "run a Lua module providing setup/teardown around each test, in its worker",
+  set = function(opts, value)
+    opts.test_hook = value
+  end,
+}
+
+--- @type NtfFlag
+local global_hook = {
+  name = "--global-hook",
+  value = "FILE",
+  description = "run a Lua module providing setup/teardown once around the whole run, in the launcher process",
+  set = function(opts, value)
+    opts.global_hook = value
+  end,
+}
+
+--- @type NtfFlag
+local exclude_code = {
+  name = "--exclude-code",
+  value = "PATH",
+  description = "leave a file or directory out of the code that is measured and mutated (repeatable)",
+  set = function(opts, value)
+    table.insert(opts.exclude_code, value)
+  end,
+}
+
+--- @type NtfFlag
+local exclude_spec = {
+  name = "--exclude-spec",
+  value = "PATH",
+  description = "skip a spec file or directory when discovering tests (repeatable)",
+  set = function(opts, value)
+    table.insert(opts.exclude_spec, value)
+  end,
+}
+
+--- @type NtfFlag
+local coverage = {
+  name = "--coverage",
+  value = "FILE",
+  optional = true,
+  description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
+  set = function(opts, value)
+    opts.coverage = true
+    if value ~= nil then
+      opts.coverage_file = value
+    end
+  end,
+}
+
+--- @type NtfFlag
+local target = {
+  name = "--target",
+  value = "PATH",
+  description = "restrict the mutated files to this file or directory",
+  set = function(opts, value)
+    opts.mutation_target = value
+  end,
+}
+
+--- @type NtfFlag
+local strict = {
+  name = "--strict",
+  value = "LIST",
+  optional = true,
+  description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
+  set = function(opts, value)
+    opts.mutation_strict = {}
+    if value == nil then
+      for _, status in ipairs(STRICT_CATEGORIES) do
         opts.mutation_strict[status] = true
       end
-    end,
-  },
-  {
-    name = "--mutation-config",
-    value = "FILE",
-    description = "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing",
-    set = function(opts, value)
-      opts.mutation_config = value
-    end,
-  },
-  {
-    name = "--mutation-verify-baseline",
-    value = VERIFY_BASELINE_ONLY,
-    optional = true,
-    description = "run the --mutation-config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one (="
-      .. VERIFY_BASELINE_ONLY
-      .. " leaves the other mutants unrun, scoring nothing and writing no results file)",
-    set = function(opts, value)
-      opts.mutation_verify_baseline = true
-      if value == nil then
-        return
+      return
+    end
+    for status in value:gmatch("[^,]+") do
+      if not vim.tbl_contains(STRICT_CATEGORIES, status) then
+        return "invalid --strict category: " .. status .. " (expected " .. table.concat(STRICT_CATEGORIES, ", ") .. ")"
       end
-      if value ~= VERIFY_BASELINE_ONLY then
-        return "invalid --mutation-verify-baseline value (expected " .. VERIFY_BASELINE_ONLY .. ")"
-      end
-      opts.mutation_verify_baseline_only = true
-    end,
-  },
-  {
-    name = "--mutation-results",
-    value = "FILE",
-    description = "mutation results output path (default: ntf-mutation.json)",
-    set = function(opts, value)
-      --- @cast value string
-      opts.mutation_results = value
-    end,
-  },
-  {
-    name = "--help",
-    aliases = { "-h" },
-    description = "show this help",
-    set = function(opts)
-      opts.help = true
-    end,
-  },
+      opts.mutation_strict[status] = true
+    end
+  end,
 }
+
+--- @type NtfFlag
+local config = {
+  name = "--config",
+  value = "FILE",
+  description = "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing",
+  set = function(opts, value)
+    opts.mutation_config = value
+  end,
+}
+
+--- @type NtfFlag
+local verify_baseline = {
+  name = "--verify-baseline",
+  description = "run the --config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one",
+  set = function(opts)
+    opts.mutation_verify_baseline = true
+  end,
+}
+
+--- @type NtfFlag
+local results = {
+  name = "--results",
+  value = "FILE",
+  description = "mutation results output path (default: ntf-mutation.json)",
+  set = function(opts, value)
+    --- @cast value string
+    opts.mutation_results = value
+  end,
+}
+
+--- @type NtfFlag
+local help = {
+  name = "--help",
+  aliases = { "-h" },
+  description = "show this help",
+  set = function(opts)
+    opts.help = true
+  end,
+}
+
+--- @type NtfFlag[] taken by every command, since every command discovers the specs it works from
+local discovery_flags = { filter, global_hook, exclude_spec }
+
+--- @type NtfFlag[] taken by every command that starts workers
+local worker_flags = { timeout, jobs, test_hook }
+
+--- @type NtfFlag[] taken by every mutation command
+local mutation_flags = { exclude_code, target, config }
+
+--- @param ... NtfFlag[]
+--- @return NtfFlag[] # the given groups in order, followed by --help, which every command takes
+local function command_flags(...)
+  local all = {}
+  for _, group in ipairs({ ... }) do
+    vim.list_extend(all, group)
+  end
+  table.insert(all, help)
+  return all
+end
+
+--- @type NtfCommand
+local run_command = {
+  name = "run",
+  description = "run the tests and report the results",
+  id = "run",
+  flags = command_flags(discovery_flags, worker_flags, { coverage, exclude_code }),
+  validate = function(opts)
+    if #opts.exclude_code > 0 and not opts.coverage then
+      return "--exclude-code requires --coverage"
+    end
+  end,
+}
+
+--- @type NtfCommand
+local list_command = {
+  name = "list",
+  description = "list the tests without running them",
+  id = "list",
+  flags = command_flags(discovery_flags),
+}
+
+--- @type NtfCommand
+local mutation_run_command = {
+  name = "run",
+  description = "mutate the covered code once the tests pass and score the mutants",
+  id = "mutation.run",
+  flags = command_flags(discovery_flags, worker_flags, mutation_flags, { strict, verify_baseline, results }),
+  validate = function(opts)
+    if opts.mutation_verify_baseline and not opts.mutation_config then
+      return "--verify-baseline requires --config"
+    end
+  end,
+}
+
+--- @type NtfCommand
+local mutation_list_command = {
+  name = "list",
+  description = "list the mutants with coverage, without scoring them",
+  id = "mutation.list",
+  flags = command_flags(discovery_flags, worker_flags, mutation_flags),
+}
+
+--- @type NtfCommand
+local mutation_verify_baseline_command = {
+  name = "verify-baseline",
+  description = "run the --config baseline entries alone and fail any that a test can kill",
+  id = "mutation.verify-baseline",
+  defaults = { mutation_verify_baseline = true, mutation_verify_baseline_only = true },
+  flags = command_flags(discovery_flags, worker_flags, mutation_flags),
+  validate = function(opts)
+    if not opts.mutation_config then
+      return "verify-baseline requires --config, which is where the baseline entries live"
+    end
+  end,
+}
+
+--- @type NtfCommand
+local mutation_command = {
+  name = "mutation",
+  description = "mutation-test the covered code",
+  default = "run",
+  subcommands = { mutation_run_command, mutation_list_command, mutation_verify_baseline_command },
+}
+
+--- @type NtfCommand the command tree: a flag exists only under the commands that can act on it
+M.root = {
+  name = "ntf",
+  default = "run",
+  subcommands = { run_command, list_command, mutation_command },
+}
+
+--- @param command NtfCommand
+--- @param name string
+--- @return NtfCommand?
+local function subcommand(command, name)
+  for _, sub in ipairs(command.subcommands or {}) do
+    if sub.name == name then
+      return sub
+    end
+  end
+end
+
+--- @param argv string[] only its leading tokens name a command, so a path is never taken for one
+--- @return NtfCommand[] chain, string[] rest # the commands from the root down to the leaf, and what is left to parse as flags and paths
+function M.resolve(argv)
+  local chain = { M.root }
+  local command = M.root
+  local i = 1
+  while command.subcommands do
+    local named = subcommand(command, argv[i] or "")
+    if named then
+      i = i + 1
+    else
+      named = assert(subcommand(command, command.default))
+    end
+    command = named
+    table.insert(chain, command)
+  end
+  return chain, vim.list_slice(argv, i)
+end
+
+--- @type table<string, NtfCommand[]> leaf command id to its chain from the root
+local chains = {}
+--- @param chain NtfCommand[]
+local function index_chains(chain)
+  local command = chain[#chain]
+  if not command.subcommands then
+    chains[command.id] = chain
+    return
+  end
+  for _, sub in ipairs(command.subcommands) do
+    index_chains(vim.list_extend(vim.list_extend({}, chain), { sub }))
+  end
+end
+index_chains({ M.root })
 
 --- @param flag NtfFlag
 --- @return string # the flag as usage spells it, e.g. "--coverage[=FILE]"
@@ -211,105 +353,91 @@ function M.flag_label(flag)
   return label .. "=" .. flag.value
 end
 
---- @type table<string, NtfFlag>
-local by_token = {}
-for _, flag in ipairs(M.flags) do
-  by_token[flag.name] = flag
-  for _, alias in ipairs(flag.aliases or {}) do
-    by_token[alias] = flag
+--- @param command NtfCommand
+--- @param parent NtfCommand
+--- @return string # the command as usage spells it, e.g. "run (default)"
+function M.command_label(command, parent)
+  if parent.default == command.name then
+    return command.name .. " (default)"
   end
+  return command.name
 end
 
---- @return string
-local function usage()
+--- @param entries { label: string, description: string }[]
+--- @return string[]
+local function aligned(entries)
   local width = 0
-  local labels = {}
-  for _, flag in ipairs(M.flags) do
-    local label = M.flag_label(flag)
-    table.insert(labels, label)
-    width = math.max(width, #label)
+  for _, entry in ipairs(entries) do
+    width = math.max(width, #entry.label)
+  end
+  return vim
+    .iter(entries)
+    :map(function(entry)
+      return ("  %-" .. (width + 2) .. "s%s"):format(entry.label, entry.description)
+    end)
+    :totable()
+end
+
+--- @param chain NtfCommand[]
+--- @return string
+local function chain_usage(chain)
+  local command = chain[#chain]
+  local parent = chain[#chain - 1]
+
+  local names = {}
+  for i = 2, #chain do
+    local name = chain[i].name
+    if chain[i - 1].default == name then
+      name = "[" .. name .. "]"
+    end
+    table.insert(names, name)
   end
 
-  local lines = { "Usage: ntf [options] [spec-file-or-dir...]", "", "Options:" }
-  for i, flag in ipairs(M.flags) do
-    table.insert(lines, ("  %-" .. (width + 2) .. "s%s"):format(labels[i], flag.description))
+  local lines = {
+    ("Usage: ntf %s [options] [spec-file-or-dir...]"):format(table.concat(names, " ")),
+    "",
+  }
+  if parent.default == command.name then
+    table.insert(lines, "Commands:")
+    vim.list_extend(
+      lines,
+      aligned(vim
+        .iter(parent.subcommands)
+        :map(function(sub)
+          return { label = M.command_label(sub, parent), description = sub.description }
+        end)
+        :totable())
+    )
+  else
+    table.insert(lines, command.description)
   end
+
   table.insert(lines, "")
-  table.insert(lines, "With no paths, runs the *_spec.lua files under ./spec.")
+  table.insert(lines, "Options:")
+  vim.list_extend(
+    lines,
+    aligned(vim
+      .iter(command.flags)
+      :map(function(flag)
+        return { label = M.flag_label(flag), description = flag.description }
+      end)
+      :totable())
+  )
+
+  table.insert(lines, "")
+  table.insert(lines, "With no paths, the *_spec.lua files under ./spec are used.")
   return table.concat(lines, "\n")
 end
 
---- @param argv string[]
---- @return NtfOptions|string # parsed options table, or an error message string
-function M.parse(argv)
-  local opts = {
-    paths = {},
-    timeout = 60000,
-    filter = nil,
-    list = false,
-    jobs = nil,
-    test_hook = nil,
-    global_hook = nil,
-    exclude_code = {},
-    exclude_spec = {},
-    coverage = false,
-    coverage_file = "luacov.stats.out",
-    mutation = false,
-    mutation_path = nil,
-    mutation_strict = nil,
-    mutation_config = nil,
-    mutation_verify_baseline = false,
-    mutation_verify_baseline_only = false,
-    mutation_results = "ntf-mutation.json",
-    help = false,
-  }
+--- @param command_id string? leaf command id; the default command when omitted
+--- @return string
+function M.usage(command_id)
+  return chain_usage(chains[command_id or run_command.id])
+end
 
-  local seen = {}
-  local i = 1
-  while i <= #argv do
-    local arg = argv[i]
-    local token, inline = arg:match("^(%-%-[%w-]+)=(.*)$")
-    token = token or arg
-    --- @type NtfFlag?
-    local flag = by_token[token]
-    if flag and flag.value == nil and inline ~= nil then
-      flag = nil
-    end
-    if flag then
-      local value = inline
-      if flag.value ~= nil and not flag.optional and value == nil then
-        i = i + 1
-        value = argv[i]
-        if value == nil then
-          return "missing value for " .. token .. "\n\n" .. usage()
-        end
-      end
-      if flag.optional and value == "" then
-        value = nil
-      end
-      local err = flag.set(opts, value)
-      if err then
-        return err
-      end
-      seen[flag.name] = true
-    elseif arg:sub(1, 1) == "-" then
-      return "unknown option: " .. arg .. "\n\n" .. usage()
-    else
-      table.insert(opts.paths, arg)
-    end
-    i = i + 1
-  end
-
-  if opts.help then
-    return opts
-  end
-  if #opts.paths == 0 then
-    if vim.fn.isdirectory("spec") == 1 then
-      opts.paths = { "spec" }
-    else
-      return "no spec paths given\n\n" .. usage()
-    end
-  end
+--- @param opts NtfOptions
+--- @return string? # error message for an option value the command cannot act on
+local function validate(opts)
   if opts.filter and not pcall(string.find, "", opts.filter) then
     return "invalid --filter pattern: " .. opts.filter
   end
@@ -318,9 +446,6 @@ function M.parse(argv)
   end
   if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
     return "--global-hook module not found: " .. opts.global_hook
-  end
-  if #opts.exclude_code > 0 and not (opts.coverage or opts.mutation) then
-    return "--exclude-code requires --coverage or --mutation"
   end
   for _, path in ipairs(opts.exclude_code) do
     if vim.fn.filereadable(path) == 0 and vim.fn.isdirectory(path) == 0 then
@@ -332,32 +457,109 @@ function M.parse(argv)
       return "--exclude-spec path not found: " .. path
     end
   end
-  local mutation_only_flag = opts.mutation_strict or opts.mutation_config or opts.mutation_verify_baseline
-  if not opts.mutation and (mutation_only_flag or seen["--mutation-results"]) then
-    return "--mutation-strict, --mutation-config, --mutation-verify-baseline, and --mutation-results require --mutation"
-  end
-  if opts.mutation_verify_baseline and not opts.mutation_config then
-    return "--mutation-verify-baseline requires --mutation-config"
-  end
-  if opts.mutation_verify_baseline_only and opts.mutation_strict then
-    return "--mutation-verify-baseline="
-      .. VERIFY_BASELINE_ONLY
-      .. " leaves the other mutants unrun, so --mutation-strict has nothing to report"
-  end
   if
-    opts.mutation_path
-    and vim.fn.filereadable(opts.mutation_path) == 0
-    and vim.fn.isdirectory(opts.mutation_path) == 0
+    opts.mutation_target
+    and vim.fn.filereadable(opts.mutation_target) == 0
+    and vim.fn.isdirectory(opts.mutation_target) == 0
   then
-    return "--mutation path not found: " .. opts.mutation_path
+    return "--target path not found: " .. opts.mutation_target
   end
   if opts.mutation_config and vim.fn.filereadable(opts.mutation_config) == 0 then
-    return "--mutation-config file not found: " .. opts.mutation_config
+    return "--config file not found: " .. opts.mutation_config
   end
-
-  return opts
 end
 
-M.usage = usage
+--- @param argv string[]
+--- @return NtfOptions|string # parsed options table, or an error message string
+function M.parse(argv)
+  local chain, rest = M.resolve(argv)
+  local command = chain[#chain]
+
+  local opts = {
+    command = command.id,
+    paths = {},
+    timeout = 60000,
+    filter = nil,
+    jobs = nil,
+    test_hook = nil,
+    global_hook = nil,
+    exclude_code = {},
+    exclude_spec = {},
+    coverage = false,
+    coverage_file = "luacov.stats.out",
+    mutation_target = nil,
+    mutation_strict = nil,
+    mutation_config = nil,
+    mutation_verify_baseline = false,
+    mutation_verify_baseline_only = false,
+    mutation_results = "ntf-mutation.json",
+    help = false,
+  }
+  for key, value in pairs(command.defaults or {}) do
+    opts[key] = value
+  end
+
+  local by_token = {}
+  for _, flag in ipairs(command.flags) do
+    by_token[flag.name] = flag
+    for _, alias in ipairs(flag.aliases or {}) do
+      by_token[alias] = flag
+    end
+  end
+
+  local i = 1
+  while i <= #rest do
+    local current = rest[i]
+    local token, inline = current:match("^(%-%-[%w-]+)=(.*)$")
+    token = token or current
+    --- @type NtfFlag?
+    local flag = by_token[token]
+    if flag and flag.value == nil and inline ~= nil then
+      flag = nil
+    end
+    if flag then
+      local value = inline
+      if flag.value ~= nil and not flag.optional and value == nil then
+        i = i + 1
+        value = rest[i]
+        if value == nil then
+          return "missing value for " .. token .. "\n\n" .. chain_usage(chain)
+        end
+      end
+      if flag.optional and value == "" then
+        value = nil
+      end
+      local err = flag.set(opts, value)
+      if err then
+        return err
+      end
+    elseif current:sub(1, 1) == "-" then
+      return "unknown option: " .. current .. "\n\n" .. chain_usage(chain)
+    else
+      table.insert(opts.paths, current)
+    end
+    i = i + 1
+  end
+
+  if opts.help then
+    return opts
+  end
+  if #opts.paths == 0 then
+    if vim.fn.isdirectory("spec") == 1 then
+      opts.paths = { "spec" }
+    else
+      return "no spec paths given\n\n" .. chain_usage(chain)
+    end
+  end
+
+  local err = validate(opts)
+  if err then
+    return err
+  end
+  if command.validate then
+    return command.validate(opts) or opts
+  end
+  return opts
+end
 
 return M

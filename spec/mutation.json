@@ -8,8 +8,8 @@
       "original": "0",
       "replacement": "1",
       "line": "  local width = 0",
-      "rationale": "every flag label is longer than one character, so the seed never survives math.max",
-      "invariant_spec": "ntf.core.controller.args.flag_label stays longer than one character for every flag, so the usage width seed never survives math.max"
+      "rationale": "every command and flag label usage renders is longer than one character, so the seed never survives math.max",
+      "invariant_spec": "ntf.core.controller.args.usage renders every label longer than one character, so the width seed never survives math.max"
     },
     {
       "path": "lua/ntf/core/controller/schedule.lua",

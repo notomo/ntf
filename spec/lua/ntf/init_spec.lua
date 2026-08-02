@@ -728,14 +728,14 @@ local function mutation_project()
   return root, vim.fs.joinpath(root, "ntf-mutation.json")
 end
 
-describe("ntf --mutation", function()
+describe("ntf mutation", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
   it("reports the mutants a passing suite fails to detect", function()
     local root, results_file = mutation_project()
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("2 tests: 2 passed", obj.stdout)
@@ -752,7 +752,7 @@ describe("ntf --mutation", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("NO COVERAGE lua/dead%.lua:", obj.stdout)
@@ -785,7 +785,7 @@ describe("ntf --mutation", function()
     )
     local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.no.match("NO COVERAGE", obj.stdout)
@@ -796,11 +796,11 @@ describe("ntf --mutation", function()
     assert.equal(0, results.counts.no_coverage)
   end)
 
-  it("mutates only the files under the --mutation path", function()
+  it("mutates only the files under --target", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
 
-    local obj = helper.run_cli({ "--mutation=lua/mod.lua", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--target=lua/mod.lua", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.no.match("dead%.lua", obj.stdout)
@@ -813,8 +813,7 @@ describe("ntf --mutation", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/vendor/dep.lua", MUTATION_MODULE)
 
-    local obj =
-      helper.run_cli({ "--mutation", "--exclude-code=lua/vendor", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--exclude-code=lua/vendor", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.no.match("vendor", obj.stdout)
@@ -823,28 +822,24 @@ describe("ntf --mutation", function()
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
   end)
 
-  it("exits non-zero and reports the categories when --mutation-strict finds a survivor", function()
+  it("exits non-zero and reports the categories when --strict finds a survivor", function()
     local root, results_file = mutation_project()
 
-    local obj =
-      helper.run_cli({ "--mutation", "--mutation-strict", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--strict", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("mutation gate failed: 1 survived", obj.stderr)
   end)
 
-  it("exits zero when --mutation-strict gates only no_coverage, which the fixture leaves empty", function()
+  it("exits zero when --strict gates only no_coverage, which the fixture leaves empty", function()
     local root, results_file = mutation_project()
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-strict=no_coverage", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--strict=no_coverage", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
   end)
 
-  it("leaves a mutant listed in the --mutation-config baseline out of the score as equivalent", function()
+  it("leaves a mutant listed in the --config baseline out of the score as equivalent", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -864,10 +859,7 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("Mutation: 100%.0%%", obj.stdout)
@@ -879,7 +871,7 @@ describe("ntf --mutation", function()
     assert.equal(0, results.counts.survived)
   end)
 
-  it("runs the baseline entries alone with --mutation-verify-baseline=only, writing no results file", function()
+  it("runs the baseline entries alone under verify-baseline, writing no results file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
     helper.test_data:create_file(
@@ -901,10 +893,9 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli({
-      "--mutation",
-      "--mutation-config=mutation.json",
-      "--mutation-verify-baseline=only",
-      "--mutation-results=" .. results_file,
+      "mutation",
+      "verify-baseline",
+      "--config=mutation.json",
       "spec",
     }, root)
 
@@ -915,7 +906,7 @@ describe("ntf --mutation", function()
     assert.equal(0, vim.fn.filereadable(results_file))
   end)
 
-  it("scores the other mutants in the same pass as a plain --mutation-verify-baseline", function()
+  it("scores the other mutants in the same pass as --verify-baseline", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -936,10 +927,10 @@ describe("ntf --mutation", function()
     )
 
     local obj = helper.run_cli({
-      "--mutation",
-      "--mutation-config=mutation.json",
-      "--mutation-verify-baseline",
-      "--mutation-results=" .. results_file,
+      "mutation",
+      "--config=mutation.json",
+      "--verify-baseline",
+      "--results=" .. results_file,
       "spec",
     }, root)
 
@@ -952,7 +943,7 @@ describe("ntf --mutation", function()
     assert.equal(1, results.counts.survived)
   end)
 
-  it("exits non-zero when --mutation-verify-baseline=only finds a baseline entry a test kills", function()
+  it("exits non-zero when verify-baseline finds a baseline entry a test kills", function()
     local root = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -972,17 +963,14 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-verify-baseline=only", "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "verify-baseline", "--config=mutation.json", "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
     assert.match("mutation gate failed: 1 baseline entry killable", obj.stderr)
   end)
 
-  it("exits non-zero when a --mutation-config baseline entry matches nothing", function()
+  it("exits non-zero when a --config baseline entry matches nothing", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -1002,17 +990,14 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("LOST BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
     assert.match("1 baseline entry matched no mutant", obj.stderr)
   end)
 
-  it("exits non-zero when a --mutation-config baseline invariant_spec names no passing test", function()
+  it("exits non-zero when a --config baseline invariant_spec names no passing test", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -1033,17 +1018,14 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("UNPINNED BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
     assert.match("mutation gate failed: 1 unpinned baseline entry", obj.stderr)
   end)
 
-  it("keeps a --mutation-config baseline entry whose invariant_spec passed", function()
+  it("keeps a --config baseline entry whose invariant_spec passed", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -1064,16 +1046,13 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.no.match("UNPINNED BASELINE", obj.stdout)
   end)
 
-  it("leaves a --mutation-config exclude path unmutated", function()
+  it("leaves a --config exclude path unmutated", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
     helper.test_data:create_file(
@@ -1084,17 +1063,14 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.no.match("lua/dead%.lua", obj.stdout)
     assert.match("SURVIVED lua/mod%.lua", obj.stdout)
   end)
 
-  it("exits non-zero when a --mutation-config exclude entry covers no measurable file", function()
+  it("exits non-zero when a --config exclude entry covers no measurable file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -1104,17 +1080,14 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("UNUSED EXCLUDE lua/gone%.lua", obj.stdout)
     assert.match("1 exclude entry covering nothing", obj.stderr)
   end)
 
-  it("runs a --mutation-config exclude_spec path, but never picks its tests as a trial", function()
+  it("runs a --config exclude_spec path, but never picks its tests as a trial", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/e2e_only.lua", MUTATION_MODULE)
     helper.test_data:create_file("spec/e2e_spec.lua", (MUTATION_SPEC:gsub('require%("mod"%)', 'require("e2e_only")')))
@@ -1131,10 +1104,7 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("4 tests: 4 passed", obj.stdout)
@@ -1142,7 +1112,7 @@ describe("ntf --mutation", function()
     assert.match("SURVIVED lua/mod%.lua:6", obj.stdout)
   end)
 
-  it("stops the run when a --mutation-config exclude_spec path fails", function()
+  it("stops the run when a --config exclude_spec path fails", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("spec/e2e_spec.lua", FAILING)
     helper.test_data:create_file(
@@ -1153,16 +1123,13 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("mutation run skipped: the tests must pass first", obj.stderr)
   end)
 
-  it("exits non-zero when a --mutation-config exclude_spec entry covers no spec file", function()
+  it("exits non-zero when a --config exclude_spec entry covers no spec file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -1172,37 +1139,28 @@ describe("ntf --mutation", function()
       })
     )
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", obj.stdout)
     assert.match("1 exclude_spec entry covering nothing", obj.stderr)
   end)
 
-  it("rejects an invalid --mutation-config exclude before running the tests", function()
+  it("rejects an invalid --config exclude before running the tests", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, exclude = { { path = "x" } } }))
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(2, obj.code)
     assert.match("exclude%[1%] needs a string rationale", obj.stderr)
   end)
 
-  it("rejects an invalid --mutation-config baseline before running the tests", function()
+  it("rejects an invalid --config baseline before running the tests", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, baseline = { { path = "x" } } }))
 
-    local obj = helper.run_cli(
-      { "--mutation", "--mutation-config=mutation.json", "--mutation-results=" .. results_file, "spec" },
-      root
-    )
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(2, obj.code)
     assert.match("baseline%[1%]", obj.stderr)
@@ -1236,7 +1194,7 @@ describe("ntf --mutation", function()
       }, "\n")
     )
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "--timeout=1000", "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "--timeout=1000", "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("1 timeout", obj.stdout)
@@ -1257,7 +1215,7 @@ describe("ntf --mutation", function()
       }, "\n")
     )
 
-    local obj = helper.run_cli({ "--mutation", "--mutation-results=" .. results_file, "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("mutation run skipped", obj.stderr)
@@ -1266,13 +1224,13 @@ describe("ntf --mutation", function()
   end)
 end)
 
-describe("ntf --list", function()
+describe("ntf list", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
   it("lists every test as path:line: full name", function()
     local path = spec("pass_spec.lua", PASSING)
-    local obj = run({ path }, { "--list" })
+    local obj = run({ path }, { "list" })
 
     assert.equal(0, obj.code)
     assert.match("pass_spec%.lua:%d+: group adds\n", obj.stdout)
@@ -1282,7 +1240,7 @@ describe("ntf --list", function()
 
   it("exits 0 for a failing spec because the test bodies never run", function()
     local path = spec("fail_spec.lua", FAILING)
-    local obj = run({ path }, { "--list" })
+    local obj = run({ path }, { "list" })
 
     assert.equal(0, obj.code)
     assert.match("fail_spec%.lua:%d+: group explodes\n", obj.stdout)
@@ -1291,7 +1249,7 @@ describe("ntf --list", function()
 
   it("lists only the tests matching --filter", function()
     local path = spec("filter_spec.lua", FILTERABLE)
-    local obj = run({ path }, { "--list", "--filter=keep me" })
+    local obj = run({ path }, { "list", "--filter=keep me" })
 
     assert.equal(0, obj.code)
     assert.match("keep me", obj.stdout)
@@ -1301,7 +1259,7 @@ describe("ntf --list", function()
   it("reports a LOAD ERROR on stderr and exits 1, still listing the loadable tests", function()
     spec("broken_spec.lua", LOAD_ERROR)
     spec("pass_spec.lua", PASSING)
-    local obj = run({ helper.test_data.full_path }, { "--list" })
+    local obj = run({ helper.test_data.full_path }, { "list" })
 
     assert.equal(1, obj.code)
     assert.match("pass_spec%.lua:%d+: group adds\n", obj.stdout)
@@ -1310,11 +1268,11 @@ describe("ntf --list", function()
     assert.no.match("LOAD ERROR", obj.stdout)
   end)
 
-  it("runs the tests and lists the mutants with their coverage under --mutation", function()
+  it("runs the tests and lists the mutants with their coverage", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
 
-    local obj = helper.run_cli({ "--list", "--mutation", "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "list", "spec" }, root)
 
     assert.equal(0, obj.code)
     assert.match("spec/mod_spec%.lua:%d+: mod detects positives at the boundary\n", obj.stdout)
@@ -1329,7 +1287,7 @@ describe("ntf --list", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("spec/fail_spec.lua", FAILING)
 
-    local obj = helper.run_cli({ "--list", "--mutation", "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "list", "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("mutation list skipped", obj.stderr)

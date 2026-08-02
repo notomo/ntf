@@ -3,7 +3,77 @@ local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_e
 local args = require("ntf.core.controller.args")
 local helper = require("ntf.test.helper")
 
+--- @param argv string[]
+local command_of = function(argv)
+  local chain = args.resolve(argv)
+  return chain[#chain]
+end
+
 describe("ntf.core.controller.args.parse", function()
+  describe("commands", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("runs the tests when no command is named", function()
+      local opts = args.parse({ "spec" })
+
+      assert.equal("run", opts.command)
+      assert.same({ "spec" }, opts.paths)
+    end)
+
+    it("takes the leading token as the command", function()
+      local opts = args.parse({ "list", "spec" })
+
+      assert.equal("list", opts.command)
+      assert.same({ "spec" }, opts.paths)
+    end)
+
+    it("descends into a subcommand", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      assert.equal("mutation.list", args.parse({ "mutation", "list", "spec" }).command)
+      assert.equal(
+        "mutation.verify-baseline",
+        args.parse({ "mutation", "verify-baseline", "--config=" .. file, "spec" }).command
+      )
+    end)
+
+    it("takes the default subcommand when the next token names none", function()
+      assert.equal("mutation.run", args.parse({ "mutation", "spec" }).command)
+      assert.equal("mutation.run", args.parse({ "mutation", "--strict", "spec" }).command)
+    end)
+
+    it("keeps a path that names a command, which the explicit run command is for", function()
+      local opts = args.parse({ "run", "list" })
+
+      assert.equal("run", opts.command)
+      assert.same({ "list" }, opts.paths)
+    end)
+
+    it("takes a command name after a path as another path", function()
+      local opts = args.parse({ "spec", "list" })
+
+      assert.equal("run", opts.command)
+      assert.same({ "spec", "list" }, opts.paths)
+    end)
+
+    it("rejects a flag the command does not take", function()
+      local err = args.parse({ "list", "--coverage", "spec" })
+
+      assert.match("unknown option: %-%-coverage", err)
+    end)
+
+    it("rejects a mutation flag outside the mutation commands", function()
+      assert.match("unknown option: %-%-strict", args.parse({ "--strict", "spec" }))
+      assert.match("unknown option: %-%-target", args.parse({ "list", "--target=lua", "spec" }))
+    end)
+
+    it("rejects a scoring flag on a command that scores nothing", function()
+      assert.match("unknown option: %-%-results", args.parse({ "mutation", "list", "--results=out.json", "spec" }))
+      assert.match("unknown option: %-%-strict", args.parse({ "mutation", "verify-baseline", "--strict", "spec" }))
+    end)
+  end)
+
   it("parses --filter into opts.filter", function()
     local opts = args.parse({ "--filter=adds", "spec" })
 
@@ -107,19 +177,6 @@ describe("ntf.core.controller.args.parse", function()
     assert.equal("spec", opts.paths[1])
   end)
 
-  it("leaves listing off by default", function()
-    local opts = args.parse({ "spec" })
-
-    assert.is_false(opts.list)
-  end)
-
-  it("parses --list into opts.list", function()
-    local opts = args.parse({ "--list", "spec" })
-
-    assert.is_true(opts.list)
-    assert.equal("spec", opts.paths[1])
-  end)
-
   it("parses -h and --help into opts.help", function()
     assert.is_true(args.parse({ "-h" }).help)
     assert.is_true(args.parse({ "--help" }).help)
@@ -132,26 +189,13 @@ describe("ntf.core.controller.args.parse", function()
   end)
 
   it("rejects a value given to a flag that takes none", function()
-    local err = args.parse({ "--list=yes", "spec" })
+    local err = args.parse({ "mutation", "--verify-baseline=yes", "spec" })
 
-    assert.match("unknown option: %-%-list=yes", err)
+    assert.match("unknown option: %-%-verify%-baseline=yes", err)
   end)
 
   it("keeps the given paths instead of defaulting to spec", function()
     assert.same({ "given/path" }, args.parse({ "given/path" }).paths)
-  end)
-
-  it("aligns the longest flag label two spaces from its description in usage", function()
-    local longest = args.flags[1]
-    for _, flag in ipairs(args.flags) do
-      if #args.flag_label(flag) > #args.flag_label(longest) then
-        longest = flag
-      end
-    end
-
-    local lines = vim.split(args.usage(), "\n", { plain = true })
-
-    assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(args.flag_label(longest), longest.description)))
   end)
 
   describe("--test-hook", function()
@@ -231,7 +275,15 @@ describe("ntf.core.controller.args.parse", function()
 
       local err = args.parse({ "--exclude-code=" .. vendor, "spec" })
 
-      assert.match("%-%-exclude%-code requires %-%-coverage or %-%-mutation", err)
+      assert.match("%-%-exclude%-code requires %-%-coverage", err)
+    end)
+
+    it("needs nothing else under the mutation commands, which always measure", function()
+      local vendor = helper.test_data:create_dir("lua/vendor")
+
+      local opts = args.parse({ "mutation", "--exclude-code=" .. vendor, "spec" })
+
+      assert.same({ vendor }, opts.exclude_code)
     end)
   end)
 
@@ -255,192 +307,135 @@ describe("ntf.core.controller.args.parse", function()
     end)
   end)
 
-  describe("--mutation", function()
+  describe("mutation", function()
     before_each(helper.before_each)
     after_each(helper.after_each)
 
-    it("is off by default", function()
-      local opts = args.parse({ "spec" })
+    it("writes to the default results file", function()
+      local opts = args.parse({ "mutation", "spec" })
 
-      assert.is_false(opts.mutation)
       assert.equal("ntf-mutation.json", opts.mutation_results)
     end)
 
-    it("takes an optional path to restrict the mutated files", function()
-      local dir = helper.test_data:create_dir("lua")
-
-      local opts = args.parse({ "--mutation=" .. dir, "spec" })
-
-      assert.is_true(opts.mutation)
-      assert.equal(dir, opts.mutation_path)
-    end)
-
     it("reads the results file", function()
-      local opts = args.parse({ "--mutation", "--mutation-results=out.json", "spec" })
+      local opts = args.parse({ "mutation", "--results=out.json", "spec" })
 
       assert.equal("out.json", opts.mutation_results)
     end)
 
-    it("errors when the --mutation path does not exist", function()
-      local err = args.parse({ "--mutation=/no/such/dir", "spec" })
+    it("mutates every measured file without --target", function()
+      local opts = args.parse({ "mutation", "spec" })
 
-      assert.match("%-%-mutation path not found", err)
+      assert.is_nil(opts.mutation_target)
     end)
 
-    it("gates on every category for bare --mutation-strict", function()
-      local opts = args.parse({ "--mutation", "--mutation-strict", "spec" })
+    it("takes --target to restrict the mutated files", function()
+      local dir = helper.test_data:create_dir("lua")
+
+      local opts = args.parse({ "mutation", "--target=" .. dir, "spec" })
+
+      assert.equal(dir, opts.mutation_target)
+    end)
+
+    it("errors when the --target path does not exist", function()
+      local err = args.parse({ "mutation", "--target=/no/such/dir", "spec" })
+
+      assert.match("%-%-target path not found", err)
+    end)
+
+    it("gates on every category for bare --strict", function()
+      local opts = args.parse({ "mutation", "--strict", "spec" })
 
       assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
     end)
 
-    it("treats --mutation-strict= with an empty value as bare --mutation-strict", function()
-      local opts = args.parse({ "--mutation", "--mutation-strict=", "spec" })
+    it("treats --strict= with an empty value as bare --strict", function()
+      local opts = args.parse({ "mutation", "--strict=", "spec" })
 
       assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
     end)
 
     it("restricts the gate to the listed categories", function()
-      assert.same(
-        { survived = true },
-        args.parse({ "--mutation", "--mutation-strict=survived", "spec" }).mutation_strict
-      )
-      assert.same(
-        { no_coverage = true },
-        args.parse({ "--mutation", "--mutation-strict=no_coverage", "spec" }).mutation_strict
-      )
+      assert.same({ survived = true }, args.parse({ "mutation", "--strict=survived", "spec" }).mutation_strict)
+      assert.same({ no_coverage = true }, args.parse({ "mutation", "--strict=no_coverage", "spec" }).mutation_strict)
       assert.same(
         { survived = true, no_coverage = true },
-        args.parse({ "--mutation", "--mutation-strict=survived,no_coverage", "spec" }).mutation_strict
+        args.parse({ "mutation", "--strict=survived,no_coverage", "spec" }).mutation_strict
       )
     end)
 
-    it("errors on an unknown --mutation-strict category", function()
-      local err = args.parse({ "--mutation", "--mutation-strict=killed", "spec" })
+    it("errors on an unknown --strict category", function()
+      local err = args.parse({ "mutation", "--strict=killed", "spec" })
 
-      assert.match("invalid %-%-mutation%-strict category: killed", err)
+      assert.match("invalid %-%-strict category: killed", err)
     end)
 
-    it("leaves the gate disabled without --mutation-strict", function()
-      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_strict)
-    end)
-
-    it("treats --mutation= with an empty value as bare --mutation", function()
-      local opts = args.parse({ "--mutation=", "spec" })
-
-      assert.is_true(opts.mutation)
-      assert.is_nil(opts.mutation_path)
+    it("leaves the gate disabled without --strict", function()
+      assert.is_nil(args.parse({ "mutation", "spec" }).mutation_strict)
     end)
 
     it("reads the config file path", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "spec" })
+      local opts = args.parse({ "mutation", "--config=" .. file, "spec" })
 
       assert.equal(file, opts.mutation_config)
     end)
 
-    it("leaves opts.mutation_config nil without --mutation-config", function()
-      assert.is_nil(args.parse({ "--mutation", "spec" }).mutation_config)
+    it("leaves opts.mutation_config nil without --config", function()
+      assert.is_nil(args.parse({ "mutation", "spec" }).mutation_config)
     end)
 
-    it("errors when the --mutation-config file does not exist", function()
-      local err = args.parse({ "--mutation", "--mutation-config=/no/such.json", "spec" })
+    it("errors when the --config file does not exist", function()
+      local err = args.parse({ "mutation", "--config=/no/such.json", "spec" })
 
-      assert.match("%-%-mutation%-config file not found", err)
+      assert.match("%-%-config file not found", err)
     end)
 
-    it("verifies the baseline entries alongside the scored mutants with --mutation-verify-baseline", function()
+    it("verifies the baseline entries alongside the scored mutants with --verify-baseline", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline", "spec" })
+      local opts = args.parse({ "mutation", "--config=" .. file, "--verify-baseline", "spec" })
 
       assert.is_true(opts.mutation_verify_baseline)
       assert.is_false(opts.mutation_verify_baseline_only)
     end)
 
-    it("leaves the other mutants unrun with --mutation-verify-baseline=only", function()
-      local file = helper.test_data:create_file("mutation.json", "{}")
-
-      local opts = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline=only", "spec" })
-
-      assert.is_true(opts.mutation_verify_baseline)
-      assert.is_true(opts.mutation_verify_baseline_only)
-    end)
-
-    it("errors on a --mutation-verify-baseline value other than only", function()
-      local file = helper.test_data:create_file("mutation.json", "{}")
-
-      local err = args.parse({ "--mutation", "--mutation-config=" .. file, "--mutation-verify-baseline=all", "spec" })
-
-      assert.match("invalid %-%-mutation%-verify%-baseline value %(expected only%)", err)
-    end)
-
-    it("leaves the baseline trusted without --mutation-verify-baseline", function()
-      local opts = args.parse({ "--mutation", "spec" })
+    it("leaves the baseline trusted without --verify-baseline", function()
+      local opts = args.parse({ "mutation", "spec" })
 
       assert.is_false(opts.mutation_verify_baseline)
       assert.is_false(opts.mutation_verify_baseline_only)
     end)
 
-    it("errors when --mutation-verify-baseline is given without --mutation-config", function()
-      local err = args.parse({ "--mutation", "--mutation-verify-baseline", "spec" })
+    it("errors when --verify-baseline is given without --config", function()
+      local err = args.parse({ "mutation", "--verify-baseline", "spec" })
 
-      assert.match("%-%-mutation%-verify%-baseline requires %-%-mutation%-config", err)
+      assert.match("%-%-verify%-baseline requires %-%-config", err)
     end)
 
-    it("gates the scored mutants when --mutation-verify-baseline is combined with --mutation-strict", function()
+    it("gates the scored mutants when --verify-baseline is combined with --strict", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({
-        "--mutation",
-        "--mutation-config=" .. file,
-        "--mutation-verify-baseline",
-        "--mutation-strict",
-        "spec",
-      })
+      local opts = args.parse({ "mutation", "--config=" .. file, "--verify-baseline", "--strict", "spec" })
 
       assert.is_true(opts.mutation_verify_baseline)
       assert.is_true(opts.mutation_strict.survived)
     end)
 
-    it("errors when --mutation-verify-baseline=only is combined with --mutation-strict", function()
+    it("leaves every mutant outside the baseline unrun under verify-baseline", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local err = args.parse({
-        "--mutation",
-        "--mutation-config=" .. file,
-        "--mutation-verify-baseline=only",
-        "--mutation-strict",
-        "spec",
-      })
+      local opts = args.parse({ "mutation", "verify-baseline", "--config=" .. file, "spec" })
 
-      assert.match("%-%-mutation%-strict has nothing to report", err)
+      assert.is_true(opts.mutation_verify_baseline)
+      assert.is_true(opts.mutation_verify_baseline_only)
     end)
 
-    it("errors when --mutation-verify-baseline alone is given without --mutation", function()
-      local err = args.parse({ "--mutation-verify-baseline", "spec" })
+    it("errors when verify-baseline has no config to take the entries from", function()
+      local err = args.parse({ "mutation", "verify-baseline", "spec" })
 
-      assert.match("require %-%-mutation", err)
-    end)
-
-    it("errors when the mutation flags are given without --mutation", function()
-      local err = args.parse({ "--mutation-strict", "spec" })
-
-      assert.match("require %-%-mutation", err)
-    end)
-
-    it("errors when --mutation-config alone is given without --mutation", function()
-      local file = helper.test_data:create_file("mutation.json", "{}")
-
-      local err = args.parse({ "--mutation-config=" .. file, "spec" })
-
-      assert.match("require %-%-mutation", err)
-    end)
-
-    it("errors when --mutation-results alone is given without --mutation", function()
-      local err = args.parse({ "--mutation-results=out.json", "spec" })
-
-      assert.match("require %-%-mutation", err)
+      assert.match("verify%-baseline requires %-%-config", err)
     end)
   end)
 
@@ -475,11 +470,77 @@ describe("ntf.core.controller.args.parse", function()
   end)
 end)
 
+describe("ntf.core.controller.args.usage", function()
+  it("spells the usage line with the command path, bracketing what a default supplies", function()
+    assert.match("^Usage: ntf %[run%] %[options%]", args.usage("run"))
+    assert.match("^Usage: ntf list %[options%]", args.usage("list"))
+    assert.match("^Usage: ntf mutation %[run%] %[options%]", args.usage("mutation.run"))
+    assert.match("^Usage: ntf mutation list %[options%]", args.usage("mutation.list"))
+  end)
+
+  it("falls back to the default command", function()
+    assert.equal(args.usage("run"), args.usage())
+  end)
+
+  it("lists the group a command is the fallback of", function()
+    local lines = vim.split(args.usage("mutation.run"), "\n", { plain = true })
+
+    assert.is_true(vim.tbl_contains(lines, "Commands:"))
+    assert.is_true(vim.tbl_contains(lines, "  list             list the mutants with coverage, without scoring them"))
+  end)
+
+  it("describes a command that has to be named instead of listing its group", function()
+    local lines = vim.split(args.usage("mutation.list"), "\n", { plain = true })
+
+    assert.is_false(vim.tbl_contains(lines, "Commands:"))
+    assert.is_true(vim.tbl_contains(lines, "list the mutants with coverage, without scoring them"))
+  end)
+
+  it("aligns the longest label two spaces from its description", function()
+    local command = command_of({ "mutation" })
+    local longest = command.flags[1]
+    for _, flag in ipairs(command.flags) do
+      if #args.flag_label(flag) > #args.flag_label(longest) then
+        longest = flag
+      end
+    end
+
+    local lines = vim.split(args.usage(command.id), "\n", { plain = true })
+
+    assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(args.flag_label(longest), longest.description)))
+  end)
+
+  it("renders every label longer than one character, so the width seed never survives math.max", function()
+    local commands = { args.root }
+    while #commands > 0 do
+      local command = table.remove(commands)
+      for _, sub in ipairs(command.subcommands or {}) do
+        assert.is_true(#args.command_label(sub, command) > 1)
+        table.insert(commands, sub)
+      end
+      for _, flag in ipairs(command.flags or {}) do
+        assert.is_true(#args.flag_label(flag) > 1)
+      end
+    end
+  end)
+end)
+
+describe("ntf.core.controller.args.command_label", function()
+  it("marks the subcommand a command falls back to", function()
+    assert.equal("run (default)", args.command_label(command_of({ "run" }), args.root))
+  end)
+
+  it("shows a subcommand that has to be named as its bare name", function()
+    assert.equal("list", args.command_label(command_of({ "list" }), args.root))
+  end)
+end)
+
 describe("ntf.core.controller.args.flag_label", function()
+  --- @param argv string[]
   --- @param name string
   --- @return string
-  local label = function(name)
-    for _, flag in ipairs(args.flags) do
+  local label = function(argv, name)
+    for _, flag in ipairs(command_of(argv).flags) do
       if flag.name == name then
         return args.flag_label(flag)
       end
@@ -488,24 +549,18 @@ describe("ntf.core.controller.args.flag_label", function()
   end
 
   it("shows a flag taking no value as its bare token", function()
-    assert.equal("--list", label("--list"))
+    assert.equal("--verify-baseline", label({ "mutation" }, "--verify-baseline"))
   end)
 
   it("joins the aliases before the token", function()
-    assert.equal("-h, --help", label("--help"))
+    assert.equal("-h, --help", label({}, "--help"))
   end)
 
   it("appends the placeholder of a required value", function()
-    assert.equal("--timeout=MS", label("--timeout"))
+    assert.equal("--timeout=MS", label({}, "--timeout"))
   end)
 
   it("brackets the placeholder of an optional value", function()
-    assert.equal("--coverage[=FILE]", label("--coverage"))
-  end)
-
-  it("stays longer than one character for every flag, so the usage width seed never survives math.max", function()
-    for _, flag in ipairs(args.flags) do
-      assert.is_true(#args.flag_label(flag) > 1)
-    end
+    assert.equal("--coverage[=FILE]", label({}, "--coverage"))
   end)
 end)

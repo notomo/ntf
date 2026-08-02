@@ -45,17 +45,17 @@ end
 
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes to skip
---- @param mutation_path string? restrict to this file or directory
+--- @param mutation_target string? restrict to this file or directory
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
 --- @return string[] normalized absolute paths, sorted
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
-local function target_files(cwd, excludes, mutation_path, exclude_entries)
+local function target_files(cwd, excludes, mutation_target, exclude_entries)
   local files, unused = exclude.partition(collector.measurable_files(cwd, excludes), exclude_entries, cwd)
-  if not mutation_path then
+  if not mutation_target then
     return files, unused
   end
 
-  local target = normalize(mutation_path)
+  local target = normalize(mutation_target)
   return vim.tbl_filter(function(file)
     return file == target or file:sub(1, #target + 1) == target .. "/"
   end, files),
@@ -64,13 +64,13 @@ end
 
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes to skip
---- @param mutation_path string? restrict to this file or directory
+--- @param mutation_target string? restrict to this file or directory
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
 --- @return { mutant: NtfMutant, relative_path: string, line_text: string }[]
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
-local function enumerate_mutants(cwd, excludes, mutation_path, exclude_entries)
+local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries)
   local entries = {}
-  local files, unused = target_files(cwd, excludes, mutation_path, exclude_entries)
+  local files, unused = target_files(cwd, excludes, mutation_target, exclude_entries)
   for _, file in ipairs(files) do
     local src = read_file(file) or ""
     local src_lines = vim.split(src, "\n", { plain = true })
@@ -155,7 +155,7 @@ function M.run(opts, ctx)
   local task_verify = {}
 
   local mutant_entries, unused_excludes =
-    enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_path, ctx.mutation_exclude or {})
+    enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {})
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
 
@@ -246,7 +246,7 @@ function M.list(opts, ctx)
       covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
       equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
     }
-  end, (enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_path, ctx.mutation_exclude or {})))
+  end, (enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {})))
 end
 
 return M

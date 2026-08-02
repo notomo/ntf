@@ -4,7 +4,10 @@ local util = require("genvdoc.util")
 local args = require("ntf.core.controller.args")
 local plugin_name = vim.env.PLUGIN_NAME
 
-local usage = args.usage()
+local usage = table.concat(
+  vim.iter({ "run", "list", "mutation.run", "mutation.list", "mutation.verify-baseline" }):map(args.usage):totable(),
+  "\n\n"
+)
 
 local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
 
@@ -104,70 +107,84 @@ run_ntf({
 }, { cwd = project_dir })
 local exclude_code_command = "ntf --coverage --exclude-code=lua/vendor --exclude-code=lua/mymod/test"
 
+run_ntf({ "list", "spec" }, { cwd = project_dir })
+local list_command = "ntf list"
+
 run_ntf({
-  "--mutation=lua/mymod.lua",
-  "--mutation-results=" .. vim.fn.tempname(),
+  "mutation",
+  "--target=lua/mymod.lua",
+  "--results=" .. vim.fn.tempname(),
   "spec",
 }, { cwd = project_dir })
-local mutation_command = "ntf --mutation"
-local mutation_strict_command = "ntf --mutation --mutation-strict"
+local mutation_command = "ntf mutation"
+local mutation_strict_command = "ntf mutation --strict"
+
+run_ntf({ "mutation", "list", "--target=lua/mymod.lua", "spec" }, { cwd = project_dir })
+local mutation_list_command = "ntf mutation list"
 
 local mutation_config_path = doc_dir .. "/mutation_config.json"
 vim.fn.writefile(vim.fn.readfile(mutation_config_path), vim.fs.joinpath(project_dir, "spec/mutation.json"))
 run_ntf({
-  "--mutation=lua/mymod.lua",
-  "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-config=spec/mutation.json",
-  "--mutation-strict",
+  "mutation",
+  "--target=lua/mymod.lua",
+  "--results=" .. vim.fn.tempname(),
+  "--config=spec/mutation.json",
+  "--strict",
   "spec",
 }, { cwd = project_dir })
-local mutation_config_command = "ntf --mutation --mutation-config=spec/mutation.json"
+local mutation_config_command = "ntf mutation --config=spec/mutation.json"
 
 run_ntf({
-  "--mutation=lua/mymod.lua",
-  "--mutation-config=spec/mutation.json",
-  "--mutation-verify-baseline=only",
+  "mutation",
+  "verify-baseline",
+  "--target=lua/mymod.lua",
+  "--config=spec/mutation.json",
   "spec",
 }, { cwd = project_dir })
-local mutation_verify_baseline_command =
-  "ntf --mutation --mutation-config=spec/mutation.json --mutation-verify-baseline=only"
+local mutation_verify_baseline_command = "ntf mutation verify-baseline --config=spec/mutation.json"
 
 run_ntf({
-  "--mutation=lua/mymod.lua",
-  "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-config=spec/mutation.json",
-  "--mutation-strict",
-  "--mutation-verify-baseline",
+  "mutation",
+  "--target=lua/mymod.lua",
+  "--results=" .. vim.fn.tempname(),
+  "--config=spec/mutation.json",
+  "--strict",
+  "--verify-baseline",
   "spec",
 }, { cwd = project_dir })
 local mutation_verify_baseline_with_score_command =
-  "ntf --mutation --mutation-config=spec/mutation.json --mutation-strict --mutation-verify-baseline"
+  "ntf mutation --config=spec/mutation.json --strict --verify-baseline"
 
 run_ntf({
-  "--mutation",
-  "--mutation-results=" .. vim.fn.tempname(),
-  "--mutation-config=spec/mutation.json",
+  "mutation",
+  "--results=" .. vim.fn.tempname(),
+  "--config=spec/mutation.json",
   "spec",
 }, { cwd = project_dir })
 
-local documented_flags = {} --- @type table<string, true> keyed by the `args.flags` token
-for _, f in ipairs(args.flags) do
-  documented_flags[f.name] = true
-end
 for _, command in ipairs({
   test_hook_command,
   global_hook_command,
   debug_command,
   coverage_command,
   exclude_code_command,
+  list_command,
   mutation_command,
   mutation_strict_command,
+  mutation_list_command,
   mutation_config_command,
   mutation_verify_baseline_command,
+  mutation_verify_baseline_with_score_command,
 }) do
+  local words = vim.split(command, " ", { plain = true })
+  local chain = args.resolve(vim.list_slice(words, 2))
+  local documented_flags = {} --- @type table<string, true> keyed by the token the command documents
+  for _, f in ipairs(chain[#chain].flags) do
+    documented_flags[f.name] = true
+  end
   for token in command:gmatch("%-%-[%w-]+") do
     if not documented_flags[token] then
-      error(("not a documented flag: %s in `%s`"):format(token, command))
+      error(("not a flag of `%s`: %s"):format(command, token))
     end
   end
 end
@@ -186,7 +203,19 @@ require("genvdoc").generate(plugin_name, {
     {
       name = "USAGE",
       body = function()
-        return util.help_code_block(usage)
+        return table.concat({
+          [[
+ntf takes a command. `run` runs the tests and is what a bare `ntf` means; `list`
+lists them without running them; `mutation` mutation-tests the covered code and
+takes commands of its own. Positional arguments are spec paths under every one
+of them, so the explicit `run` is how you name a path that would otherwise read
+as a command (`ntf run list`).
+
+A command takes exactly the options it can act on, and rejects the rest: there
+is no combination whose second half is silently ignored, and no option that
+carries the name of the mode it needs.]],
+          util.help_code_block(usage),
+        }, "\n")
       end,
     },
     {
@@ -258,8 +287,8 @@ writes a `luacov.stats.out` (override the path with `--coverage=FILE`):]],
           [[
 Not everything under the working directory is code you hold your tests to —
 vendored third-party files, your own test helpers. `--exclude-code=PATH` leaves a
-file or directory out of the code under test; repeat it for each one. It applies
-to `--mutation` as well, since that measures the same code:]],
+file or directory out of the code under test; repeat it for each one. The
+`mutation` commands take it too, since they measure the same code:]],
           util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
 The built-in summary is intentionally simple (its line classification is a
@@ -279,7 +308,7 @@ not skipped by the JIT, which makes a `--coverage` run slower than a plain one.]
       body = function()
         return table.concat({
           [[
-`--mutation` measures how much of the covered code your tests actually pin down.
+`ntf mutation` measures how much of the covered code your tests actually pin down.
 It first runs the specs as usual (a mutant means nothing against a failing suite,
 so the run stops there if a test fails), then makes one small change at a time to
 the code under test — swapping `==` for `~=`, `and` for `or`, `+` for `-`, `<` for
@@ -290,31 +319,35 @@ away with:]],
           util.help_code_block(mutation_command, { language = "sh" }),
           [[
 Only the mutants a test can reach are run, using the same line coverage as
-`--coverage` (which `--mutation` therefore always collects): a mutant on a line no
-test executes is reported as uncovered rather than run. A mutant is run against
-its covering tests one at a time, cheapest first, and the run stops at the first
-test that detects it — in the same one-process-per-test isolation as a normal run.
-A test that hangs on a mutant (an infinite loop) is killed and counts as detected.
+`--coverage` (which the mutation commands therefore always collect): a mutant on a
+line no test executes is reported as uncovered rather than run. A mutant is run
+against its covering tests one at a time, cheapest first, and the run stops at the
+first test that detects it — in the same one-process-per-test isolation as a normal
+run. A test that hangs on a mutant (an infinite loop) is killed and counts as
+detected.
 
 The score is the share of detected mutants, counting an uncovered one as
-undetected. `--mutation-strict` turns that into a gate, exiting non-zero when any
-mutant survived or was left uncovered; `--mutation-strict=survived` (or
+undetected. `--strict` turns that into a gate, exiting non-zero when any
+mutant survived or was left uncovered; `--strict=survived` (or
 `=no_coverage`) gates only that category, so the bar can be raised in steps:]],
           util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
-`--mutation=PATH` restricts the mutated files to one file or directory, which is
+`--target=PATH` restricts the mutated files to one file or directory, which is
 how you keep a run short: mutating everything means running the suite once per
 mutant. The full result — every mutant, its position, and what it became — is
-written to `ntf-mutation.json` (override with `--mutation-results=FILE`), which
-|ntf.mutation.decorate()| reads back to mark the survivors in a buffer.
-
+written to `ntf-mutation.json` (override with `--results=FILE`), which
+|ntf.mutation.decorate()| reads back to mark the survivors in a buffer. To see
+what a run would cover before paying for it, `ntf mutation list` runs the tests
+once and lists the mutants with the number of tests that reach each:]],
+          util.help_code_block(mutation_list_command, { language = "sh" }),
+          [[
 Two limits are worth knowing. A mutant is spliced in when the module is
 `require`d, so a file the specs load through `dofile`/`loadfile` instead keeps
 its original source and is reported as not applied — never as a survivor. And
 some mutants are equivalent to the code they replace, which no test can detect.
 Rather than re-reviewing those survivors on every run, record each one — with
 the reason — in the `baseline` of a config file and pass it with
-`--mutation-config=FILE`:]],
+`--config=FILE`:]],
           util.help_code_block_from_file(mutation_config_path, { language = "json" }),
           util.help_code_block(mutation_config_command, { language = "sh" }),
           [[
@@ -322,7 +355,7 @@ The file carries the whole mutation policy, one section per kind of judgement �
 `exclude` and `exclude_spec` are covered below — and any section may be left out.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
-can then reach 100 and be held there with `--mutation-strict`. An entry is
+can then reach 100 and be held there with `--strict`. An entry is
 copied from the survivor's record in the results file (`path` relative to the
 working directory, `col`, `operator`, `original`, `replacement`) plus the exact
 text of the mutated `line`; ntf only reads the file, so keep it in the
@@ -342,16 +375,17 @@ name passed. Renaming or deleting the test then has to be answered for, instead
 of quietly unmooring the rationale.
 
 An entry is only ever trusted, not checked: a mutant a new test would now detect
-stays out of the score behind a mark that no longer holds. `--mutation-verify-baseline`
-runs the listed mutants instead of trusting them and exits non-zero, reporting
-each as BASELINE KILLABLE, when a test kills one — the mirror of LOST, catching a
-stale judgement the code line never gave away. Adding `=only` leaves every other
-mutant unrun, scoring nothing and writing no results file, which is what you want
-right after editing the baseline:]],
+stays out of the score behind a mark that no longer holds. `ntf mutation
+verify-baseline` runs the listed mutants instead of trusting them and exits
+non-zero, reporting each as BASELINE KILLABLE, when a test kills one — the mirror
+of LOST, catching a stale judgement the code line never gave away. It leaves every
+other mutant unrun, scoring nothing and writing no results file, which is what you
+want right after editing the baseline:]],
           util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
           [[
-Without it the entries are verified in the same pass that scores the rest, so a
-gate that wants both answers pays for one run of the suite instead of two:]],
+`--verify-baseline` asks the same question of a scoring run, verifying the entries
+in the same pass that scores the rest, so a gate that wants both answers pays for
+one run of the suite instead of two:]],
           util.help_code_block(mutation_verify_baseline_with_score_command, { language = "sh" }),
           [[
 A baseline answers for one mutant. Some files instead have to stay out of the

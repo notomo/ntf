@@ -1,5 +1,14 @@
 local M = {}
 
+--- @type table<string, { list: boolean?, mutation: boolean? }> what each command asks of the one pipeline below
+local MODES = {
+  ["run"] = {},
+  ["list"] = { list = true },
+  ["mutation.run"] = { mutation = true },
+  ["mutation.list"] = { list = true, mutation = true },
+  ["mutation.verify-baseline"] = { mutation = true },
+}
+
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
@@ -118,9 +127,10 @@ function M.run(root)
     os.exit(2)
   end
   if opts.help then
-    io.stdout:write(args.usage() .. "\n")
+    io.stdout:write(args.usage(opts.command) .. "\n")
     os.exit(0)
   end
+  local mode = MODES[opts.command]
 
   require("ntf.core.runtime").setup()
 
@@ -159,7 +169,7 @@ function M.run(root)
 
   local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
-  if opts.list and not opts.mutation then
+  if mode.list and not mode.mutation then
     local list = require("ntf.core.controller.list")
     io.stdout:write(list.tests(items))
     io.stderr:write(list.load_errors(load_errors))
@@ -208,11 +218,11 @@ function M.run(root)
     jobs = opts.jobs,
     timeout = opts.timeout,
     test_hook = opts.test_hook,
-    coverage = opts.coverage or opts.mutation,
+    coverage = opts.coverage or mode.mutation,
     coverage_excludes = coverage_excludes,
     on_item = prog and prog.on_item or nil,
-    on_item_coverage = opts.mutation and coverage_map.add or nil,
-    on_output = not opts.list and function(out)
+    on_item_coverage = mode.mutation and coverage_map.add or nil,
+    on_output = not mode.list and function(out)
       if prog then
         prog.newline()
       end
@@ -229,25 +239,25 @@ function M.run(root)
   local teardown_err = teardown_error(global_hook.teardown)
 
   local text, code = report.build(results, load_errors, { color = color })
-  if not opts.list then
+  if not mode.list then
     io.stdout:write(text)
   end
 
-  if opts.coverage and not opts.list then
+  if opts.coverage then
     require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
     io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, cwd))
   end
 
-  if opts.mutation then
+  if mode.mutation then
     if code ~= 0 then
-      if opts.list then
+      if mode.list then
         io.stdout:write(text)
       end
       io.stdout:flush()
-      io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(opts.list and "list" or "run"))
+      io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(mode.list and "list" or "run"))
       os.exit(code)
     end
-    if opts.list then
+    if mode.list then
       local list = require("ntf.core.controller.list")
       local tests_text = list.tests(planned_items)
       local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
