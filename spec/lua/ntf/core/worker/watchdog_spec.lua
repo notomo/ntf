@@ -23,16 +23,31 @@ while true do end
 ]]):format(helper.root)
     )
 
-    local obj = vim
-      .system({
-        vim.v.progpath,
-        "--clean",
-        "--headless",
-        "-c",
-        ("lua vim.cmd.luafile({ args = { %q }, magic = { file = false } })"):format(script),
-      }, { text = true })
-      :wait(30000)
+    local exited = false
+    local proc = vim.system({
+      vim.v.progpath,
+      "--clean",
+      "--headless",
+      "-c",
+      ("lua vim.cmd.luafile({ args = { %q }, magic = { file = false } })"):format(script),
+    }, { text = true }, function()
+      exited = true
+    end)
 
-    assert.equal(9, obj.signal)
+    -- WHY: what the kill leaves behind is the platform's to choose -- unix
+    -- reports the signal on a zero exit code, windows an exit code of 1 and no
+    -- signal -- so the claim is the one both agree on: the spin ended, which
+    -- nothing but the watchdog could have ended.
+    -- NOT: waiting on the SystemObj with a timeout and reading its result, since
+    -- that timeout kills with the very SIGKILL the watchdog sends, so a watchdog
+    -- that never fired would report exactly what one that did reports.
+    local stopped = vim.wait(10000, function()
+      return exited
+    end, 20)
+    if not stopped then
+      proc:kill("sigkill")
+    end
+
+    assert.equal(true, stopped)
   end)
 end)
