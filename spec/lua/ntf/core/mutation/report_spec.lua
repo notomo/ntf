@@ -54,9 +54,9 @@ describe("ntf.core.mutation.report.summary", function()
       score = 50,
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
-    assert.match("Mutation: 50%.0%% %(2/4 mutants detected%)", text)
+    assert.match("Mutation: 50%.0%% %(2/4 mutants detected%), 0%.0s elapsed\n", text)
     assert.match("1 killed  1 timeout  1 survived  1 no coverage\n", text)
     assert.match("SURVIVED lua/a%.lua:3 swap%-relational: < %-> <=", text)
     assert.match("NO COVERAGE lua/b%.lua:4", text)
@@ -81,7 +81,7 @@ describe("ntf.core.mutation.report.summary", function()
       score = 0,
     }
 
-    local text = report.summary(summary, root .. "/", { color = false })
+    local text = report.summary(summary, root .. "/", { color = false, elapsed = 0 })
 
     assert.match("SURVIVED lua/a%.lua:1", text)
     assert.match("SURVIVED /other/b%.lua:2", text)
@@ -113,7 +113,7 @@ describe("ntf.core.mutation.report.summary", function()
       },
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
     assert.match("1 equivalent", text)
@@ -140,7 +140,7 @@ describe("ntf.core.mutation.report.summary", function()
       unused_excludes = { { path = "lua/gone", rationale = "unused" } },
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match("UNUSED EXCLUDE lua/gone", text)
   end)
@@ -164,7 +164,7 @@ describe("ntf.core.mutation.report.summary", function()
       unused_spec_excludes = { { path = "spec/gone_spec.lua", rationale = "unused" } },
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", text)
   end)
@@ -197,7 +197,7 @@ describe("ntf.core.mutation.report.summary", function()
       },
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match(
       'UNPINNED BASELINE lua/b%.lua flip%-boolean: true %-> false wants a passing "mod keeps a and b apart"',
@@ -220,7 +220,7 @@ describe("ntf.core.mutation.report.summary", function()
       score = 100,
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
     assert.match("1 baseline killable", text)
@@ -246,9 +246,9 @@ describe("ntf.core.mutation.report.summary", function()
       verified = 2,
     }
 
-    local text = report.summary(summary, root, { color = false })
+    local text = report.summary(summary, root, { color = false, elapsed = 12.34 })
 
-    assert.match("Baseline: 2/3 entries re%-run\n", text)
+    assert.match("Baseline: 2/3 entries re%-run, 12%.3s elapsed\n", text)
     assert.match("BASELINE KILLABLE lua/a%.lua:3 swap%-relational: < %-> <=", text)
     local score_line = "Mutation:"
     assert.no.match(score_line, text)
@@ -269,6 +269,6 @@ describe("ntf.core.mutation.report.summary", function()
       score = nil,
     }
 
-    assert.match("Mutation: n/a", report.summary(summary, root, { color = false }))
+    assert.match("Mutation: n/a", report.summary(summary, root, { color = false, elapsed = 0 }))
   end)
 end)

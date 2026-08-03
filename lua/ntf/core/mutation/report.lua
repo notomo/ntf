@@ -31,7 +31,7 @@ end
 
 --- @param summary NtfMutationSummary
 --- @param cwd string? working directory, to show file paths relative to it
---- @param opts { color: boolean }
+--- @param opts { color: boolean, elapsed: number } seconds the scoring pass took, which the tests it was run from are timed apart from
 --- @return string
 function M.summary(summary, cwd, opts)
   cwd = cwd and (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", "")) or nil
@@ -60,6 +60,7 @@ function M.summary(summary, cwd, opts)
     end
     table.insert(lines, "  " .. table.concat(parts, "  "))
   end
+  lines[1] = lines[1] .. (", %.1fs elapsed"):format(opts.elapsed)
 
   for _, record in ipairs(summary.records) do
     local listed = LISTED[record.status]

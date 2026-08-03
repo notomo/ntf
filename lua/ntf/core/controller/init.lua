@@ -22,6 +22,7 @@ function M.mutate(opts, ctx)
     color = not vim.env.NO_COLOR,
   })
 
+  local started = vim.uv.hrtime()
   local summary = require("ntf.core.mutation").run(opts, {
     root = ctx.root,
     cwd = ctx.cwd,
@@ -40,7 +41,10 @@ function M.mutate(opts, ctx)
   if not opts.mutation_verify_baseline_only then
     require("ntf.core.mutation.results").write(opts.mutation_results, summary)
   end
-  io.stdout:write("\n" .. require("ntf.core.mutation.report").summary(summary, ctx.cwd, { color = ctx.color }))
+  local elapsed = (vim.uv.hrtime() - started) * 1e-9
+  io.stdout:write(
+    "\n" .. require("ntf.core.mutation.report").summary(summary, ctx.cwd, { color = ctx.color, elapsed = elapsed })
+  )
 
   local code = 0
   if #summary.lost > 0 then
