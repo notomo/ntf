@@ -139,7 +139,7 @@ function M.timing(results, timing)
   if #results > 0 then
     local startup_seconds = (timing.worker - test_seconds) / #results
     table.insert(lines, ("  nvim startup: %s avg per test"):format(duration(startup_seconds)))
-    table.insert(lines, ("  in tests: %s total"):format(duration(test_seconds)))
+    table.insert(lines, ("  test execution: %s total"):format(duration(test_seconds)))
   end
 
   return table.concat(lines, "\n") .. "\n"

@@ -318,7 +318,7 @@ describe("ntf.core.controller.report.timing", function()
       table.concat({
         "Time: 3.0s elapsed, 4 jobs",
         "  nvim startup: 2.0s avg per test",
-        "  in tests: 2.0s total",
+        "  test execution: 2.0s total",
         "",
       }, "\n"),
       text
@@ -337,7 +337,7 @@ describe("ntf.core.controller.report.timing", function()
       table.concat({
         "Time: 43ms elapsed, 8 jobs",
         "  nvim startup: 17ms avg per test",
-        "  in tests: 20ms total",
+        "  test execution: 20ms total",
         "",
       }, "\n"),
       text
@@ -356,6 +356,6 @@ describe("ntf.core.controller.report.timing", function()
     local text = report.timing(results, { elapsed = 2.0, worker = 2.0, jobs = 1 })
 
     assert.match("nvim startup: 2%.0s avg per test", text)
-    assert.match("in tests: 0ms total", text)
+    assert.match("test execution: 0ms total", text)
   end)
 end)
