@@ -115,11 +115,21 @@ function M.output_block(out, color)
   return table.concat(lines, "\n") .. "\n"
 end
 
+--- @param seconds number
+--- @return string # ms below a second, where one decimal of seconds is all zeroes
+function M.duration(seconds)
+  if seconds < 1 then
+    return ("%.0fms"):format(seconds * 1000)
+  end
+  return ("%.1fs"):format(seconds)
+end
+local duration = M.duration
+
 --- @param results NtfResult[]
 --- @param timing NtfRunTiming
 --- @return string
 function M.timing(results, timing)
-  local lines = { ("Time: %.1fs elapsed, %d jobs"):format(timing.elapsed, timing.jobs) }
+  local lines = { ("Time: %s elapsed, %d jobs"):format(duration(timing.elapsed), timing.jobs) }
 
   local test_seconds = 0
   for _, result in ipairs(results) do
@@ -127,9 +137,9 @@ function M.timing(results, timing)
   end
 
   if #results > 0 then
-    local startup_ms = (timing.worker - test_seconds) / #results * 1000
-    table.insert(lines, ("  nvim startup: %.0fms avg per test"):format(startup_ms))
-    table.insert(lines, ("  in tests: %.1fs total"):format(test_seconds))
+    local startup_seconds = (timing.worker - test_seconds) / #results
+    table.insert(lines, ("  nvim startup: %s avg per test"):format(duration(startup_seconds)))
+    table.insert(lines, ("  in tests: %s total"):format(duration(test_seconds)))
   end
 
   return table.concat(lines, "\n") .. "\n"

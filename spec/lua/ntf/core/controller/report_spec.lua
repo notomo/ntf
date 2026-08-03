@@ -287,6 +287,24 @@ describe("ntf.core.controller.report.resolve_color", function()
   end)
 end)
 
+describe("ntf.core.controller.report.duration", function()
+  it("shows a second and over in seconds", function()
+    assert.equal("4.6s", report.duration(4.62))
+  end)
+
+  it("shows a whole second in seconds, the unit changing only below one", function()
+    assert.equal("1.0s", report.duration(1.0))
+  end)
+
+  it("shows the millisecond a run just short of a second took, rather than rounding it to a second", function()
+    assert.equal("999ms", report.duration(0.999))
+  end)
+
+  it("shows a fraction of a second in milliseconds, which one decimal of seconds would flatten to zero", function()
+    assert.equal("43ms", report.duration(0.0432))
+  end)
+end)
+
 describe("ntf.core.controller.report.timing", function()
   it("splits the time the workers spent into the startup each test pays and the time in the tests", function()
     local results = {
@@ -299,7 +317,7 @@ describe("ntf.core.controller.report.timing", function()
     assert.equal(
       table.concat({
         "Time: 3.0s elapsed, 4 jobs",
-        "  nvim startup: 2000ms avg per test",
+        "  nvim startup: 2.0s avg per test",
         "  in tests: 2.0s total",
         "",
       }, "\n"),
@@ -307,10 +325,29 @@ describe("ntf.core.controller.report.timing", function()
     )
   end)
 
-  it("reports the elapsed time alone when no test ran, having no test to average over", function()
-    local text = report.timing({}, { elapsed = 0.5, worker = 0, jobs = 2 })
+  it("keeps a short run readable, where a tenth of a second is coarser than the whole run", function()
+    local results = {
+      { id = "1", names = { "x", "one" }, status = "passed", duration = 0.012 },
+      { id = "2", names = { "x", "two" }, status = "passed", duration = 0.008 },
+    }
 
-    assert.equal("Time: 0.5s elapsed, 2 jobs\n", text)
+    local text = report.timing(results, { elapsed = 0.043, worker = 0.054, jobs = 8 })
+
+    assert.equal(
+      table.concat({
+        "Time: 43ms elapsed, 8 jobs",
+        "  nvim startup: 17ms avg per test",
+        "  in tests: 20ms total",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("reports the elapsed time alone when no test ran, having no test to average over", function()
+    local text = report.timing({}, { elapsed = 1.5, worker = 0, jobs = 2 })
+
+    assert.equal("Time: 1.5s elapsed, 2 jobs\n", text)
   end)
 
   it("counts the whole life of a worker that reported no duration as startup", function()
@@ -318,7 +355,7 @@ describe("ntf.core.controller.report.timing", function()
 
     local text = report.timing(results, { elapsed = 2.0, worker = 2.0, jobs = 1 })
 
-    assert.match("nvim startup: 2000ms avg per test", text)
-    assert.match("in tests: 0.0s total", text)
+    assert.match("nvim startup: 2%.0s avg per test", text)
+    assert.match("in tests: 0ms total", text)
   end)
 end)

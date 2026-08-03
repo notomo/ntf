@@ -54,9 +54,9 @@ describe("ntf.core.mutation.report.summary", function()
       score = 50,
     }
 
-    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+    local text = report.summary(summary, root, { color = false, elapsed = 52.0 })
 
-    assert.match("Mutation: 50%.0%% %(2/4 mutants detected%), 0%.0s elapsed\n", text)
+    assert.match("Mutation: 50%.0%% %(2/4 mutants detected%), 52%.0s elapsed\n", text)
     assert.match("1 killed  1 timeout  1 survived  1 no coverage\n", text)
     assert.match("SURVIVED lua/a%.lua:3 swap%-relational: < %-> <=", text)
     assert.match("NO COVERAGE lua/b%.lua:4", text)

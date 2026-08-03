@@ -1,4 +1,6 @@
-local painter = require("ntf.core.controller.report").painter
+local controller_report = require("ntf.core.controller.report")
+local painter = controller_report.painter
+local duration = controller_report.duration
 
 local M = {}
 
@@ -60,7 +62,7 @@ function M.summary(summary, cwd, opts)
     end
     table.insert(lines, "  " .. table.concat(parts, "  "))
   end
-  lines[1] = lines[1] .. (", %.1fs elapsed"):format(opts.elapsed)
+  lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 
   for _, record in ipairs(summary.records) do
     local listed = LISTED[record.status]
