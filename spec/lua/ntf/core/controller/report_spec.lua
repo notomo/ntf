@@ -286,3 +286,39 @@ describe("ntf.core.controller.report.resolve_color", function()
     assert.is_false(report.resolve_color())
   end)
 end)
+
+describe("ntf.core.controller.report.timing", function()
+  it("splits the time the workers spent into the startup each test pays and the time in the tests", function()
+    local results = {
+      { id = "1", names = { "x", "one" }, status = "passed", duration = 0.5 },
+      { id = "2", names = { "x", "two" }, status = "passed", duration = 1.5 },
+    }
+
+    local text = report.timing(results, { elapsed = 3.0, worker = 6.0, jobs = 4 })
+
+    assert.equal(
+      table.concat({
+        "Time: 3.0s elapsed, 4 jobs",
+        "  nvim startup: 2000ms avg per test",
+        "  in tests: 2.0s total",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("reports the elapsed time alone when no test ran, having no test to average over", function()
+    local text = report.timing({}, { elapsed = 0.5, worker = 0, jobs = 2 })
+
+    assert.equal("Time: 0.5s elapsed, 2 jobs\n", text)
+  end)
+
+  it("counts the whole life of a worker that reported no duration as startup", function()
+    local results = { { id = "1", names = { "x", "one" }, status = "error" } }
+
+    local text = report.timing(results, { elapsed = 2.0, worker = 2.0, jobs = 1 })
+
+    assert.match("nvim startup: 2000ms avg per test", text)
+    assert.match("in tests: 0.0s total", text)
+  end)
+end)

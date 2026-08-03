@@ -3,13 +3,22 @@ local collector = require("ntf.core.coverage.collector")
 
 local M = {}
 
+--- @class NtfRunTiming
+--- @field elapsed number seconds the whole run took
+--- @field worker number seconds summed over every worker process, spawn to exit; jobs of them run at once, so this exceeds elapsed
+--- @field jobs integer workers run in parallel, whether given or defaulted
+
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
---- @return NtfResult[] results, table coverage merged per-file line hit counts
+--- @return NtfResult[] results
+--- @return table coverage merged per-file line hit counts
+--- @return NtfRunTiming timing
 function M.run(items, opts)
   local cwd = vim.fn.getcwd()
-  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4
+  local jobs = opts.jobs or vim.uv.available_parallelism()
   local total = #items
+  local run_started = vim.uv.hrtime()
+  local worker_seconds = 0
 
   local results = {}
   local merged_coverage = {}
@@ -29,6 +38,7 @@ function M.run(items, opts)
     local item_index = started
     local item = items[item_index]
 
+    local item_started = vim.uv.hrtime()
     driver.launch(item, {
       root = opts.root,
       cwd = cwd,
@@ -37,6 +47,7 @@ function M.run(items, opts)
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
+      worker_seconds = worker_seconds + (vim.uv.hrtime() - item_started) * 1e-9
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
         if opts.coverage then
@@ -81,7 +92,12 @@ function M.run(items, opts)
     end
   end
 
-  return results, merged_coverage
+  local timing = {
+    elapsed = (vim.uv.hrtime() - run_started) * 1e-9,
+    worker = worker_seconds,
+    jobs = jobs,
+  }
+  return results, merged_coverage, timing
 end
 
 return M

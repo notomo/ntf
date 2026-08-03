@@ -116,6 +116,26 @@ function M.output_block(out, color)
 end
 
 --- @param results NtfResult[]
+--- @param timing NtfRunTiming
+--- @return string
+function M.timing(results, timing)
+  local lines = { ("Time: %.1fs elapsed, %d jobs"):format(timing.elapsed, timing.jobs) }
+
+  local test_seconds = 0
+  for _, result in ipairs(results) do
+    test_seconds = test_seconds + (result.duration or 0)
+  end
+
+  if #results > 0 then
+    local startup_ms = (timing.worker - test_seconds) / #results * 1000
+    table.insert(lines, ("  nvim startup: %.0fms avg per test"):format(startup_ms))
+    table.insert(lines, ("  in tests: %.1fs total"):format(test_seconds))
+  end
+
+  return table.concat(lines, "\n") .. "\n"
+end
+
+--- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
 --- @param opts { color: boolean }
 --- @return string text, integer exit_code

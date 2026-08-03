@@ -155,6 +155,35 @@ end)
     assert.match(with_nothing_prepended .. raised_where_the_callback_is, first_frame)
   end)
 
+  it("times the run and the worker processes in seconds, a lone worker never outlasting the run", function()
+    local items = work.plan({
+      helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("one", function() end)
+  ntf.it("two", function() end)
+end)
+]]),
+    })
+
+    local before = vim.uv.hrtime()
+    local _, _, timing = pool.run(items, { root = helper.root, jobs = 1 })
+    local the_run_took = (vim.uv.hrtime() - before) * 1e-9
+
+    assert.is_true(timing.elapsed > 0)
+    assert.is_true(timing.elapsed <= the_run_took)
+    assert.is_true(timing.worker > 0)
+    assert.is_true(timing.worker <= timing.elapsed)
+  end)
+
+  it("reports the jobs it ran with", function()
+    local items = work.plan({ helper.write_spec(one_test) })
+
+    local _, _, timing = pool.run(items, { root = helper.root, jobs = 1 })
+
+    assert.equal(1, timing.jobs)
+  end)
+
   it("hands each worker's own coverage to on_item_coverage", function()
     local file = helper.write_spec([[
 local ntf = require("ntf")

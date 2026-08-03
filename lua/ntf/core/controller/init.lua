@@ -213,7 +213,7 @@ function M.run(root)
     ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
   })
 
-  local results, coverage = require("ntf.core.controller.pool").run(items, {
+  local results, coverage, timing = require("ntf.core.controller.pool").run(items, {
     root = root,
     jobs = opts.jobs,
     timeout = opts.timeout,
@@ -241,6 +241,7 @@ function M.run(root)
   local text, code = report.build(results, load_errors, { color = color })
   if not mode.list then
     io.stdout:write(text)
+    io.stdout:write("\n" .. report.timing(results, timing))
   end
 
   if opts.coverage then

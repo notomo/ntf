@@ -578,33 +578,6 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 25,
-      "operator": "swap-logical",
-      "original": "or",
-      "replacement": "and",
-      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
-      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 94,
-      "operator": "swap-logical",
-      "original": "or",
-      "replacement": "and",
-      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
-      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 97,
-      "operator": "perturb-number",
-      "original": "4",
-      "replacement": "5",
-      "line": "  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4",
-      "rationale": "the pool refills as each worker finishes, so the width of the opening burst changes how many run at once, never which items run or what they report"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
       "col": 7,
       "operator": "force-branch",
       "original": "started >= total",
