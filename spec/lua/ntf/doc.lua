@@ -2,6 +2,8 @@ vim.opt.runtimepath:prepend(vim.fn.getcwd())
 
 local util = require("genvdoc.util")
 local args = require("ntf.core.controller.args")
+local operators = require("ntf.core.mutation.operators")
+local splice = require("ntf.core.mutation.splice")
 local plugin_name = vim.env.PLUGIN_NAME
 
 local usage = table.concat(
@@ -189,6 +191,35 @@ for _, command in ipairs({
   end
 end
 
+--- @param width integer the document width a line has to fit in
+--- @return string # every operator with the change its example gets and what detects it
+local operator_list = function(width)
+  local blocks = {}
+  for _, operator in ipairs(operators.operators) do
+    local sites = operators.enumerate(operator.example)
+    if #sites == 0 then
+      error(("no site in the example of %s: %s"):format(operator.name, operator.example))
+    end
+    local lines = {}
+    local name = operator.name
+    for _, site in ipairs(sites) do
+      local mutated = assert(splice.apply(operator.example, site), "example does not match its site")
+      table.insert(lines, ("%-16s %s -> %s"):format(name, operator.example, mutated))
+      name = ""
+    end
+    table.insert(lines, "    " .. operator.description)
+
+    local indent = 2
+    for _, line in ipairs(lines) do
+      if #line + indent > width then
+        error(("too long for the document width: %s"):format(line))
+      end
+    end
+    table.insert(blocks, table.concat(lines, "\n"))
+  end
+  return table.concat(blocks, "\n\n")
+end
+
 local setup_path = doc_dir .. "/setup.lua"
 dofile(setup_path)
 if vim.fn.exepath("ntf") == "" then
@@ -305,17 +336,19 @@ not skipped by the JIT, which makes a `--coverage` run slower than a plain one.]
     },
     {
       name = "MUTATION TESTING",
-      body = function()
+      body = function(ctx)
         return table.concat({
           [[
 `ntf mutation` measures how much of the covered code your tests actually pin down.
 It first runs the specs as usual (a mutant means nothing against a failing suite,
 so the run stops there if a test fails), then makes one small change at a time to
-the code under test — swapping `==` for `~=`, `and` for `or`, `+` for `-`, `<` for
-`<=`, flipping a boolean literal, dropping a `not`, bumping a number — and runs
-the tests again. A mutant that makes a test fail is detected; one that leaves the
-whole suite green is a hole in the tests, and is reported with the change it got
-away with:]],
+the code under test and runs the tests again. Each kind of change is an operator,
+under whose name the mutant is reported and, below, written into a baseline
+entry:]],
+          util.help_code_block(operator_list(ctx.width)),
+          [[
+A mutant that makes a test fail is detected; one that leaves the whole suite
+green is a hole in the tests, and is reported with the change it got away with:]],
           util.help_code_block(mutation_command, { language = "sh" }),
           [[
 Only the mutants a test can reach are run, using the same line coverage as

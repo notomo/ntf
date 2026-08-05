@@ -3,6 +3,16 @@ local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local operators = require("ntf.core.mutation.operators")
 local splice = require("ntf.core.mutation.splice")
 
+local EVERY_OPERATOR_SOURCE = [[
+local function f(a, b)
+  if a == b and not a then
+    return a + 1, true
+  end
+  return a < b or false
+end
+return f
+]]
+
 --- @param src string
 --- @return table[]
 local function summarize(src)
@@ -201,21 +211,44 @@ local _ = a
   end)
 
   it("returns sites whose mutated source still compiles", function()
-    local src = [[
-local function f(a, b)
-  if a == b and not a then
-    return a + 1, true
-  end
-  return a < b or false
-end
-return f
-]]
-
-    local sites = operators.enumerate(src)
+    local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
     assert.equal(11, #sites)
     for _, site in ipairs(sites) do
-      local mutated = assert(splice.apply(src, site))
+      local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))
+    end
+  end)
+end)
+
+describe("ntf.core.mutation.operators.operators", function()
+  --- @param names string[]
+  --- @return string[]
+  local function sorted(names)
+    local sorted_names = vim.deepcopy(names)
+    table.sort(sorted_names)
+    return sorted_names
+  end
+
+  it("declares the operators enumerate produces, and no others", function()
+    local produced = {}
+    for _, site in ipairs(operators.enumerate(EVERY_OPERATOR_SOURCE)) do
+      produced[site.operator] = true
+    end
+
+    local declared = vim.tbl_map(function(operator)
+      return operator.name
+    end, operators.operators)
+
+    assert.same(sorted(vim.tbl_keys(produced)), sorted(declared))
+  end)
+
+  it("gives each operator an example whose every site is that operator's", function()
+    for _, operator in ipairs(operators.operators) do
+      local sites = operators.enumerate(operator.example)
+      assert(#sites > 0, ("no site in the example of %s: %s"):format(operator.name, operator.example))
+      for _, site in ipairs(sites) do
+        assert.equal(operator.name, site.operator)
+      end
     end
   end)
 end)

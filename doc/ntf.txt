@@ -231,11 +231,34 @@ MUTATION TESTING                                        *ntf-MUTATION-TESTING*
 `ntf mutation` measures how much of the covered code your tests actually pin down.
 It first runs the specs as usual (a mutant means nothing against a failing suite,
 so the run stops there if a test fails), then makes one small change at a time to
-the code under test — swapping `==` for `~=`, `and` for `or`, `+` for `-`, `<` for
-`<=`, flipping a boolean literal, dropping a `not`, bumping a number — and runs
-the tests again. A mutant that makes a test fail is detected; one that leaves the
-whole suite green is a hole in the tests, and is reported with the change it got
-away with:
+the code under test and runs the tests again. Each kind of change is an operator,
+under whose name the mutant is reported and, below, written into a baseline
+entry:
+>
+  swap-relational  return a <= b -> return a < b
+      a test has to exercise the boundary value the two disagree on
+
+  swap-logical     return a and b -> return a or b
+      a test has to reach operands the two connectives disagree on
+
+  swap-arith       return a + b -> return a - b
+      a test has to exercise a right operand that is not zero
+
+  flip-boolean     return true -> return false
+      a test has to depend on the value, not merely execute the line
+
+  drop-not         return not a -> return a
+      a test has to reach the branch the negation decides
+
+  perturb-number   return 1 -> return 2
+      a test has to depend on the exact value, not on its being non-zero
+
+  force-branch     if a then end -> if false then end
+                   if a then end -> if true then end
+      each side needs a test; a loop is only forced to the outcome that exits
+<
+A mutant that makes a test fail is detected; one that leaves the whole suite
+green is a hole in the tests, and is reported with the change it got away with:
 >sh
   ntf mutation
 <
