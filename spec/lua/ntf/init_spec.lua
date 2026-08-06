@@ -1059,7 +1059,9 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
-        exclude = { { path = "lua/dead.lua", rationale = "no spec drives it, so its mutants measure nothing" } },
+        exclude = {
+          { path = "lua/dead.lua", operators = "all", rationale = "no spec drives it, so its mutants measure nothing" },
+        },
       })
     )
 
@@ -1070,13 +1072,39 @@ describe("ntf mutation", function()
     assert.match("SURVIVED lua/mod%.lua", obj.stdout)
   end)
 
+  it("leaves out only the operators a --config exclude entry names, counting them apart", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        exclude = {
+          {
+            path = "lua/mod.lua",
+            operators = { "swap-relational" },
+            rationale = "debt: the specs pin no pair the shifted boundary separates",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("2 excluded", obj.stdout)
+    assert.no.match("SURVIVED", obj.stdout)
+    assert.match("Mutation: 100%.0%%", obj.stdout)
+  end)
+
   it("exits non-zero when a --config exclude entry covers no measurable file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
       vim.json.encode({
         version = 1,
-        exclude = { { path = "lua/gone.lua", rationale = "stale: the file it names is no longer there" } },
+        exclude = {
+          { path = "lua/gone.lua", operators = "all", rationale = "stale: the file it names is no longer there" },
+        },
       })
     )
 

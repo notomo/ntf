@@ -652,22 +652,27 @@
   "exclude": [
     {
       "path": "lua/ntf/core/controller/init.lua",
+      "operators": "all",
       "rationale": "structural: the CLI entry point runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
     },
     {
       "path": "lua/ntf/core/mutation/init.lua",
+      "operators": "all",
       "rationale": "structural: the mutation orchestration runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
     },
     {
       "path": "lua/ntf/core/mutation/runner.lua",
+      "operators": "all",
       "rationale": "structural: the trial dispatcher runs only in the launcher process, which no spec drives, so every one of its mutants is reported uncovered instead of detected"
     },
     {
       "path": "lua/ntf/core/worker/init.lua",
+      "operators": "all",
       "rationale": "structural: the worker bootstrap runs before its own loader hook can splice a mutant in and before coverage starts, so its mutants come back not applied or uncovered, never detected"
     },
     {
       "path": "lua/ntf/core/worker/executor.lua",
+      "operators": "all",
       "rationale": "structural: the worker reports a trial's verdict through this very module, so a mutant that stops it reporting failures reports none of its own — with its failure branch disabled the whole suite still comes back green. What is left over is the has_selected prune, which only skips work the leaf gate decides again, and a divisor whose shift is below the timing's own precision"
     }
   ],

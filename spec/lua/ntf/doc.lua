@@ -435,6 +435,17 @@ The two are not interchangeable. `--exclude-code` drops a path from the code
 under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.
 
+Leaving a whole file out is the widest judgement the file can carry, so an entry
+spells it: `operators` is required, and `"all"` is what names the whole file.
+Given an array of operator names instead — the names the section above lists —
+the file stays in the run and only those operators' mutants of it are left out,
+reported as excluded on the count line and, like an equivalent one, outside the
+score. That is the entry to write while a file's tests are still too coarse for
+one operator but answer for the rest, and it holds while the code is edited,
+where a baseline entry per surviving mutant would go LOST on the first move.
+Both forms fail as UNUSED EXCLUDE on the same terms: what the `path` names has
+to still be there to measure.
+
 The `exclude_spec` section answers for a test rather than for a file under test.
 A mutant is run against the tests that reach it, so an end-to-end spec — one that
 drives the whole CLI, or a real editor — is picked as a trial for most of the
@@ -447,7 +458,8 @@ in CI. `--exclude-spec=PATH` is the blunt form: it drops the spec from the run
 altogether, so a gate built on it has to run the suite a second time to cover
 what it dropped. Like `exclude`, an `exclude_spec` entry takes a required
 `rationale` and fails the run — reporting UNUSED EXCLUDE SPEC — when it covers
-none of the discovered spec files.]],
+none of the discovered spec files. It takes no `operators`: it names a spec, not
+a file mutants are enumerated from.]],
         }, "\n")
       end,
     },

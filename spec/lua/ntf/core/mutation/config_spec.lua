@@ -22,7 +22,17 @@ end
 local function exclude_entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod",
+    operators = "all",
     rationale = "every mutant of it runs in a process no spec drives",
+  }, overrides or {})
+end
+
+--- @param overrides table?
+--- @return table
+local function exclude_spec_entry(overrides)
+  return vim.tbl_extend("force", {
+    path = "spec/e2e_spec.lua",
+    rationale = "as a trial it drives the whole CLI to reach what a unit spec reaches in-process",
   }, overrides or {})
 end
 
@@ -41,7 +51,7 @@ describe("ntf.core.mutation.config.load", function()
       version = 1,
       baseline = { baseline_entry() },
       exclude = { exclude_entry() },
-      exclude_spec = { exclude_entry({ path = "spec/e2e_spec.lua" }) },
+      exclude_spec = { exclude_spec_entry() },
     })
 
     local loaded = assert(config.load(file))
@@ -115,10 +125,24 @@ describe("ntf.core.mutation.config.load", function()
     assert.match("exclude%[2%] needs a string rationale", config.load(file))
   end)
 
+  it("holds an exclude entry to the operators an exclude_spec entry does not take", function()
+    local unscoped = exclude_entry()
+    unscoped.operators = nil
+    local file = create_file({ version = 1, exclude = { unscoped } })
+
+    assert.match('exclude%[1%] needs an operators of "all"', config.load(file))
+  end)
+
+  it("rejects an exclude_spec entry that names operators", function()
+    local file = create_file({ version = 1, exclude_spec = { exclude_spec_entry({ operators = "all" }) } })
+
+    assert.match("exclude_spec%[1%] takes no operators", config.load(file))
+  end)
+
   it("reports which exclude_spec entry is invalid", function()
-    local incomplete = exclude_entry()
+    local incomplete = exclude_spec_entry()
     incomplete.rationale = nil
-    local file = create_file({ version = 1, exclude_spec = { exclude_entry(), incomplete } })
+    local file = create_file({ version = 1, exclude_spec = { exclude_spec_entry(), incomplete } })
 
     assert.match("exclude_spec%[2%] needs a string rationale", config.load(file))
   end)

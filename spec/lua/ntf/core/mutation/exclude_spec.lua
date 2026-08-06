@@ -7,13 +7,26 @@ local exclude = require("ntf.core.mutation.exclude")
 local function entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod",
+    operators = "all",
     rationale = "every mutant of it runs in a process no spec drives",
   }, overrides or {})
 end
 
+--- @param overrides table?
+--- @return table
+local function spec_entry(overrides)
+  local without_operators = entry(overrides)
+  without_operators.operators = nil
+  return without_operators
+end
+
 describe("ntf.core.mutation.exclude.validate", function()
-  it("accepts an entry", function()
+  it("accepts an entry leaving the whole file out", function()
     assert.is_nil(exclude.validate(entry()))
+  end)
+
+  it("accepts an entry naming the operators it leaves out", function()
+    assert.is_nil(exclude.validate(entry({ operators = { "flip-boolean", "perturb-number" } })))
   end)
 
   it("rejects an entry that lacks a field", function()
@@ -29,6 +42,41 @@ describe("ntf.core.mutation.exclude.validate", function()
 
   it("rejects an entry that is not an object", function()
     assert.match("is not an object", exclude.validate("nope"))
+  end)
+
+  it("rejects an entry that names no operators, so the whole file is never the default", function()
+    assert.match('needs an operators of "all"', exclude.validate(spec_entry()))
+  end)
+
+  it("rejects an empty operators, which would leave nothing out", function()
+    assert.match('needs an operators of "all"', exclude.validate(entry({ operators = {} })))
+  end)
+
+  it("rejects an operators that is neither the string nor an array", function()
+    assert.match('needs an operators of "all"', exclude.validate(entry({ operators = "flip-boolean" })))
+  end)
+
+  it("rejects an operator no run produces", function()
+    assert.match(
+      'names an operator no run produces: "swap%-bool"',
+      exclude.validate(entry({
+        operators = { "flip-boolean", "swap-bool" },
+      }))
+    )
+  end)
+end)
+
+describe("ntf.core.mutation.exclude.validate_spec", function()
+  it("accepts an entry", function()
+    assert.is_nil(exclude.validate_spec(spec_entry()))
+  end)
+
+  it("rejects a blank rationale", function()
+    assert.match("needs a non%-empty rationale", exclude.validate_spec(spec_entry({ rationale = " " })))
+  end)
+
+  it("rejects an entry naming operators, which decide nothing about a spec", function()
+    assert.match("takes no operators", exclude.validate_spec(entry()))
   end)
 end)
 
@@ -81,6 +129,24 @@ describe("ntf.core.mutation.exclude.partition", function()
     assert.same({}, narrow_first)
   end)
 
+  it("keeps a file an entry only names operators of, counting the entry as used", function()
+    local files = { "/project/lua/a.lua" }
+
+    local kept, unused = exclude.partition(files, { entry({ path = "lua", operators = { "flip-boolean" } }) }, cwd)
+
+    assert.same(files, kept)
+    assert.same({}, unused)
+  end)
+
+  it("drops the file an exclude_spec entry names, which carries no operators", function()
+    local files = { "/project/spec/a_spec.lua" }
+
+    local kept, unused = exclude.partition(files, { spec_entry({ path = "spec/a_spec.lua" }) }, cwd)
+
+    assert.same({}, kept)
+    assert.same({}, unused)
+  end)
+
   it("keeps every file when no entry is given", function()
     local files = { "/project/lua/a.lua" }
 
@@ -100,6 +166,40 @@ describe("ntf.core.mutation.exclude.partition", function()
   end)
 end)
 
+describe("ntf.core.mutation.exclude.operator_filter", function()
+  local cwd = "/project"
+
+  it("leaves out the operators an entry names, under the path it names", function()
+    local excluded = exclude.operator_filter({ entry({ path = "lua", operators = { "flip-boolean" } }) }, cwd)
+
+    assert.is_true(excluded("/project/lua/sub/a.lua", "flip-boolean"))
+    assert.is_false(excluded("/project/lua/sub/a.lua", "perturb-number"))
+    assert.is_false(excluded("/project/other/a.lua", "flip-boolean"))
+  end)
+
+  it("leaves out nothing for an entry covering the whole file, which never reaches a mutant", function()
+    local excluded = exclude.operator_filter({ entry({ path = "lua" }) }, cwd)
+
+    assert.is_false(excluded("/project/lua/a.lua", "flip-boolean"))
+  end)
+
+  it("leaves out an operator any one of the entries names", function()
+    local excluded = exclude.operator_filter({
+      entry({ path = "lua", operators = { "flip-boolean" } }),
+      entry({ path = "lua/a.lua", operators = { "perturb-number" } }),
+    }, cwd)
+
+    assert.is_true(excluded("/project/lua/a.lua", "perturb-number"))
+    assert.is_false(excluded("/project/lua/b.lua", "perturb-number"))
+  end)
+
+  it("leaves out nothing when no entry is given", function()
+    local excluded = exclude.operator_filter({}, cwd)
+
+    assert.is_false(excluded("/project/lua/a.lua", "flip-boolean"))
+  end)
+end)
+
 describe("ntf.core.mutation.exclude.item_indexes", function()
   local cwd = "/project"
 
@@ -113,7 +213,7 @@ describe("ntf.core.mutation.exclude.item_indexes", function()
     local items =
       { item("/project/spec/e2e/a_spec.lua"), item("/project/spec/b_spec.lua"), item("/project/spec/e2e/a_spec.lua") }
 
-    local indexes = exclude.item_indexes(items, { entry({ path = "spec/e2e" }) }, cwd)
+    local indexes = exclude.item_indexes(items, { spec_entry({ path = "spec/e2e" }) }, cwd)
 
     assert.same({ [1] = true, [3] = true }, indexes)
   end)
@@ -127,6 +227,6 @@ describe("ntf.core.mutation.exclude.item_indexes", function()
   it("returns no index when the entry covers no item", function()
     local items = { item("/project/spec/a_spec.lua") }
 
-    assert.same({}, exclude.item_indexes(items, { entry({ path = "spec/gone_spec.lua" }) }, cwd))
+    assert.same({}, exclude.item_indexes(items, { spec_entry({ path = "spec/gone_spec.lua" }) }, cwd))
   end)
 end)

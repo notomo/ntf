@@ -18,6 +18,7 @@ local COUNT_LABELS = {
   { status = "no_coverage", label = "no coverage", color = "yellow" },
   { status = "not_applied", label = "not applied", color = "yellow" },
   { status = "equivalent", label = "equivalent", color = "green" },
+  { status = "excluded", label = "excluded", color = "green" },
   { status = "baseline_killable", label = "baseline killable", color = "red" },
 }
 

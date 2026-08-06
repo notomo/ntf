@@ -17,7 +17,7 @@ local M = {}
 
 --- @class NtfMutationSummary
 --- @field records NtfMutationRecord[]
---- @field counts table<string, integer> one entry per status
+--- @field counts table<string, integer> one entry per status, plus `excluded` for the mutants no record was kept for
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field verified integer? baseline entries re-run; nil unless --mutation-verify-baseline=only left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
@@ -68,9 +68,12 @@ end
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
 --- @return { mutant: NtfMutant, relative_path: string, line_text: string }[]
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
+--- @return integer # mutants an exclude entry named an operator of, left out of the run
 local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries)
   local entries = {}
   local files, unused = target_files(cwd, excludes, mutation_target, exclude_entries)
+  local excluded_operator = exclude.operator_filter(exclude_entries, cwd)
+  local excluded = 0
   for _, file in ipairs(files) do
     local src = read_file(file) or ""
     local src_lines = vim.split(src, "\n", { plain = true })
@@ -78,15 +81,19 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
     for _, site in ipairs(operators.enumerate(src)) do
       local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
-        table.insert(entries, {
-          mutant = vim.tbl_extend("force", site, { path = file }),
-          relative_path = relative_path,
-          line_text = src_lines[site.row] or "",
-        })
+        if excluded_operator(file, site.operator) then
+          excluded = excluded + 1
+        else
+          table.insert(entries, {
+            mutant = vim.tbl_extend("force", site, { path = file }),
+            relative_path = relative_path,
+            line_text = src_lines[site.row] or "",
+          })
+        end
       end
     end
   end
-  return entries, unused
+  return entries, unused, excluded
 end
 
 --- @param mutant NtfMutant
@@ -154,7 +161,7 @@ function M.run(opts, ctx)
   --- @type boolean[] whether the task re-runs a baseline entry, parallel to tasks
   local task_verify = {}
 
-  local mutant_entries, unused_excludes =
+  local mutant_entries, unused_excludes, excluded =
     enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {})
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
@@ -213,8 +220,16 @@ function M.run(opts, ctx)
     end
   end
 
-  local counts =
-    { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0, equivalent = 0, baseline_killable = 0 }
+  local counts = {
+    killed = 0,
+    timeout = 0,
+    survived = 0,
+    no_coverage = 0,
+    not_applied = 0,
+    equivalent = 0,
+    excluded = excluded,
+    baseline_killable = 0,
+  }
   for _, record in ipairs(records) do
     counts[record.status] = counts[record.status] + 1
   end

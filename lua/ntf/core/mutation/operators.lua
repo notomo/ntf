@@ -54,6 +54,12 @@ M.operators = {
   },
 }
 
+--- @type table<string, NtfMutationOperator> # the same operators, keyed by the name a report prints and a config writes
+M.by_name = {}
+for _, operator in ipairs(M.operators) do
+  M.by_name[operator.name] = operator
+end
+
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },

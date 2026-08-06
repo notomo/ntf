@@ -15,6 +15,7 @@
   "exclude": [
     {
       "path": "lua/launcher.lua",
+      "operators": "all",
       "rationale": "runs only in the process that starts the run, which no spec drives, so every one of its mutants comes back uncovered instead of detected"
     }
   ],

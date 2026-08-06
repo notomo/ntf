@@ -4,7 +4,7 @@ local VERSION = 1
 
 --- @class NtfMutationConfig the mutation policy a run is given
 --- @field baseline NtfMutationBaselineEntry[] mutants judged impossible to kill
---- @field exclude NtfMutationExcludeEntry[] paths whose mutants the run does not enumerate
+--- @field exclude NtfMutationExcludeEntry[] paths whose mutants the run leaves out, whole or by operator
 --- @field exclude_spec NtfMutationExcludeEntry[] spec paths the run still runs, but never picks as a mutant's trial
 
 --- @param decoded table
@@ -54,12 +54,12 @@ function M.load(path)
   if type(baseline) == "string" then
     return invalid(baseline)
   end
-  local validate_exclude = require("ntf.core.mutation.exclude").validate
-  local exclude = load_section(decoded, "exclude", validate_exclude)
+  local exclude_module = require("ntf.core.mutation.exclude")
+  local exclude = load_section(decoded, "exclude", exclude_module.validate)
   if type(exclude) == "string" then
     return invalid(exclude)
   end
-  local exclude_spec = load_section(decoded, "exclude_spec", validate_exclude)
+  local exclude_spec = load_section(decoded, "exclude_spec", exclude_module.validate_spec)
   if type(exclude_spec) == "string" then
     return invalid(exclude_spec)
   end

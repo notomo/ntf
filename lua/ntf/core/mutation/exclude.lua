@@ -1,14 +1,17 @@
+local operators = require("ntf.core.mutation.operators")
+
 local M = {}
 
 --- @class NtfMutationExcludeEntry a path the run leaves out
 --- @field path string working-directory-relative file or directory
+--- @field operators ("all"|string[])? the operators whose mutants it leaves out; an exclude_spec entry carries none
 --- @field rationale string why what it names is left out
 
 local STRING_FIELDS = { "path", "rationale" }
 
 --- @param entry any
---- @return string? # what is wrong with the entry
-function M.validate(entry)
+--- @return string? # what is wrong with the path and the rationale both kinds of entry carry
+local function validate_named_path(entry)
   if type(entry) ~= "table" then
     return "is not an object"
   end
@@ -23,24 +26,83 @@ function M.validate(entry)
   return nil
 end
 
+--- @param entry any an entry of the exclude_spec section
+--- @return string? # what is wrong with the entry
+function M.validate_spec(entry)
+  local err = validate_named_path(entry)
+  if err then
+    return err
+  end
+  if entry.operators ~= nil then
+    return "takes no operators, naming a spec rather than a file mutants are enumerated from"
+  end
+  return nil
+end
+
+--- @param entry any an entry of the exclude section
+--- @return string? # what is wrong with the entry
+function M.validate(entry)
+  local err = validate_named_path(entry)
+  if err then
+    return err
+  end
+  -- WHY: the whole file is the largest exclusion there is, so it is spelled
+  -- rather than defaulted to; an entry that names its operators reads as the
+  -- narrower judgement it is, and widening one shows up as a written change.
+  -- NOT: taking a missing operators as "all", which makes the largest claim the
+  -- shortest thing to write.
+  if entry.operators == "all" then
+    return nil
+  end
+  if type(entry.operators) ~= "table" or #entry.operators == 0 then
+    return 'needs an operators of "all" or a non-empty array of operator names'
+  end
+  for _, name in ipairs(entry.operators) do
+    if not operators.by_name[name] then
+      return ("names an operator no run produces: %s"):format(vim.inspect(name))
+    end
+  end
+  return nil
+end
+
+--- @param entries NtfMutationExcludeEntry[]
+--- @param cwd string normalized absolute working directory
+--- @return string[] # what each entry names, as a normalized absolute path
+local function targets_of(entries, cwd)
+  return vim.tbl_map(function(entry)
+    return (vim.fs.normalize(vim.fs.joinpath(cwd, entry.path)):gsub("/$", ""))
+  end, entries)
+end
+
+--- @param target string normalized absolute path an entry names
+--- @param file string normalized absolute path
+--- @return boolean
+local function covers(target, file)
+  return file == target or file:sub(1, #target + 1) == target .. "/"
+end
+
+--- @param entry NtfMutationExcludeEntry
+--- @return boolean # whether it leaves the file out whole, rather than one operator's mutants of it
+local function is_whole(entry)
+  return entry.operators == nil or entry.operators == "all"
+end
+
 --- @param files string[] normalized absolute paths
 --- @param entries NtfMutationExcludeEntry[]
 --- @param cwd string normalized absolute working directory
---- @return string[] # the files no entry covers, in the given order
+--- @return string[] # the files no whole-file entry covers, in the given order
 --- @return NtfMutationExcludeEntry[] # entries covering no file, in the given order
 function M.partition(files, entries, cwd)
-  local targets = vim.tbl_map(function(entry)
-    return (vim.fs.normalize(vim.fs.joinpath(cwd, entry.path)):gsub("/$", ""))
-  end, entries)
+  local targets = targets_of(entries, cwd)
 
   local covered = {}
   local kept = {}
   for _, file in ipairs(files) do
     local excluded = false
     for index, target in ipairs(targets) do
-      if file == target or file:sub(1, #target + 1) == target .. "/" then
+      if covers(target, file) then
         covered[index] = true
-        excluded = true
+        excluded = excluded or is_whole(entries[index])
       end
     end
     if not excluded then
@@ -55,6 +117,29 @@ function M.partition(files, entries, cwd)
     end
   end
   return kept, unused
+end
+
+--- @param entries NtfMutationExcludeEntry[]
+--- @param cwd string normalized absolute working directory
+--- @return fun(file: string, operator: string): boolean # whether an entry leaves that operator's mutants out of the file
+function M.operator_filter(entries, cwd)
+  local targets = targets_of(entries, cwd)
+
+  local scoped = {}
+  for index, entry in ipairs(entries) do
+    if not is_whole(entry) then
+      table.insert(scoped, { target = targets[index], operators = entry.operators })
+    end
+  end
+
+  return function(file, operator)
+    for _, entry in ipairs(scoped) do
+      if covers(entry.target, file) and vim.tbl_contains(entry.operators, operator) then
+        return true
+      end
+    end
+    return false
+  end
 end
 
 --- @param items NtfWorkItem[] work items, in the order the run dispatches them
