@@ -59,7 +59,10 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `README.md` and `doc/ntf.txt` are generated from `spec/lua/ntf/doc.lua`. Edit
   that, then `make doc`; never hand-edit the outputs.
 - `spec/.shared/` is cloned from notomo/workflow (gitignored); `make` clones it on
-  first run.
+  first run. `WORKFLOW_DIR` overrides where that shared makefile and its scripts
+  are read from, so a local workflow checkout can be tried against this repo
+  without touching the clone: `make test WORKFLOW_DIR=../workflow` (or export it).
+  The first run in that mode clones the deps under the checkout's own `packages/`.
 - Express structure with LuaCATS (`@class/@field/@param/@return/@type`). Comments
   follow `spec/.shared/script/comment_lint.md`, which `make comment_lint`
   enforces — read it before writing one. Its `WHY:`/`NOT:` pair in practice: see
