@@ -7,7 +7,7 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `make test` — specs pass (ntf runs itself)
 - `make check` — lua-language-server reports no problems
   (set `CHECK_VIMRUNTIME` to your nvim runtime dir if it is not at the default)
-- `stylua --config-path spec/.shared/stylua.toml lua spec/lua bin/ntf` — no diff
+- `stylua --config-path "$WORKFLOW_DIR/stylua.toml" lua spec/lua bin/ntf` — no diff
 - `make require_lint` — enforces the require direction in `spec/require_lint.json`
   (the `ntf.core` engine layer stays self-contained; editor-facing layers depend
   on it, never the reverse)
@@ -58,13 +58,14 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   tokens name a command.
 - `README.md` and `doc/ntf.txt` are generated from `spec/lua/ntf/doc.lua`. Edit
   that, then `make doc`; never hand-edit the outputs.
-- `spec/.shared/` is cloned from notomo/workflow (gitignored); `make` clones it on
-  first run. `WORKFLOW_DIR` overrides where that shared makefile and its scripts
-  are read from, so a local workflow checkout can be tried against this repo
-  without touching the clone: `make test WORKFLOW_DIR=../workflow` (or export it).
-  The first run in that mode clones the deps under the checkout's own `packages/`.
+- `WORKFLOW_DIR` names the directory the shared makefile, its scripts and its
+  configs are read from. It defaults to `spec/.shared/`, which `make` clones from
+  notomo/workflow (gitignored) on first run, and can instead name a local
+  workflow checkout: `make test WORKFLOW_DIR=../workflow` (or export it, which is
+  the local setup — the clone is then absent and the deps live under the
+  checkout's own `packages/`). `$WORKFLOW_DIR` below stands for whichever it is.
 - Express structure with LuaCATS (`@class/@field/@param/@return/@type`). Comments
-  follow `spec/.shared/script/comment_lint.md`, which `make comment_lint`
+  follow `$WORKFLOW_DIR/script/comment_lint.md`, which `make comment_lint`
   enforces — read it before writing one. Its `WHY:`/`NOT:` pair in practice: see
   `driver.lua` on SIGKILL vs `vim.system`'s SIGTERM, or `mutation/splice.lua` on
   its own module vs part of operators. Outside that rule's `lua/` scope, keep the
