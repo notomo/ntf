@@ -647,6 +647,15 @@
       "replacement": "1",
       "line": "    timer:start(timeout, 0, function()",
       "rationale": "the callback only kills a process already being killed, and the exit callback closes the timer, so repeating it changes nothing"
+    },
+    {
+      "path": "lua/ntf/core/mutation/baseline.lua",
+      "col": 42,
+      "operator": "flip-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    line = vim.split(src, \"\\n\", { plain = true })[site.row],",
+      "rationale": "the separator is a lone newline, which is the same string read as a Lua pattern as read plainly, so both ways of splitting cut the source at the same places"
     }
   ],
   "exclude": [

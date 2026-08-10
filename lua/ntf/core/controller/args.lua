@@ -4,7 +4,7 @@ local M = {}
 local STRICT_CATEGORIES = { "survived", "no_coverage" }
 
 --- @class NtfOptions
---- @field command string the resolved command: run, list, mutation.run, mutation.list or mutation.verify-baseline
+--- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify or mutation.baseline.add
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
@@ -21,6 +21,10 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
 --- @field mutation_results string mutation results output path (JSON)
+--- @field mutation_mutant { path: string, row: integer, operator: string }? the mutant a baseline entry is written for
+--- @field mutation_col integer? 0-based start column, naming one of several mutants a row holds
+--- @field mutation_rationale string? why no test can detect the mutant the entry is written for
+--- @field mutation_invariant_spec string? full name of the test that fails once that rationale stops holding
 --- @field help boolean show usage and exit
 
 --- @class NtfFlag
@@ -35,6 +39,7 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field name string the token the command is parsed and documented under
 --- @field description string? the line the command is listed under; the root is never listed, so it has none
 --- @field id string? the value the command sets on NtfOptions.command; leaf commands only
+--- @field positional string? placeholder for the positional arguments it takes; nil for a command that takes none
 --- @field defaults table<string, any>? option values the command itself implies, applied before its flags
 --- @field flags NtfFlag[]? the flags it accepts, which is what makes a combination legal; leaf commands only
 --- @field validate (fun(opts: NtfOptions): string?)? the check only this command can make
@@ -162,15 +167,26 @@ local strict = {
   end,
 }
 
+--- @param description string what FILE is to the command taking it
+--- @return NtfFlag
+local function config_flag(description)
+  return {
+    name = "--config",
+    value = "FILE",
+    description = description,
+    set = function(opts, value)
+      opts.mutation_config = value
+    end,
+  }
+end
+
 --- @type NtfFlag
-local config = {
-  name = "--config",
-  value = "FILE",
-  description = "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing",
-  set = function(opts, value)
-    opts.mutation_config = value
-  end,
-}
+local config = config_flag(
+  "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing"
+)
+
+--- @type NtfFlag
+local written_config = config_flag("the mutation policy file to write the entry into, under its baseline")
 
 --- @type NtfFlag
 local verify_baseline = {
@@ -193,6 +209,55 @@ local results = {
 }
 
 --- @type NtfFlag
+local mutant = {
+  name = "--mutant",
+  value = "PATH:ROW:OPERATOR",
+  description = "the mutant to write a baseline entry for, spelled as a report prints it",
+  set = function(opts, value)
+    --- @cast value string
+    local path, row, operator = value:match("^(.+):(%d+):([%w-]+)$")
+    if not path then
+      return "invalid --mutant value (expected PATH:ROW:OPERATOR)"
+    end
+    opts.mutation_mutant = { path = path, row = assert(tonumber(row)), operator = operator }
+  end,
+}
+
+--- @type NtfFlag
+local col = {
+  name = "--col",
+  value = "N",
+  description = "the mutant's 0-based start column, needed only when its line holds more than one of the operator's mutants",
+  set = function(opts, value)
+    local n = tonumber(value)
+    if n == nil or n < 0 then
+      return "invalid --col value (expected a column >= 0)"
+    end
+    opts.mutation_col = n
+  end,
+}
+
+--- @type NtfFlag
+local rationale = {
+  name = "--rationale",
+  value = "TEXT",
+  description = "why no test can detect the mutant, which is what a later judgement starts from",
+  set = function(opts, value)
+    opts.mutation_rationale = value
+  end,
+}
+
+--- @type NtfFlag
+local invariant_spec = {
+  name = "--invariant-spec",
+  value = "NAME",
+  description = "full name of the test that fails once the rationale stops holding",
+  set = function(opts, value)
+    opts.mutation_invariant_spec = value
+  end,
+}
+
+--- @type NtfFlag
 local help = {
   name = "--help",
   aliases = { "-h" },
@@ -208,8 +273,11 @@ local discovery_flags = { filter, global_hook, exclude_spec }
 --- @type NtfFlag[] taken by every command that starts workers
 local worker_flags = { timeout, jobs, test_hook }
 
---- @type NtfFlag[] taken by every mutation command
+--- @type NtfFlag[] taken by every mutation command that enumerates the mutants of the code under test
 local mutation_flags = { exclude_code, target, config }
+
+--- @type string what the commands whose positional arguments are spec paths spell them as
+local SPEC_PATHS = "spec-file-or-dir..."
 
 --- @param ... NtfFlag[]
 --- @return NtfFlag[] # the given groups in order, followed by --help, which every command takes
@@ -227,6 +295,7 @@ local run_command = {
   name = "run",
   description = "run the tests and report the results",
   id = "run",
+  positional = SPEC_PATHS,
   flags = command_flags(discovery_flags, worker_flags, { coverage, exclude_code }),
   validate = function(opts)
     if #opts.exclude_code > 0 and not opts.coverage then
@@ -240,6 +309,7 @@ local list_command = {
   name = "list",
   description = "list the tests without running them",
   id = "list",
+  positional = SPEC_PATHS,
   flags = command_flags(discovery_flags),
 }
 
@@ -248,6 +318,7 @@ local mutation_run_command = {
   name = "run",
   description = "mutate the covered code once the tests pass and score the mutants",
   id = "mutation.run",
+  positional = SPEC_PATHS,
   flags = command_flags(discovery_flags, worker_flags, mutation_flags, { strict, verify_baseline, results }),
   validate = function(opts)
     if opts.mutation_verify_baseline and not opts.mutation_config then
@@ -261,21 +332,50 @@ local mutation_list_command = {
   name = "list",
   description = "list the mutants with coverage, without scoring them",
   id = "mutation.list",
+  positional = SPEC_PATHS,
   flags = command_flags(discovery_flags, worker_flags, mutation_flags),
 }
 
 --- @type NtfCommand
-local mutation_verify_baseline_command = {
-  name = "verify-baseline",
-  description = "run the --config baseline entries alone and fail any that a test can kill",
-  id = "mutation.verify-baseline",
+local mutation_baseline_verify_command = {
+  name = "verify",
+  description = "run the baseline entries alone and fail any that a test can kill",
+  id = "mutation.baseline.verify",
+  positional = SPEC_PATHS,
   defaults = { mutation_verify_baseline = true, mutation_verify_baseline_only = true },
   flags = command_flags(discovery_flags, worker_flags, mutation_flags),
   validate = function(opts)
     if not opts.mutation_config then
-      return "verify-baseline requires --config, which is where the baseline entries live"
+      return "baseline verify requires --config, which is where the baseline entries live"
     end
   end,
+}
+
+--- @type NtfCommand
+local mutation_baseline_add_command = {
+  name = "add",
+  description = "write the entry for one mutant into the baseline, leaving the tests unrun",
+  id = "mutation.baseline.add",
+  flags = command_flags({ written_config, mutant, col, rationale, invariant_spec }),
+  validate = function(opts)
+    if not opts.mutation_config then
+      return "baseline add requires --config, which is the file the entry is written into"
+    end
+    if not opts.mutation_mutant then
+      return "baseline add requires --mutant=PATH:ROW:OPERATOR, which names the mutant the entry answers for"
+    end
+    if not opts.mutation_rationale then
+      return "baseline add requires --rationale, which is what a later judgement starts from"
+    end
+  end,
+}
+
+--- @type NtfCommand
+local mutation_baseline_command = {
+  name = "baseline",
+  description = "work on the --config baseline: verify its entries, or write one",
+  default = "verify",
+  subcommands = { mutation_baseline_verify_command, mutation_baseline_add_command },
 }
 
 --- @type NtfCommand
@@ -283,7 +383,7 @@ local mutation_command = {
   name = "mutation",
   description = "mutation-test the covered code",
   default = "run",
-  subcommands = { mutation_run_command, mutation_list_command, mutation_verify_baseline_command },
+  subcommands = { mutation_run_command, mutation_list_command, mutation_baseline_command },
 }
 
 --- @type NtfCommand the command tree: a flag exists only under the commands that can act on it
@@ -394,7 +494,10 @@ local function chain_usage(chain)
   end
 
   local lines = {
-    ("Usage: ntf %s [options] [spec-file-or-dir...]"):format(table.concat(names, " ")),
+    ("Usage: ntf %s [options]%s"):format(
+      table.concat(names, " "),
+      command.positional and (" [" .. command.positional .. "]") or ""
+    ),
     "",
   }
   if parent.default == command.name then
@@ -424,8 +527,10 @@ local function chain_usage(chain)
       :totable())
   )
 
-  table.insert(lines, "")
-  table.insert(lines, "With no paths, the *_spec.lua files under ./spec are used.")
+  if command.positional then
+    table.insert(lines, "")
+    table.insert(lines, "With no paths, the *_spec.lua files under ./spec are used.")
+  end
   return table.concat(lines, "\n")
 end
 
@@ -467,6 +572,14 @@ local function validate(opts)
   if opts.mutation_config and vim.fn.filereadable(opts.mutation_config) == 0 then
     return "--config file not found: " .. opts.mutation_config
   end
+  if opts.mutation_mutant then
+    if not require("ntf.core.mutation.operators").by_name[opts.mutation_mutant.operator] then
+      return "--mutant names an operator no run produces: " .. opts.mutation_mutant.operator
+    end
+    if vim.fn.filereadable(opts.mutation_mutant.path) == 0 then
+      return "--mutant file not found: " .. opts.mutation_mutant.path
+    end
+  end
 end
 
 --- @param argv string[]
@@ -493,6 +606,10 @@ function M.parse(argv)
     mutation_verify_baseline = false,
     mutation_verify_baseline_only = false,
     mutation_results = "ntf-mutation.json",
+    mutation_mutant = nil,
+    mutation_col = nil,
+    mutation_rationale = nil,
+    mutation_invariant_spec = nil,
     help = false,
   }
   for key, value in pairs(command.defaults or {}) do
@@ -535,6 +652,8 @@ function M.parse(argv)
       end
     elseif current:sub(1, 1) == "-" then
       return "unknown option: " .. current .. "\n\n" .. chain_usage(chain)
+    elseif not command.positional then
+      return "unexpected argument: " .. current .. "\n\n" .. chain_usage(chain)
     else
       table.insert(opts.paths, current)
     end
@@ -544,7 +663,7 @@ function M.parse(argv)
   if opts.help then
     return opts
   end
-  if #opts.paths == 0 then
+  if command.positional and #opts.paths == 0 then
     if vim.fn.isdirectory("spec") == 1 then
       opts.paths = { "spec" }
     else

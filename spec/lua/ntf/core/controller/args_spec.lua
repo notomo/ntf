@@ -33,14 +33,20 @@ describe("ntf.core.controller.args.parse", function()
 
       assert.equal("mutation.list", args.parse({ "mutation", "list", "spec" }).command)
       assert.equal(
-        "mutation.verify-baseline",
-        args.parse({ "mutation", "verify-baseline", "--config=" .. file, "spec" }).command
+        "mutation.baseline.verify",
+        args.parse({ "mutation", "baseline", "verify", "--config=" .. file, "spec" }).command
       )
     end)
 
     it("takes the default subcommand when the next token names none", function()
       assert.equal("mutation.run", args.parse({ "mutation", "spec" }).command)
       assert.equal("mutation.run", args.parse({ "mutation", "--strict", "spec" }).command)
+    end)
+
+    it("takes the default subcommand of a group at any depth", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      assert.equal("mutation.baseline.verify", args.parse({ "mutation", "baseline", "--config=" .. file }).command)
     end)
 
     it("keeps a path that names a command, which the explicit run command is for", function()
@@ -70,7 +76,18 @@ describe("ntf.core.controller.args.parse", function()
 
     it("rejects a scoring flag on a command that scores nothing", function()
       assert.match("unknown option: %-%-results", args.parse({ "mutation", "list", "--results=out.json", "spec" }))
-      assert.match("unknown option: %-%-strict", args.parse({ "mutation", "verify-baseline", "--strict", "spec" }))
+      assert.match("unknown option: %-%-strict", args.parse({ "mutation", "baseline", "--strict", "spec" }))
+    end)
+
+    it("rejects a flag for running the tests on the command that leaves them unrun", function()
+      assert.match("unknown option: %-%-jobs", args.parse({ "mutation", "baseline", "add", "--jobs=2" }))
+      assert.match("unknown option: %-%-target", args.parse({ "mutation", "baseline", "add", "--target=lua" }))
+    end)
+
+    it("rejects a path under a command whose arguments are not spec paths", function()
+      local err = args.parse({ "mutation", "baseline", "add", "spec" })
+
+      assert.match("unexpected argument: spec", err)
     end)
   end)
 
@@ -423,19 +440,161 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_true(opts.mutation_strict.survived)
     end)
 
-    it("leaves every mutant outside the baseline unrun under verify-baseline", function()
+    it("leaves every mutant outside the baseline unrun under baseline verify", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local opts = args.parse({ "mutation", "verify-baseline", "--config=" .. file, "spec" })
+      local opts = args.parse({ "mutation", "baseline", "verify", "--config=" .. file, "spec" })
 
       assert.is_true(opts.mutation_verify_baseline)
       assert.is_true(opts.mutation_verify_baseline_only)
     end)
 
-    it("errors when verify-baseline has no config to take the entries from", function()
-      local err = args.parse({ "mutation", "verify-baseline", "spec" })
+    it("errors when baseline verify has no config to take the entries from", function()
+      local err = args.parse({ "mutation", "baseline", "verify", "spec" })
 
-      assert.match("verify%-baseline requires %-%-config", err)
+      assert.match("baseline verify requires %-%-config", err)
+    end)
+  end)
+
+  describe("mutation baseline add", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    --- @param extra string[]?
+    --- @return string[]
+    local function argv(extra)
+      local config = helper.test_data:create_file("mutation.json", "{}")
+      local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
+      return vim.list_extend({
+        "mutation",
+        "baseline",
+        "add",
+        "--config=" .. config,
+        "--mutant=" .. mutated .. ":1:perturb-number",
+        "--rationale=nothing depends on the exact value",
+      }, extra or {})
+    end
+
+    it("takes the mutant to write an entry for", function()
+      local opts = args.parse(argv())
+
+      assert.equal("mutation.baseline.add", opts.command)
+      assert.match("lua/mod%.lua$", opts.mutation_mutant.path)
+      assert.equal(1, opts.mutation_mutant.row)
+      assert.equal("perturb-number", opts.mutation_mutant.operator)
+      assert.equal("nothing depends on the exact value", opts.mutation_rationale)
+      assert.same({}, opts.paths)
+    end)
+
+    it("leaves the col unnamed without --col", function()
+      assert.is_nil(args.parse(argv()).mutation_col)
+    end)
+
+    it("takes the col naming one of several mutants a line holds", function()
+      assert.equal(7, args.parse(argv({ "--col=7" })).mutation_col)
+    end)
+
+    it("takes the first column of a line, which is column zero", function()
+      assert.equal(0, args.parse(argv({ "--col=0" })).mutation_col)
+    end)
+
+    it("rejects a col that is not a column", function()
+      assert.match("invalid %-%-col value", args.parse(argv({ "--col=here" })))
+      assert.match("invalid %-%-col value", args.parse(argv({ "--col=-1" })))
+    end)
+
+    it("takes the test the rationale rests on", function()
+      local opts = args.parse(argv({ "--invariant-spec=mod takes the min" }))
+
+      assert.equal("mod takes the min", opts.mutation_invariant_spec)
+    end)
+
+    it("leaves the invariant_spec out without --invariant-spec", function()
+      assert.is_nil(args.parse(argv()).mutation_invariant_spec)
+    end)
+
+    it("rejects a --mutant that does not name a row and an operator", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({ "mutation", "baseline", "add", "--config=" .. file, "--mutant=lua/mod.lua" })
+
+      assert.match("invalid %-%-mutant value", err)
+    end)
+
+    it("rejects a --mutant naming an operator no run produces", function()
+      local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "mutation",
+        "baseline",
+        "add",
+        "--config=" .. file,
+        "--mutant=" .. mutated .. ":1:perturb-numbers",
+        "--rationale=x",
+      })
+
+      assert.match("%-%-mutant names an operator no run produces: perturb%-numbers", err)
+    end)
+
+    it("rejects a --mutant naming a file that is not there", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "mutation",
+        "baseline",
+        "add",
+        "--config=" .. file,
+        "--mutant=/no/such/mod.lua:1:perturb-number",
+        "--rationale=x",
+      })
+
+      assert.match("%-%-mutant file not found", err)
+    end)
+
+    it("errors without the config the entry is written into", function()
+      local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
+
+      local err = args.parse({
+        "mutation",
+        "baseline",
+        "add",
+        "--mutant=" .. mutated .. ":1:perturb-number",
+        "--rationale=x",
+      })
+
+      assert.match("baseline add requires %-%-config", err)
+    end)
+
+    it("errors without the mutant the entry answers for", function()
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({ "mutation", "baseline", "add", "--config=" .. file, "--rationale=x" })
+
+      assert.match("baseline add requires %-%-mutant", err)
+    end)
+
+    it("errors without the rationale a later judgement starts from", function()
+      local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
+      local file = helper.test_data:create_file("mutation.json", "{}")
+
+      local err = args.parse({
+        "mutation",
+        "baseline",
+        "add",
+        "--config=" .. file,
+        "--mutant=" .. mutated .. ":1:perturb-number",
+      })
+
+      assert.match("baseline add requires %-%-rationale", err)
+    end)
+
+    it("needs no spec directory to fall back on, taking no paths", function()
+      helper.test_data:cd("")
+
+      local opts = args.parse(argv())
+
+      assert.equal("mutation.baseline.add", opts.command)
     end)
   end)
 
@@ -476,6 +635,20 @@ describe("ntf.core.controller.args.usage", function()
     assert.match("^Usage: ntf list %[options%]", args.usage("list"))
     assert.match("^Usage: ntf mutation %[run%] %[options%]", args.usage("mutation.run"))
     assert.match("^Usage: ntf mutation list %[options%]", args.usage("mutation.list"))
+    assert.match("^Usage: ntf mutation baseline %[verify%] %[options%]", args.usage("mutation.baseline.verify"))
+  end)
+
+  it("spells out the positional arguments a command takes", function()
+    assert.match("^Usage: ntf %[run%] %[options%] %[spec%-file%-or%-dir%.%.%.%]\n", args.usage("run"))
+    assert.match("With no paths, the %*_spec%.lua files under %./spec are used%.", args.usage("run"))
+  end)
+
+  it("ends the usage line of a command taking none with its options", function()
+    local usage = args.usage("mutation.baseline.add")
+
+    assert.match("^Usage: ntf mutation baseline add %[options%]\n", usage)
+    assert.no.match("spec%-file%-or%-dir", usage)
+    assert.no.match("With no paths", usage)
   end)
 
   it("falls back to the default command", function()
@@ -486,7 +659,10 @@ describe("ntf.core.controller.args.usage", function()
     local lines = vim.split(args.usage("mutation.run"), "\n", { plain = true })
 
     assert.is_true(vim.tbl_contains(lines, "Commands:"))
-    assert.is_true(vim.tbl_contains(lines, "  list             list the mutants with coverage, without scoring them"))
+    assert.is_true(vim.tbl_contains(lines, "  list           list the mutants with coverage, without scoring them"))
+    assert.is_true(
+      vim.tbl_contains(lines, "  baseline       work on the --config baseline: verify its entries, or write one")
+    )
   end)
 
   it("describes a command that has to be named instead of listing its group", function()

@@ -147,3 +147,115 @@ describe("ntf.core.mutation.config.load", function()
     assert.match("exclude_spec%[2%] needs a string rationale", config.load(file))
   end)
 end)
+
+describe("ntf.core.mutation.config.format", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  --- @param overrides table?
+  --- @return table
+  local function document(overrides)
+    return vim.tbl_extend("force", { baseline = {}, exclude = {}, exclude_spec = {} }, overrides or {})
+  end
+
+  it("writes an entry field by field, in the order the document carries them", function()
+    local text = config.format(document({ baseline = { baseline_entry({ invariant_spec = "mod takes the min" }) } }))
+
+    assert.equal(
+      table.concat({
+        "{",
+        '  "version": 1,',
+        '  "baseline": [',
+        "    {",
+        '      "path": "lua/mod.lua",',
+        '      "col": 7,',
+        '      "operator": "swap-relational",',
+        '      "original": "<",',
+        '      "replacement": "<=",',
+        '      "line": "  if a < b then",',
+        '      "rationale": "min(1, 2) is 1 either way",',
+        '      "invariant_spec": "mod takes the min"',
+        "    }",
+        "  ]",
+        "}",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("leaves out a field the entry does not carry", function()
+    local text = config.format(document({ baseline = { baseline_entry() } }))
+
+    assert.no.match("invariant_spec", text)
+  end)
+
+  it("leaves out a section with no entries", function()
+    local text = config.format(document())
+
+    assert.equal('{\n  "version": 1\n}\n', text)
+  end)
+
+  it("separates the entries of a section", function()
+    local text = config.format(document({
+      baseline = { baseline_entry(), baseline_entry({ col = 9 }) },
+    }))
+
+    assert.match("    },\n    {\n", text)
+  end)
+
+  it("writes every section it has entries for", function()
+    local text = config.format(document({
+      baseline = { baseline_entry() },
+      exclude = { exclude_entry() },
+      exclude_spec = { exclude_spec_entry() },
+    }))
+
+    assert.match('  "baseline": %[\n', text)
+    assert.match('  "exclude": %[\n', text)
+    assert.match('  "exclude_spec": %[\n', text)
+  end)
+
+  it("writes an operators array a line at a time", function()
+    local text = config.format(document({
+      exclude = { exclude_entry({ operators = { "swap-relational", "flip-boolean" } }) },
+    }))
+
+    assert.match('      "operators": %[\n        "swap%-relational",\n        "flip%-boolean"\n      %],\n', text)
+  end)
+
+  it("escapes what a JSON string has to escape, leaving what it does not alone", function()
+    local text = config.format(document({
+      baseline = { baseline_entry({ line = '  return "a\\b" -- \225\189\136' }) },
+    }))
+
+    assert.match('"line": "  return \\"a\\\\b\\" %-%- \225\189\136"', text)
+  end)
+
+  it("writes what load reads back unchanged", function()
+    local written = document({
+      baseline = { baseline_entry({ invariant_spec = "mod takes the min" }) },
+      exclude = { exclude_entry() },
+      exclude_spec = { exclude_spec_entry() },
+    })
+    local file = helper.test_data:create_file("written.json", config.format(written))
+
+    local loaded = assert(config.load(file))
+
+    assert.same(written, loaded)
+  end)
+end)
+
+describe("ntf.core.mutation.config.write", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("writes the document to the file", function()
+    local file = helper.test_data:create_file("mutation.json", "")
+    local document = { baseline = { baseline_entry() }, exclude = {}, exclude_spec = {} }
+
+    config.write(file, document)
+
+    assert.equal(config.format(document), table.concat(vim.fn.readfile(file), "\n") .. "\n")
+  end)
+end)

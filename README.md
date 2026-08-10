@@ -58,9 +58,9 @@ With no paths, the *_spec.lua files under ./spec are used.
 Usage: ntf mutation [run] [options] [spec-file-or-dir...]
 
 Commands:
-  run (default)    mutate the covered code once the tests pass and score the mutants
-  list             list the mutants with coverage, without scoring them
-  verify-baseline  run the --config baseline entries alone and fail any that a test can kill
+  run (default)  mutate the covered code once the tests pass and score the mutants
+  list           list the mutants with coverage, without scoring them
+  baseline       work on the --config baseline: verify its entries, or write one
 
 Options:
   --filter=PATTERN     run only tests whose full name matches the Lua pattern
@@ -97,9 +97,11 @@ Options:
 
 With no paths, the *_spec.lua files under ./spec are used.
 
-Usage: ntf mutation verify-baseline [options] [spec-file-or-dir...]
+Usage: ntf mutation baseline [verify] [options] [spec-file-or-dir...]
 
-run the --config baseline entries alone and fail any that a test can kill
+Commands:
+  verify (default)  run the baseline entries alone and fail any that a test can kill
+  add               write the entry for one mutant into the baseline, leaving the tests unrun
 
 Options:
   --filter=PATTERN     run only tests whose full name matches the Lua pattern
@@ -114,6 +116,18 @@ Options:
   -h, --help           show this help
 
 With no paths, the *_spec.lua files under ./spec are used.
+
+Usage: ntf mutation baseline add [options]
+
+write the entry for one mutant into the baseline, leaving the tests unrun
+
+Options:
+  --config=FILE               the mutation policy file to write the entry into, under its baseline
+  --mutant=PATH:ROW:OPERATOR  the mutant to write a baseline entry for, spelled as a report prints it
+  --col=N                     the mutant's 0-based start column, needed only when its line holds more than one of the operator's mutants
+  --rationale=TEXT            why no test can detect the mutant, which is what a later judgement starts from
+  --invariant-spec=NAME       full name of the test that fails once the rationale stops holding
+  -h, --help                  show this help
 ```
 
 ## Writing specs

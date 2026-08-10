@@ -1,4 +1,5 @@
 local tree = require("ntf.core.tree")
+local operators = require("ntf.core.mutation.operators")
 
 local M = {}
 
@@ -45,6 +46,121 @@ function M.validate(entry)
     end
   end
   return nil
+end
+
+--- @class NtfMutationBaselineRequest what names the mutant an entry is written for
+--- @field path string the file it is in, in any form a command line spells
+--- @field row integer 1-based line it starts on
+--- @field operator string
+--- @field col integer? 0-based start column, naming one of several mutants the row holds
+--- @field rationale string why no test can detect it
+--- @field invariant_spec string? full name of the test that fails once the rationale stops holding
+
+--- @param sites NtfMutantSite[]
+--- @return string # each site on its own indented line, so a message can end with the candidates it rejected
+local function listed(sites)
+  return table.concat(
+    vim.tbl_map(function(site)
+      return ("\n  col %d %s: %s -> %s"):format(site.col, site.operator, site.original, site.replacement)
+    end, sites),
+    ""
+  )
+end
+
+--- @param request NtfMutationBaselineRequest
+--- @param cwd string working directory the entry's path is written relative to
+--- @return NtfMutationBaselineEntry|string # the entry, or what stopped it being built
+function M.build(request, cwd)
+  local file = vim.fs.normalize(vim.fn.fnamemodify(request.path, ":p"))
+  local f = io.open(file, "r")
+  if not f then
+    return ("cannot read %s"):format(request.path)
+  end
+  local src = f:read("*a")
+  f:close()
+
+  local root = vim.fs.normalize(cwd)
+  if file:sub(1, #root + 1) ~= root .. "/" then
+    return ("%s is outside the working directory, which every entry names its file relative to"):format(request.path)
+  end
+  local relative = file:sub(#root + 2)
+
+  local on_row = vim.tbl_filter(function(site)
+    return site.row == request.row
+  end, operators.enumerate(src))
+  local of_operator = vim.tbl_filter(function(site)
+    return site.operator == request.operator
+  end, on_row)
+  if #of_operator == 0 then
+    return ("%s:%d has no %s mutant%s"):format(relative, request.row, request.operator, listed(on_row))
+  end
+
+  local candidates = of_operator
+  if request.col then
+    candidates = vim.tbl_filter(function(site)
+      return site.col == request.col
+    end, of_operator)
+    if #candidates == 0 then
+      return ("%s:%d has no %s mutant at col %d%s"):format(
+        relative,
+        request.row,
+        request.operator,
+        request.col,
+        listed(of_operator)
+      )
+    end
+  end
+  if #candidates > 1 then
+    return ("%s:%d has %d %s mutants; name one with --col%s"):format(
+      relative,
+      request.row,
+      #candidates,
+      request.operator,
+      listed(candidates)
+    )
+  end
+
+  local site = candidates[1]
+  local entry = {
+    path = relative,
+    col = site.col,
+    operator = site.operator,
+    original = site.original,
+    replacement = site.replacement,
+    line = vim.split(src, "\n", { plain = true })[site.row],
+    rationale = request.rationale,
+    invariant_spec = request.invariant_spec,
+  }
+  local err = M.validate(entry)
+  if err then
+    return ("the entry %s"):format(err)
+  end
+  return entry
+end
+
+--- @param entries NtfMutationBaselineEntry[]
+--- @param entry NtfMutationBaselineEntry
+--- @return NtfMutationBaselineEntry[]|string # the entries with it added after the last one naming the same file, or why it was not added
+function M.insert(entries, entry)
+  local key = key_of(entry.path, entry.line, entry)
+  local index = #entries
+  for i, existing in ipairs(entries) do
+    if key_of(existing.path, existing.line, existing) == key then
+      return ("already in the baseline: %s %s: %s -> %s"):format(
+        entry.path,
+        entry.operator,
+        entry.original,
+        entry.replacement
+      )
+    end
+    if existing.path == entry.path then
+      index = i
+    end
+  end
+
+  local inserted = vim.list_extend({}, entries)
+  table.insert(inserted, index + 1, entry)
+  return inserted
 end
 
 --- @param entries NtfMutationBaselineEntry[]

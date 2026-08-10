@@ -7,7 +7,10 @@ local splice = require("ntf.core.mutation.splice")
 local plugin_name = vim.env.PLUGIN_NAME
 
 local usage = table.concat(
-  vim.iter({ "run", "list", "mutation.run", "mutation.list", "mutation.verify-baseline" }):map(args.usage):totable(),
+  vim
+    .iter({ "run", "list", "mutation.run", "mutation.list", "mutation.baseline.verify", "mutation.baseline.add" })
+    :map(args.usage)
+    :totable(),
   "\n\n"
 )
 
@@ -125,7 +128,36 @@ run_ntf({ "mutation", "list", "--target=lua/mymod.lua", "spec" }, { cwd = projec
 local mutation_list_command = "ntf mutation list"
 
 local mutation_config_path = doc_dir .. "/mutation_config.json"
-vim.fn.writefile(vim.fn.readfile(mutation_config_path), vim.fs.joinpath(project_dir, "spec/mutation.json"))
+local project_config_path = vim.fs.joinpath(project_dir, "spec/mutation.json")
+
+local rationale = "the specs only ever ask about 0, whose answer the shifted boundary leaves false"
+local invariant_spec = "is false at the boundary"
+vim.fn.writefile({ "{", '  "version": 1', "}" }, project_config_path)
+run_ntf({
+  "mutation",
+  "baseline",
+  "add",
+  "--config=spec/mutation.json",
+  "--mutant=lua/mymod.lua:3:perturb-number",
+  "--rationale=" .. rationale,
+  "--invariant-spec=" .. invariant_spec,
+}, { cwd = project_dir })
+local mutation_baseline_add_command = table.concat({
+  "ntf mutation baseline add --config=spec/mutation.json \\",
+  "  --mutant=lua/mymod.lua:3:perturb-number \\",
+  ("  --rationale='%s' \\"):format(rationale),
+  ("  --invariant-spec='%s'"):format(invariant_spec),
+}, "\n")
+
+local written = vim.json.decode(table.concat(vim.fn.readfile(project_config_path), "\n"))
+local documented = vim.json.decode(table.concat(vim.fn.readfile(mutation_config_path), "\n"))
+if not vim.deep_equal(written.baseline, documented.baseline) then
+  error(
+    ("the documented config's baseline is not what `baseline add` writes: %s"):format(vim.inspect(written.baseline))
+  )
+end
+
+vim.fn.writefile(vim.fn.readfile(mutation_config_path), project_config_path)
 run_ntf({
   "mutation",
   "--target=lua/mymod.lua",
@@ -138,12 +170,13 @@ local mutation_config_command = "ntf mutation --config=spec/mutation.json"
 
 run_ntf({
   "mutation",
-  "verify-baseline",
+  "baseline",
+  "verify",
   "--target=lua/mymod.lua",
   "--config=spec/mutation.json",
   "spec",
 }, { cwd = project_dir })
-local mutation_verify_baseline_command = "ntf mutation verify-baseline --config=spec/mutation.json"
+local mutation_verify_baseline_command = "ntf mutation baseline verify --config=spec/mutation.json"
 
 run_ntf({
   "mutation",
@@ -175,6 +208,7 @@ for _, command in ipairs({
   mutation_strict_command,
   mutation_list_command,
   mutation_config_command,
+  mutation_baseline_add_command,
   mutation_verify_baseline_command,
   mutation_verify_baseline_with_score_command,
 }) do
@@ -238,9 +272,10 @@ require("genvdoc").generate(plugin_name, {
           [[
 ntf takes a command. `run` runs the tests and is what a bare `ntf` means; `list`
 lists them without running them; `mutation` mutation-tests the covered code and
-takes commands of its own. Positional arguments are spec paths under every one
-of them, so the explicit `run` is how you name a path that would otherwise read
-as a command (`ntf run list`).
+takes commands of its own. A command that reaches the tests takes spec paths as
+its positional arguments, so the explicit `run` is how you name a path that would
+otherwise read as a command (`ntf run list`); one that leaves them unrun, like
+`mutation baseline add`, takes none and says so in its usage line.
 
 A command takes exactly the options it can act on, and rejects the rest: there
 is no combination whose second half is silently ignored, and no option that
@@ -388,11 +423,21 @@ The file carries the whole mutation policy, one section per kind of judgement �
 `exclude` and `exclude_spec` are covered below — and any section may be left out.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
-can then reach 100 and be held there with `--strict`. An entry is
-copied from the survivor's record in the results file (`path` relative to the
-working directory, `col`, `operator`, `original`, `replacement`) plus the exact
-text of the mutated `line`; ntf only reads the file, so keep it in the
-repository and edit it by hand. An entry names its mutant by the line's text
+can then reach 100 and be held there with `--strict`. An entry names the mutant
+by where it is (`path` relative to the working directory, `col`) and what it
+changes (`operator`, `original`, `replacement`), plus the exact text of the
+mutated `line`. Those are the report's own words for the survivor, so
+`ntf mutation baseline add` writes them for you: it takes the mutant as the
+report spells it and the judgement you have to supply, and puts the entry in the
+file — running no test, since what it writes is the claim that no test can tell
+the difference:]],
+          util.help_code_block(mutation_baseline_add_command, { language = "sh" }),
+          [[
+`--col` is only needed when one line holds more than one of that operator's
+mutants; without it, such a line is reported with the columns to choose from
+rather than guessed at. The `baseline` entry shown above is what that command
+wrote, and the file stays a plain document written in one shape, so editing it
+by hand remains first-class. An entry names its mutant by the line's text
 rather than its number: it keeps matching while the code merely moves, and when
 the marked line itself changes the run fails, listing the entry as LOST — the
 judgement has to be made again, by fixing the entry or deleting it. The
@@ -409,7 +454,7 @@ of quietly unmooring the rationale.
 
 An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `ntf mutation
-verify-baseline` runs the listed mutants instead of trusting them and exits
+baseline verify` runs the listed mutants instead of trusting them and exits
 non-zero, reporting each as BASELINE KILLABLE, when a test kills one — the mirror
 of LOST, catching a stale judgement the code line never gave away. It leaves every
 other mutant unrun, scoring nothing and writing no results file, which is what you

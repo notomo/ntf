@@ -871,7 +871,7 @@ describe("ntf mutation", function()
     assert.equal(0, results.counts.survived)
   end)
 
-  it("runs the baseline entries alone under verify-baseline, writing no results file", function()
+  it("runs the baseline entries alone under baseline verify, writing no results file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
     helper.test_data:create_file(
@@ -894,7 +894,8 @@ describe("ntf mutation", function()
 
     local obj = helper.run_cli({
       "mutation",
-      "verify-baseline",
+      "baseline",
+      "verify",
       "--config=mutation.json",
       "spec",
     }, root)
@@ -943,7 +944,7 @@ describe("ntf mutation", function()
     assert.equal(1, results.counts.survived)
   end)
 
-  it("exits non-zero when verify-baseline finds a baseline entry a test kills", function()
+  it("exits non-zero when baseline verify finds a baseline entry a test kills", function()
     local root = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
@@ -963,11 +964,52 @@ describe("ntf mutation", function()
       })
     )
 
-    local obj = helper.run_cli({ "mutation", "verify-baseline", "--config=mutation.json", "spec" }, root)
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
 
     assert.equal(1, obj.code)
     assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
     assert.match("mutation gate failed: 1 baseline entry killable", obj.stderr)
+  end)
+
+  it("writes the entry for a mutant into the baseline, which verify then re-runs", function()
+    local root = mutation_project()
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1\n}\n')
+
+    local added = helper.run_cli({
+      "mutation",
+      "baseline",
+      "add",
+      "--config=mutation.json",
+      "--mutant=lua/mod.lua:6:swap-relational",
+      "--rationale=min(1, 2) is 1 on either side of the boundary",
+    }, root)
+
+    assert.equal(0, added.code)
+    assert.match("added to mutation%.json: lua/mod%.lua:6 swap%-relational: < %-> <=", added.stdout)
+
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
+  end)
+
+  it("exits non-zero when the baseline it would add the entry to already carries it", function()
+    local root = mutation_project()
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1\n}\n')
+    local argv = {
+      "mutation",
+      "baseline",
+      "add",
+      "--config=mutation.json",
+      "--mutant=lua/mod.lua:6:swap-relational",
+      "--rationale=min(1, 2) is 1 on either side of the boundary",
+    }
+    helper.run_cli(argv, root)
+
+    local obj = helper.run_cli(argv, root)
+
+    assert.equal(2, obj.code)
+    assert.match("already in the baseline: lua/mod%.lua swap%-relational: < %-> <=", obj.stderr)
   end)
 
   it("exits non-zero when a --config baseline entry matches nothing", function()

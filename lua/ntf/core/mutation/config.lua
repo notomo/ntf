@@ -67,4 +67,72 @@ function M.load(path)
   return { baseline = baseline, exclude = exclude, exclude_spec = exclude_spec } --[[@as NtfMutationConfig]]
 end
 
+local INDENT = "  "
+
+--- @type { key: string, fields: string[] }[] the sections in the order the document carries them, each with the order its entries spell their fields in
+local SECTIONS = {
+  {
+    key = "baseline",
+    fields = { "path", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
+  },
+  { key = "exclude", fields = { "path", "operators", "rationale" } },
+  { key = "exclude_spec", fields = { "path", "rationale" } },
+}
+
+--- @param value string|number|string[]
+--- @param indent string what the line the value starts on is indented by
+--- @return string
+local function encode(value, indent)
+  if type(value) ~= "table" then
+    return vim.json.encode(value)
+  end
+  local inner = indent .. INDENT
+  local items = vim.tbl_map(function(item)
+    return inner .. vim.json.encode(item)
+  end, value)
+  return "[\n" .. table.concat(items, ",\n") .. "\n" .. indent .. "]"
+end
+
+--- @param entry table
+--- @param fields string[]
+--- @param indent string
+--- @return string
+local function encode_entry(entry, fields, indent)
+  local inner = indent .. INDENT
+  local written = {}
+  for _, field in ipairs(fields) do
+    if entry[field] ~= nil then
+      table.insert(written, ("%s%s: %s"):format(inner, vim.json.encode(field), encode(entry[field], inner)))
+    end
+  end
+  return "{\n" .. table.concat(written, ",\n") .. "\n" .. indent .. "}"
+end
+
+--- @param config NtfMutationConfig
+--- @return string # the document text, in the one shape every write produces, so an edit shows up as the entry it changed
+function M.format(config)
+  local written = { ('%s"version": %d'):format(INDENT, VERSION) }
+  for _, section in ipairs(SECTIONS) do
+    local entries = config[section.key]
+    if #entries > 0 then
+      local encoded = vim.tbl_map(function(entry)
+        return INDENT .. INDENT .. encode_entry(entry, section.fields, INDENT .. INDENT)
+      end, entries)
+      table.insert(
+        written,
+        ("%s%s: [\n%s\n%s]"):format(INDENT, vim.json.encode(section.key), table.concat(encoded, ",\n"), INDENT)
+      )
+    end
+  end
+  return "{\n" .. table.concat(written, ",\n") .. "\n}\n"
+end
+
+--- @param path string
+--- @param config NtfMutationConfig
+function M.write(path, config)
+  local f = assert(io.open(path, "w"))
+  f:write(M.format(config))
+  f:close()
+end
+
 return M

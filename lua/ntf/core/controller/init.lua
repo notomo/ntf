@@ -6,8 +6,48 @@ local MODES = {
   ["list"] = { list = true },
   ["mutation.run"] = { mutation = true },
   ["mutation.list"] = { list = true, mutation = true },
-  ["mutation.verify-baseline"] = { mutation = true },
+  ["mutation.baseline.verify"] = { mutation = true },
 }
+
+--- @param opts NtfOptions
+--- @param config NtfMutationConfig
+--- @return integer exit_code
+local function add_baseline(opts, config)
+  local baseline = require("ntf.core.mutation.baseline")
+  local mutant = assert(opts.mutation_mutant)
+  local entry = baseline.build({
+    path = mutant.path,
+    row = mutant.row,
+    operator = mutant.operator,
+    col = opts.mutation_col,
+    rationale = assert(opts.mutation_rationale),
+    invariant_spec = opts.mutation_invariant_spec,
+  }, vim.fn.getcwd())
+  if type(entry) == "string" then
+    io.stderr:write(entry .. "\n")
+    return 2
+  end
+
+  local entries = baseline.insert(config.baseline, entry)
+  if type(entries) == "string" then
+    io.stderr:write(entries .. "\n")
+    return 2
+  end
+
+  config.baseline = entries
+  require("ntf.core.mutation.config").write(opts.mutation_config, config)
+  io.stdout:write(
+    ("added to %s: %s:%d %s: %s -> %s\n"):format(
+      opts.mutation_config,
+      entry.path,
+      mutant.row,
+      entry.operator,
+      entry.original,
+      entry.replacement
+    )
+  )
+  return 0
+end
 
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
@@ -147,6 +187,10 @@ function M.run(root)
     end
     mutation_config = loaded
   end
+  if opts.command == "mutation.baseline.add" then
+    os.exit(add_baseline(opts, assert(mutation_config)))
+  end
+
   local mutation_baseline = mutation_config and mutation_config.baseline
   local mutation_exclude = mutation_config and mutation_config.exclude
   local mutation_exclude_spec = mutation_config and mutation_config.exclude_spec or {}

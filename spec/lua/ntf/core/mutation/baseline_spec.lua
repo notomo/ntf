@@ -1,6 +1,7 @@
 local ntf = require("ntf")
-local describe, it, assert = ntf.describe, ntf.it, ntf.assert
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local baseline = require("ntf.core.mutation.baseline")
+local helper = require("ntf.test.helper")
 
 --- @param overrides table?
 --- @return table
@@ -61,6 +62,205 @@ describe("ntf.core.mutation.baseline.validate", function()
 
   it("rejects a non-number col", function()
     assert.match("needs a number col", baseline.validate(entry({ col = "seven" })))
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.build", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  local MODULE = table.concat({
+    "local M = {}",
+    "function M.min(a, b)",
+    "  if a < b then",
+    "    return a",
+    "  end",
+    "  return b",
+    "end",
+    "function M.both(a, b, c, d)",
+    "  return a < b and c < d",
+    "end",
+    "return M",
+  }, "\n")
+
+  --- @param overrides table?
+  --- @return table
+  local function request(overrides)
+    return vim.tbl_extend("force", {
+      path = "lua/mod.lua",
+      row = 3,
+      operator = "swap-relational",
+      rationale = "min(1, 2) is 1 either way",
+    }, overrides or {})
+  end
+
+  --- @return string # working directory the module sits in
+  local function project()
+    helper.test_data:create_file("lua/mod.lua", MODULE)
+    helper.test_data:cd("")
+    return helper.test_data.full_path
+  end
+
+  it("writes the mutant the row holds as an entry", function()
+    local cwd = project()
+
+    local built = baseline.build(request(), cwd)
+
+    assert.same({
+      path = "lua/mod.lua",
+      col = 7,
+      operator = "swap-relational",
+      original = "<",
+      replacement = "<=",
+      line = "  if a < b then",
+      rationale = "min(1, 2) is 1 either way",
+    }, built)
+  end)
+
+  it("carries the invariant_spec into the entry", function()
+    local cwd = project()
+
+    local built = baseline.build(request({ invariant_spec = "mod takes the min" }), cwd)
+
+    assert.equal("mod takes the min", built.invariant_spec)
+  end)
+
+  it("names the file relative to the working directory, whatever form the request spells", function()
+    local cwd = project()
+
+    local built = baseline.build(request({ path = vim.fs.joinpath(cwd, "lua/mod.lua") }), cwd)
+
+    assert.equal("lua/mod.lua", built.path)
+  end)
+
+  it("rejects a file outside the working directory, which no entry can name", function()
+    local cwd = project()
+    local outside = helper.test_data:create_file("outside.lua", MODULE)
+    helper.test_data:cd("lua")
+
+    local err = baseline.build(request({ path = outside }), vim.fs.joinpath(cwd, "lua"))
+
+    assert.match("outside the working directory", err)
+  end)
+
+  it("rejects a file it cannot read", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ path = "lua/missing.lua" }), cwd)
+
+    assert.equal("cannot read lua/missing.lua", err)
+  end)
+
+  it("rejects a row holding no mutant of the operator, listing what it does hold", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ operator = "perturb-number" }), cwd)
+
+    assert.match("lua/mod%.lua:3 has no perturb%-number mutant", err)
+    assert.match("\n  col 7 swap%-relational: < %-> <=", err)
+  end)
+
+  it("lists nothing for a row holding no mutant at all", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ row = 1 }), cwd)
+
+    assert.equal("lua/mod.lua:1 has no swap-relational mutant", err)
+  end)
+
+  it("rejects a row holding several of the operator's mutants, listing them with the column to name one by", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ row = 9 }), cwd)
+
+    assert.match("lua/mod%.lua:9 has 2 swap%-relational mutants; name one with %-%-col", err)
+    assert.match("\n  col 11 swap%-relational: < %-> <=\n  col 21 swap%-relational: < %-> <=", err)
+  end)
+
+  it("takes the mutant the col names out of the several a row holds", function()
+    local cwd = project()
+
+    local built = baseline.build(request({ row = 9, col = 21 }), cwd)
+
+    assert.equal(21, built.col)
+    assert.equal("  return a < b and c < d", built.line)
+  end)
+
+  it("rejects a col holding no mutant of the operator, listing the ones the row does hold", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ row = 9, col = 12 }), cwd)
+
+    assert.match("lua/mod%.lua:9 has no swap%-relational mutant at col 12", err)
+    assert.match("\n  col 11 swap%-relational: < %-> <=", err)
+  end)
+
+  it("holds the built entry to what the config accepts", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ rationale = " " }), cwd)
+
+    assert.equal("the entry needs a non-empty rationale", err)
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.insert", function()
+  it("adds an entry to an empty baseline", function()
+    local added = baseline.insert({}, entry())
+
+    assert.equal(1, #added)
+    assert.equal("lua/mod.lua", added[1].path)
+  end)
+
+  it("adds an entry after the last one naming the same file", function()
+    local entries = {
+      entry({ path = "lua/a.lua" }),
+      entry({ path = "lua/mod.lua", col = 1 }),
+      entry({ path = "lua/z.lua" }),
+    }
+
+    local added = baseline.insert(entries, entry({ col = 9 }))
+
+    assert.same(
+      { "lua/a.lua", "lua/mod.lua", "lua/mod.lua", "lua/z.lua" },
+      vim.tbl_map(function(e)
+        return e.path
+      end, added)
+    )
+    assert.equal(9, added[3].col)
+  end)
+
+  it("adds an entry naming a file no entry does at the end", function()
+    local entries = { entry({ path = "lua/a.lua" }) }
+
+    local added = baseline.insert(entries, entry())
+
+    assert.equal(2, #added)
+    assert.equal("lua/mod.lua", added[2].path)
+  end)
+
+  it("leaves the given entries alone", function()
+    local entries = { entry({ path = "lua/a.lua" }) }
+
+    baseline.insert(entries, entry())
+
+    assert.equal(1, #entries)
+  end)
+
+  it("rejects an entry the baseline already carries", function()
+    local entries = { entry() }
+
+    local err = baseline.insert(entries, entry({ rationale = "a second opinion" }))
+
+    assert.equal("already in the baseline: lua/mod.lua swap-relational: < -> <=", err)
+  end)
+
+  it("adds an entry that differs from one on the same line only by its column", function()
+    local entries = { entry() }
+
+    local added = baseline.insert(entries, entry({ col = 9 }))
+
+    assert.equal(2, #added)
   end)
 end)
 

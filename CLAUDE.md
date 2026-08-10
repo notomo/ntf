@@ -19,9 +19,12 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   with one (restructuring so the code is callable from a spec if need be, as
   `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
   undetectable — add a `baseline` entry with its rationale to `spec/mutation.json`,
-  the one mutation policy file (`--config`).
+  the one mutation policy file (`--config`), with
+  `$(NTF) mutation baseline add --config=spec/mutation.json --mutant=PATH:ROW:OPERATOR --rationale=...`,
+  which writes the entry from the mutant the report names and runs no test
+  (add `--col` only when the line holds more than one of that operator's mutants).
   When that rationale rests on a fact from another module or from the runtime,
-  add an `invariant_spec` naming the test that pins the fact — the run fails as
+  pass `--invariant-spec` naming the test that pins the fact — the run fails as
   UNPINNED BASELINE once no test of that name passes.
   A whole file stays out of the run only through that file's `exclude` section,
   which requires a rationale per path and fails as
@@ -35,7 +38,7 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   it reaches comes back NO COVERAGE and has to be reached by a unit spec
 - `make mutation_verify_baseline` — after editing the `baseline` of `spec/mutation.json`:
   must exit 0. It re-runs the listed mutants and nothing else
-  (`ntf mutation verify-baseline`) and fails any a test now kills (reported
+  (`ntf mutation baseline verify`) and fails any a test now kills (reported
   BASELINE KILLABLE) — kill it with a spec instead, or fix the entry. Kept out of
   `make mutation` so its hot path stays cheap
 - `make mutation_ci` — what CI runs in place of the two above: one pass both
@@ -54,8 +57,10 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   (`M.root`): each command names the flags it accepts, so a flag that means
   nothing to a command is rejected there instead of being checked for after
   parsing. `usage()` and the docs derive from the tree — do not duplicate either
-  list. Positional arguments are spec paths under every command; only leading
-  tokens name a command.
+  list. A command's `positional` names what its positional arguments are — spec
+  paths for every command that reaches the tests, and nothing at all for one that
+  does not (`mutation baseline add`), which then rejects a path instead of
+  discovering specs it never runs; only leading tokens name a command.
 - `README.md` and `doc/ntf.txt` are generated from `spec/lua/ntf/doc.lua`. Edit
   that, then `make doc`; never hand-edit the outputs.
 - `WORKFLOW_DIR` names the directory the shared makefile, its scripts and its
