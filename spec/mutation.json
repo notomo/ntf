@@ -640,15 +640,6 @@
       "rationale": "the poll interval only sets how often the wait re-checks a predicate that is already true by then"
     },
     {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 14,
-      "operator": "swap-arith",
-      "original": "*",
-      "replacement": "/",
-      "line": "  vim.wait(10 * 60 * 1000, function()",
-      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget the swap leaves"
-    },
-    {
       "path": "lua/ntf/core/worker/driver.lua",
       "col": 25,
       "operator": "perturb-number",

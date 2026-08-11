@@ -20,6 +20,15 @@ ntf.describe("x", function()
 end)
 ]]
 
+local slow_test = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("sleeps", function()
+    vim.uv.sleep(300)
+  end)
+end)
+]]
+
 --- @param coverage table merged per-file line hit counts
 --- @return integer measured, integer seeded
 local function counted(coverage)
@@ -69,6 +78,15 @@ end)
     local results = pool.run(items, { root = helper.root, jobs = 1 })
 
     assert.equal(#items, #results)
+  end)
+
+  it("waits out a worker slower than a fraction of a second, cutting off only a run that never finishes", function()
+    local items = work.plan({ helper.write_spec(slow_test) })
+
+    local results = pool.run(items, { root = helper.root })
+
+    assert.equal(1, #results)
+    assert.equal("passed", results[1].status)
   end)
 
   it("merges nothing and calls no coverage callback when coverage is off", function()
