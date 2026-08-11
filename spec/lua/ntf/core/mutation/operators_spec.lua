@@ -58,12 +58,27 @@ local _ = a or b
     local sites = summarize([[
 local _ = a + b
 local _ = a - b
+local _ = a * b
+local _ = a / b
+local _ = a % b
+local _ = a ^ b
 ]])
 
     assert.same({
       { operator = "swap-arith", row = 1, original = "+", replacement = "-" },
       { operator = "swap-arith", row = 2, original = "-", replacement = "+" },
+      { operator = "swap-arith", row = 3, original = "*", replacement = "/" },
+      { operator = "swap-arith", row = 4, original = "/", replacement = "*" },
+      { operator = "swap-arith", row = 5, original = "%", replacement = "*" },
+      { operator = "swap-arith", row = 6, original = "^", replacement = "*" },
     }, sites)
+  end)
+
+  it("leaves floor division alone, since the runtime that loads a mutant cannot compile it", function()
+    local src = [[local _ = a // b]]
+
+    assert(not loadstring(src))
+    assert.same({}, summarize(src))
   end)
 
   it("leaves a unary minus alone", function()

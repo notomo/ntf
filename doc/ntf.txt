@@ -256,8 +256,11 @@ entry:
   swap-logical     return a and b -> return a or b
       a test has to reach operands the two connectives disagree on
 
-  swap-arith       return a + b -> return a - b
-      a test has to exercise a right operand that is not zero
+  swap-arith       return a + b * c % d ^ e -> return a - b * c % d ^ e
+                   return a + b * c % d ^ e -> return a + b / c % d ^ e
+                   return a + b * c % d ^ e -> return a + b * c * d ^ e
+                   return a + b * c % d ^ e -> return a + b * c % d * e
+      a test has to exercise a right operand the two disagree on
 
   flip-boolean     return true -> return false
       a test has to depend on the value, not merely execute the line

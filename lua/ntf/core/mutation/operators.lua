@@ -29,8 +29,8 @@ M.operators = {
   },
   {
     name = "swap-arith",
-    description = "a test has to exercise a right operand that is not zero",
-    example = "return a + b",
+    description = "a test has to exercise a right operand the two disagree on",
+    example = "return a + b * c % d ^ e",
   },
   {
     name = "flip-boolean",
@@ -71,6 +71,10 @@ local BINARY_SWAPS = {
   ["or"] = { operator = "swap-logical", to = "and" },
   ["+"] = { operator = "swap-arith", to = "-" },
   ["-"] = { operator = "swap-arith", to = "+" },
+  ["*"] = { operator = "swap-arith", to = "/" },
+  ["/"] = { operator = "swap-arith", to = "*" },
+  ["%"] = { operator = "swap-arith", to = "*" },
+  ["^"] = { operator = "swap-arith", to = "*" },
 }
 
 local BOOLEAN_FLIPS = {
