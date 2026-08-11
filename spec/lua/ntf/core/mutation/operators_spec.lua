@@ -6,7 +6,7 @@ local splice = require("ntf.core.mutation.splice")
 local EVERY_OPERATOR_SOURCE = [[
 local function f(a, b)
   if a == b and not a then
-    return a + 1, true
+    return -a + 1, true
   end
   return a < b or false
 end
@@ -81,8 +81,19 @@ local _ = a ^ b
     assert.same({}, summarize(src))
   end)
 
-  it("leaves a unary minus alone", function()
-    assert.same({}, summarize([[local _ = -a]]))
+  it("drops a unary minus by replacing the whole unary expression with its operand", function()
+    local sites = summarize([[local _ = b - -(a + 1)]])
+
+    assert.same({
+      { operator = "swap-arith", row = 1, original = "-", replacement = "+" },
+      { operator = "drop-neg", row = 1, original = "-(a + 1)", replacement = "(a + 1)" },
+      { operator = "swap-arith", row = 1, original = "+", replacement = "-" },
+      { operator = "perturb-number", row = 1, original = "1", replacement = "2" },
+    }, sites)
+  end)
+
+  it("leaves the length operator alone", function()
+    assert.same({}, summarize([[local _ = #a]]))
   end)
 
   it("flips boolean literals", function()
@@ -227,7 +238,7 @@ local _ = a
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(11, #sites)
+    assert.equal(12, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

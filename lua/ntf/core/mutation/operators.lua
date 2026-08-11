@@ -43,6 +43,11 @@ M.operators = {
     example = "return not a",
   },
   {
+    name = "drop-neg",
+    description = "a test has to exercise a nonzero operand and depend on its sign",
+    example = "return -a",
+  },
+  {
     name = "perturb-number",
     description = "a test has to depend on the exact value, not on its being non-zero",
     example = "return 1",
@@ -75,6 +80,11 @@ local BINARY_SWAPS = {
   ["/"] = { operator = "swap-arith", to = "*" },
   ["%"] = { operator = "swap-arith", to = "*" },
   ["^"] = { operator = "swap-arith", to = "*" },
+}
+
+local UNARY_DROPS = {
+  ["not"] = "drop-not",
+  ["-"] = "drop-neg",
 }
 
 local BOOLEAN_FLIPS = {
@@ -133,9 +143,10 @@ end
 --- @param sites NtfMutantSite[]
 local function unary_sites(node, src, sites)
   local operand = node:named_child(0)
-  if operand and node:child(0):type() == "not" then
+  local operator = UNARY_DROPS[node:child(0):type()]
+  if operand and operator then
     local text = vim.treesitter.get_node_text(node, src)
-    table.insert(sites, site(node, "drop-not", text, vim.treesitter.get_node_text(operand, src)))
+    table.insert(sites, site(node, operator, text, vim.treesitter.get_node_text(operand, src)))
   end
 end
 
