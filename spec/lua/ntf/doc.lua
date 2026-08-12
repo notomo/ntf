@@ -128,11 +128,21 @@ run_ntf({ "mutation", "list", "--target=lua/mymod.lua", "spec" }, { cwd = projec
 local mutation_list_command = "ntf mutation list"
 
 local mutation_config_path = doc_dir .. "/mutation_config.json"
+local mutation_operators_path = doc_dir .. "/mutation_operators.json"
 local project_config_path = vim.fs.joinpath(project_dir, "spec/mutation.json")
+
+vim.fn.writefile(vim.fn.readfile(mutation_operators_path), vim.fs.joinpath(project_dir, "spec/operators.json"))
+run_ntf({
+  "mutation",
+  "--target=lua/mymod.lua",
+  "--results=" .. vim.fn.tempname(),
+  "--config=spec/operators.json",
+  "spec",
+}, { cwd = project_dir })
 
 local rationale = "the specs only ever ask about 0, whose answer the shifted boundary leaves false"
 local invariant_spec = "is false at the boundary"
-vim.fn.writefile({ "{", '  "version": 1', "}" }, project_config_path)
+vim.fn.writefile({ "{", '  "version": 1,', '  "operators": "all"', "}" }, project_config_path)
 run_ntf({
   "mutation",
   "baseline",
@@ -421,6 +431,23 @@ the reason — in the `baseline` of a config file and pass it with
           [[
 The file carries the whole mutation policy, one section per kind of judgement —
 `exclude` and `exclude_spec` are covered below — and any section may be left out.
+`operators` is the exception: it is required, since it says which of the
+operators listed above the run enumerates mutants for at all, and no default can
+say that for a project.
+
+`"all"` takes every operator, including the ones a later ntf adds — the right
+answer for a project that upgrades ntf and its own tests together. An array of
+names instead pins the set:]],
+          util.help_code_block_from_file(mutation_operators_path, { language = "json" }),
+          [[
+An operator added upstream then reaches the run only once its name is written
+here, so upgrading ntf does not turn a green gate red with survivors nobody
+asked for. Until then its mutants are counted as `unadopted` on the count line
+and left out of the score, the way an excluded one is: the number is what says
+they exist, and nothing nags for them, since a pinned set is a decision and not
+a chore left undone. A name no operator answers to is rejected before the tests
+run, the way an `exclude` entry's is: a set that runs less than it says is the
+one mistake this file must not keep to itself.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
 can then reach 100 and be held there with `--strict`. An entry names the mutant
@@ -481,7 +508,8 @@ under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.
 
 Leaving a whole file out is the widest judgement the file can carry, so an entry
-spells it: `operators` is required, and `"all"` is what names the whole file.
+spells it: the entry's own `operators` is required, and `"all"` is what names the
+whole file.
 Given an array of operator names instead — the names the section above lists —
 the file stays in the run and only those operators' mutants of it are left out,
 reported as excluded on the count line and, like an equivalent one, outside the

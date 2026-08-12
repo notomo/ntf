@@ -62,7 +62,7 @@ carries the name of the mode it needs.
     --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
     --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
     --target=PATH        restrict the mutated files to this file or directory
-    --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+    --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
     --strict[=LIST]      exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
     --verify-baseline    run the --config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one
     --results=FILE       mutation results output path (default: ntf-mutation.json)
@@ -83,7 +83,7 @@ carries the name of the mode it needs.
     --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
     --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
     --target=PATH        restrict the mutated files to this file or directory
-    --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+    --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
     -h, --help           show this help
 
   With no paths, the *_spec.lua files under ./spec are used.
@@ -103,7 +103,7 @@ carries the name of the mode it needs.
     --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
     --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
     --target=PATH        restrict the mutated files to this file or directory
-    --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+    --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
     -h, --help           show this help
 
   With no paths, the *_spec.lua files under ./spec are used.
@@ -318,6 +318,7 @@ the reason — in the `baseline` of a config file and pass it with
 >json
   {
     "version": 1,
+    "operators": "all",
     "baseline": [
       {
         "path": "lua/mymod.lua",
@@ -350,6 +351,34 @@ the reason — in the `baseline` of a config file and pass it with
 <
 The file carries the whole mutation policy, one section per kind of judgement —
 `exclude` and `exclude_spec` are covered below — and any section may be left out.
+`operators` is the exception: it is required, since it says which of the
+operators listed above the run enumerates mutants for at all, and no default can
+say that for a project.
+
+`"all"` takes every operator, including the ones a later ntf adds — the right
+answer for a project that upgrades ntf and its own tests together. An array of
+names instead pins the set:
+>json
+  {
+    "version": 1,
+    "operators": [
+      "swap-relational",
+      "swap-logical",
+      "flip-boolean",
+      "drop-not",
+      "perturb-number",
+      "force-branch"
+    ]
+  }
+<
+An operator added upstream then reaches the run only once its name is written
+here, so upgrading ntf does not turn a green gate red with survivors nobody
+asked for. Until then its mutants are counted as `unadopted` on the count line
+and left out of the score, the way an excluded one is: the number is what says
+they exist, and nothing nags for them, since a pinned set is a decision and not
+a chore left undone. A name no operator answers to is rejected before the tests
+run, the way an `exclude` entry's is: a set that runs less than it says is the
+one mistake this file must not keep to itself.
 
 A listed `baseline` mutant is reported as equivalent and leaves the score, which
 can then reach 100 and be held there with `--strict`. An entry names the mutant
@@ -416,7 +445,8 @@ under test altogether, which is what a vendored copy wants; an `exclude` entry
 drops it from the mutation only, and leaves `--coverage` still measuring it.
 
 Leaving a whole file out is the widest judgement the file can carry, so an entry
-spells it: `operators` is required, and `"all"` is what names the whole file.
+spells it: the entry's own `operators` is required, and `"all"` is what names the
+whole file.
 Given an array of operator names instead — the names the section above lists —
 the file stays in the run and only those operators' mutants of it are left out,
 reported as excluded on the count line and, like an equivalent one, outside the

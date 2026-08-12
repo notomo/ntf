@@ -51,18 +51,10 @@ function M.validate(entry)
   -- narrower judgement it is, and widening one shows up as a written change.
   -- NOT: taking a missing operators as "all", which makes the largest claim the
   -- shortest thing to write.
-  if entry.operators == "all" then
-    return nil
-  end
-  if type(entry.operators) ~= "table" or #entry.operators == 0 then
-    return 'needs an operators of "all" or a non-empty array of operator names'
-  end
-  for _, name in ipairs(entry.operators) do
-    if not operators.by_name[name] then
-      return ("names an operator no run produces: %s"):format(vim.inspect(name))
-    end
-  end
-  return nil
+  return operators.validate_selection(
+    entry.operators,
+    'needs an operators of "all" or a non-empty array of operator names'
+  )
 end
 
 --- @param entries NtfMutationExcludeEntry[]

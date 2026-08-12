@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "operators": [
+    "swap-relational",
+    "swap-logical",
+    "flip-boolean",
+    "drop-not",
+    "perturb-number",
+    "force-branch"
+  ]
+}

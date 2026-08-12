@@ -3,6 +3,7 @@ local M = {}
 local VERSION = 1
 
 --- @class NtfMutationConfig the mutation policy a run is given
+--- @field operators NtfMutationOperatorSelection the operators the run enumerates mutants for, spelled rather than defaulted so an operator added upstream reaches the run only once it is named
 --- @field baseline NtfMutationBaselineEntry[] mutants judged impossible to kill
 --- @field exclude NtfMutationExcludeEntry[] paths whose mutants the run leaves out, whole or by operator
 --- @field exclude_spec NtfMutationExcludeEntry[] spec paths the run still runs, but never picks as a mutant's trial
@@ -50,6 +51,14 @@ function M.load(path)
     return invalid(("expected version %d"):format(VERSION))
   end
 
+  local selection_err = require("ntf.core.mutation.operators").validate_selection(
+    decoded.operators,
+    'needs to be "all" or a non-empty array of operator names'
+  )
+  if selection_err then
+    return invalid("operators " .. selection_err)
+  end
+
   local baseline = load_section(decoded, "baseline", require("ntf.core.mutation.baseline").validate)
   if type(baseline) == "string" then
     return invalid(baseline)
@@ -64,7 +73,7 @@ function M.load(path)
     return invalid(exclude_spec)
   end
 
-  return { baseline = baseline, exclude = exclude, exclude_spec = exclude_spec } --[[@as NtfMutationConfig]]
+  return { operators = decoded.operators, baseline = baseline, exclude = exclude, exclude_spec = exclude_spec } --[[@as NtfMutationConfig]]
 end
 
 local INDENT = "  "
@@ -111,7 +120,10 @@ end
 --- @param config NtfMutationConfig
 --- @return string # the document text, in the one shape every write produces, so an edit shows up as the entry it changed
 function M.format(config)
-  local written = { ('%s"version": %d'):format(INDENT, VERSION) }
+  local written = {
+    ('%s"version": %d'):format(INDENT, VERSION),
+    ('%s"operators": %s'):format(INDENT, encode(config.operators, INDENT)),
+  }
   for _, section in ipairs(SECTIONS) do
     local entries = config[section.key]
     if #entries > 0 then

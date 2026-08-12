@@ -278,3 +278,65 @@ describe("ntf.core.mutation.operators.operators", function()
     end
   end)
 end)
+
+describe("ntf.core.mutation.operators.validate_selection", function()
+  local needs = "needs an array"
+
+  it('accepts "all"', function()
+    assert.is_nil(operators.validate_selection("all", needs))
+  end)
+
+  it("accepts an array naming a single operator", function()
+    assert.is_nil(operators.validate_selection({ "swap-relational" }, needs))
+  end)
+
+  it("accepts an array naming several operators", function()
+    assert.is_nil(operators.validate_selection({ "swap-relational", "force-branch" }, needs))
+  end)
+
+  it("says what it needs when given nothing at all, which no default stands in for", function()
+    assert.equal(needs, operators.validate_selection(nil, needs))
+  end)
+
+  it("says what it needs when given a string that is not all", function()
+    assert.equal(needs, operators.validate_selection("every", needs))
+  end)
+
+  it("says what it needs when given an empty array, which names no operator at all", function()
+    assert.equal(needs, operators.validate_selection({}, needs))
+  end)
+
+  it("rejects a name no operator answers to, which is how a typo is caught", function()
+    assert.match(
+      'names an operator no run produces: "swap%-relatinal"',
+      operators.validate_selection({ "swap-relatinal" }, needs)
+    )
+  end)
+
+  it("rejects a name that is not a string", function()
+    assert.match("names an operator no run produces: 3", operators.validate_selection({ 3 }, needs))
+  end)
+end)
+
+describe("ntf.core.mutation.operators.adopted", function()
+  it('takes every operator under "all"', function()
+    local adopted = operators.adopted("all")
+
+    assert.is_true(adopted("swap-relational"))
+    assert.is_true(adopted("force-branch"))
+  end)
+
+  it("takes only the operators an array names", function()
+    local adopted = operators.adopted({ "swap-relational" })
+
+    assert.is_true(adopted("swap-relational"))
+    assert.is_false(adopted("force-branch"))
+  end)
+
+  it("takes each of the operators an array names", function()
+    local adopted = operators.adopted({ "swap-relational", "force-branch" })
+
+    assert.is_true(adopted("swap-relational"))
+    assert.is_true(adopted("force-branch"))
+  end)
+end)

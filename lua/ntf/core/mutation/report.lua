@@ -19,6 +19,7 @@ local COUNT_LABELS = {
   { status = "not_applied", label = "not applied", color = "yellow" },
   { status = "equivalent", label = "equivalent", color = "green" },
   { status = "excluded", label = "excluded", color = "green" },
+  { status = "unadopted", label = "unadopted", color = "green" },
   { status = "baseline_killable", label = "baseline killable", color = "red" },
 }
 

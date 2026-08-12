@@ -65,6 +65,44 @@ for _, operator in ipairs(M.operators) do
   M.by_name[operator.name] = operator
 end
 
+--- @alias NtfMutationOperatorSelection "all"|string[] the operators a run enumerates mutants for
+
+--- @param value any the operators a config or one of its entries declares
+--- @param needs string what the message says the value has to be, when it is neither "all" nor an array
+--- @return string? # what is wrong with it
+function M.validate_selection(value, needs)
+  if value == "all" then
+    return nil
+  end
+  if type(value) ~= "table" or #value == 0 then
+    return needs
+  end
+  for _, name in ipairs(value) do
+    if type(name) ~= "string" or not M.by_name[name] then
+      return ("names an operator no run produces: %s"):format(vim.inspect(name))
+    end
+  end
+  return nil
+end
+
+--- @param selection NtfMutationOperatorSelection
+--- @return fun(operator: string): boolean # whether the run enumerates that operator's mutants
+function M.adopted(selection)
+  if selection == "all" then
+    return function()
+      return true
+    end
+  end
+  local listed = selection --[[@as string[] ]]
+  local names = {} --- @type table<string, true>
+  for _, name in ipairs(listed) do
+    names[name] = true
+  end
+  return function(operator)
+    return names[operator] == true
+  end
+end
+
 local BINARY_SWAPS = {
   ["=="] = { operator = "swap-relational", to = "~=" },
   ["~="] = { operator = "swap-relational", to = "==" },

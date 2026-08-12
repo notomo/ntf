@@ -71,7 +71,7 @@ Options:
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
   --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
   --target=PATH        restrict the mutated files to this file or directory
-  --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+  --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
   --strict[=LIST]      exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)
   --verify-baseline    run the --config baseline entries instead of trusting them, in the same pass that scores every other mutant; exit non-zero when a test kills one
   --results=FILE       mutation results output path (default: ntf-mutation.json)
@@ -92,7 +92,7 @@ Options:
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
   --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
   --target=PATH        restrict the mutated files to this file or directory
-  --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+  --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
   -h, --help           show this help
 
 With no paths, the *_spec.lua files under ./spec are used.
@@ -112,7 +112,7 @@ Options:
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
   --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
   --target=PATH        restrict the mutated files to this file or directory
-  --config=FILE        take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
+  --config=FILE        take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing
   -h, --help           show this help
 
 With no paths, the *_spec.lua files under ./spec are used.

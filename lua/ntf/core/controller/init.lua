@@ -50,7 +50,7 @@ local function add_baseline(opts, config)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
 function M.mutate(opts, ctx)
   local progress = require("ntf.core.controller.progress").mutation({
@@ -70,6 +70,7 @@ function M.mutate(opts, ctx)
     baseline_results = ctx.results,
     baseline = ctx.baseline,
     mutation_exclude = ctx.mutation_exclude,
+    mutation_operators = ctx.mutation_operators,
     unused_spec_excludes = ctx.unused_spec_excludes,
     coverage_map = ctx.coverage_map,
     coverage_excludes = ctx.coverage_excludes,
@@ -193,6 +194,7 @@ function M.run(root)
 
   local mutation_baseline = mutation_config and mutation_config.baseline
   local mutation_exclude = mutation_config and mutation_config.exclude
+  local mutation_operators = mutation_config and mutation_config.operators
   local mutation_exclude_spec = mutation_config and mutation_config.exclude_spec or {}
 
   local ok, files = pcall(require("ntf.core.controller.discover").specs, opts.paths, opts.exclude_spec)
@@ -313,6 +315,7 @@ function M.run(root)
         cwd = cwd,
         baseline = mutation_baseline,
         mutation_exclude = mutation_exclude,
+        mutation_operators = mutation_operators,
         coverage_map = coverage_map,
         coverage_excludes = coverage_excludes,
       }))
@@ -326,6 +329,7 @@ function M.run(root)
         results = results,
         baseline = mutation_baseline,
         mutation_exclude = mutation_exclude,
+        mutation_operators = mutation_operators,
         unused_spec_excludes = unused_spec_excludes,
         coverage_map = coverage_map,
         coverage_excludes = coverage_excludes,

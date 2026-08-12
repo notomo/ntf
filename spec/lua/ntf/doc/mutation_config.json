@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "operators": "all",
   "baseline": [
     {
       "path": "lua/mymod.lua",

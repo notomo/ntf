@@ -845,6 +845,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -878,6 +879,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -913,6 +915,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -950,6 +953,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -973,7 +977,7 @@ describe("ntf mutation", function()
 
   it("writes the entry for a mutant into the baseline, which verify then re-runs", function()
     local root = mutation_project()
-    helper.test_data:create_file("mutation.json", '{\n  "version": 1\n}\n')
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1,\n  "operators": "all"\n}\n')
 
     local added = helper.run_cli({
       "mutation",
@@ -995,7 +999,7 @@ describe("ntf mutation", function()
 
   it("exits non-zero when the baseline it would add the entry to already carries it", function()
     local root = mutation_project()
-    helper.test_data:create_file("mutation.json", '{\n  "version": 1\n}\n')
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1,\n  "operators": "all"\n}\n')
     local argv = {
       "mutation",
       "baseline",
@@ -1018,6 +1022,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -1045,6 +1050,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -1073,6 +1079,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         baseline = {
           {
             path = "lua/mod.lua",
@@ -1101,6 +1108,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude = {
           { path = "lua/dead.lua", operators = "all", rationale = "no spec drives it, so its mutants measure nothing" },
         },
@@ -1120,6 +1128,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude = {
           {
             path = "lua/mod.lua",
@@ -1138,12 +1147,39 @@ describe("ntf mutation", function()
     assert.match("Mutation: 100%.0%%", obj.stdout)
   end)
 
+  it("leaves the mutants of an operator the --config did not adopt out of the score, counting them apart", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, operators = { "swap-relational" } }))
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Mutation: 50%.0%% %(1/2 mutants detected%)", obj.stdout)
+    assert.match("3 unadopted", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+  end)
+
+  it("rejects a --config operators name no run produces before running the tests", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({ version = 1, operators = { "perturb-number", "swap-relatinal" } })
+    )
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match('operators names an operator no run produces: "swap%-relatinal"', obj.stderr)
+    assert.no.match("passed", obj.stdout)
+  end)
+
   it("exits non-zero when a --config exclude entry covers no measurable file", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude = {
           { path = "lua/gone.lua", operators = "all", rationale = "stale: the file it names is no longer there" },
         },
@@ -1165,6 +1201,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude_spec = {
           {
             path = "spec/e2e_spec.lua",
@@ -1189,6 +1226,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude_spec = { { path = "spec/e2e_spec.lua", rationale = "end-to-end, so it never drives a mutant" } },
       })
     )
@@ -1205,6 +1243,7 @@ describe("ntf mutation", function()
       "mutation.json",
       vim.json.encode({
         version = 1,
+        operators = "all",
         exclude_spec = { { path = "spec/gone_spec.lua", rationale = "stale: the spec it names is no longer there" } },
       })
     )
@@ -1218,7 +1257,10 @@ describe("ntf mutation", function()
 
   it("rejects an invalid --config exclude before running the tests", function()
     local root, results_file = mutation_project()
-    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, exclude = { { path = "x" } } }))
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({ version = 1, operators = "all", exclude = { { path = "x" } } })
+    )
 
     local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 
@@ -1228,7 +1270,10 @@ describe("ntf mutation", function()
 
   it("rejects an invalid --config baseline before running the tests", function()
     local root, results_file = mutation_project()
-    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, baseline = { { path = "x" } } }))
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({ version = 1, operators = "all", baseline = { { path = "x" } } })
+    )
 
     local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
 

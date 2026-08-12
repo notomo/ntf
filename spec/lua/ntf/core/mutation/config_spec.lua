@@ -39,7 +39,8 @@ end
 --- @param document table
 --- @return string # path of the written file
 local function create_file(document)
-  return helper.test_data:create_file("mutation.json", vim.json.encode(document))
+  local with_operators = vim.tbl_extend("keep", document, { operators = "all" })
+  return helper.test_data:create_file("mutation.json", vim.json.encode(with_operators))
 end
 
 describe("ntf.core.mutation.config.load", function()
@@ -73,6 +74,32 @@ describe("ntf.core.mutation.config.load", function()
     assert.same({}, loaded.baseline)
     assert.same({}, loaded.exclude_spec)
     assert.equal(1, #loaded.exclude)
+  end)
+
+  it("loads the operators the config adopted", function()
+    local file = create_file({ version = 1, operators = { "swap-relational" } })
+
+    local loaded = assert(config.load(file))
+
+    assert.same({ "swap-relational" }, loaded.operators)
+  end)
+
+  it("requires operators, which no default stands in for", function()
+    local file = helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1 }))
+
+    assert.match('operators needs to be "all" or a non%-empty array', config.load(file))
+  end)
+
+  it("rejects an empty operators array, which names no operator at all", function()
+    local file = create_file({ version = 1, operators = {} })
+
+    assert.match('operators needs to be "all" or a non%-empty array', config.load(file))
+  end)
+
+  it("rejects an operators name no operator answers to, which is how a typo is caught", function()
+    local file = create_file({ version = 1, operators = { "swap-relational", "swap-relatinal" } })
+
+    assert.match('operators names an operator no run produces: "swap%-relatinal"', config.load(file))
   end)
 
   it("rejects a file that is not JSON", function()
@@ -155,7 +182,11 @@ describe("ntf.core.mutation.config.format", function()
   --- @param overrides table?
   --- @return table
   local function document(overrides)
-    return vim.tbl_extend("force", { baseline = {}, exclude = {}, exclude_spec = {} }, overrides or {})
+    return vim.tbl_extend(
+      "force",
+      { operators = "all", baseline = {}, exclude = {}, exclude_spec = {} },
+      overrides or {}
+    )
   end
 
   it("writes an entry field by field, in the order the document carries them", function()
@@ -165,6 +196,7 @@ describe("ntf.core.mutation.config.format", function()
       table.concat({
         "{",
         '  "version": 1,',
+        '  "operators": "all",',
         '  "baseline": [',
         "    {",
         '      "path": "lua/mod.lua",',
@@ -193,7 +225,25 @@ describe("ntf.core.mutation.config.format", function()
   it("leaves out a section with no entries", function()
     local text = config.format(document())
 
-    assert.equal('{\n  "version": 1\n}\n', text)
+    assert.equal('{\n  "version": 1,\n  "operators": "all"\n}\n', text)
+  end)
+
+  it("writes the adopted operators a line at a time", function()
+    local text = config.format(document({ operators = { "swap-relational", "flip-boolean" } }))
+
+    assert.equal(
+      table.concat({
+        "{",
+        '  "version": 1,',
+        '  "operators": [',
+        '    "swap-relational",',
+        '    "flip-boolean"',
+        "  ]",
+        "}",
+        "",
+      }, "\n"),
+      text
+    )
   end)
 
   it("separates the entries of a section", function()
@@ -252,7 +302,7 @@ describe("ntf.core.mutation.config.write", function()
 
   it("writes the document to the file", function()
     local file = helper.test_data:create_file("mutation.json", "")
-    local document = { baseline = { baseline_entry() }, exclude = {}, exclude_spec = {} }
+    local document = { operators = "all", baseline = { baseline_entry() }, exclude = {}, exclude_spec = {} }
 
     config.write(file, document)
 

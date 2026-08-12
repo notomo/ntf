@@ -17,7 +17,7 @@ local M = {}
 
 --- @class NtfMutationSummary
 --- @field records NtfMutationRecord[]
---- @field counts table<string, integer> one entry per status, plus `excluded` for the mutants no record was kept for
+--- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field verified integer? baseline entries re-run; nil unless --mutation-verify-baseline=only left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
@@ -66,14 +66,18 @@ end
 --- @param excludes string[] absolute dir prefixes to skip
 --- @param mutation_target string? restrict to this file or directory
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
+--- @param selection NtfMutationOperatorSelection the operators the config adopted
 --- @return { mutant: NtfMutant, relative_path: string, line_text: string }[]
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
 --- @return integer # mutants an exclude entry named an operator of, left out of the run
-local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries)
+--- @return integer # mutants of an operator the config did not adopt, left out of the run
+local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries, selection)
   local entries = {}
   local files, unused = target_files(cwd, excludes, mutation_target, exclude_entries)
   local excluded_operator = exclude.operator_filter(exclude_entries, cwd)
+  local adopted = operators.adopted(selection)
   local excluded = 0
+  local unadopted = 0
   for _, file in ipairs(files) do
     local src = read_file(file) or ""
     local src_lines = vim.split(src, "\n", { plain = true })
@@ -81,7 +85,9 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
     for _, site in ipairs(operators.enumerate(src)) do
       local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
-        if excluded_operator(file, site.operator) then
+        if not adopted(site.operator) then
+          unadopted = unadopted + 1
+        elseif excluded_operator(file, site.operator) then
           excluded = excluded + 1
         else
           table.insert(entries, {
@@ -93,7 +99,7 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
       end
     end
   end
-  return entries, unused, excluded
+  return entries, unused, excluded, unadopted
 end
 
 --- @param mutant NtfMutant
@@ -145,7 +151,7 @@ local function covering_trials(ctx, durations, mutant)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
 function M.run(opts, ctx)
   local cwd = normalize(ctx.cwd)
@@ -161,8 +167,9 @@ function M.run(opts, ctx)
   --- @type boolean[] whether the task re-runs a baseline entry, parallel to tasks
   local task_verify = {}
 
-  local mutant_entries, unused_excludes, excluded =
-    enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {})
+  local selection = ctx.mutation_operators or "all"
+  local mutant_entries, unused_excludes, excluded, unadopted =
+    enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {}, selection)
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
 
@@ -228,6 +235,7 @@ function M.run(opts, ctx)
     not_applied = 0,
     equivalent = 0,
     excluded = excluded,
+    unadopted = unadopted,
     baseline_killable = 0,
   }
   for _, record in ipairs(records) do
@@ -253,21 +261,32 @@ end
 --- @field equivalent boolean matched by a --mutation-config baseline entry
 
 --- @param opts NtfOptions
---- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
+--- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
 --- @return NtfMutantListEntry[]
 function M.list(opts, ctx)
   local cwd = normalize(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
 
-  return vim.tbl_map(function(entry)
-    local mutant = entry.mutant
-    return {
-      mutant = mutant,
-      relative_path = entry.relative_path,
-      covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
-      equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
-    }
-  end, (enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {})))
+  return vim.tbl_map(
+    function(entry)
+      local mutant = entry.mutant
+      return {
+        mutant = mutant,
+        relative_path = entry.relative_path,
+        covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
+        equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
+      }
+    end,
+    (
+      enumerate_mutants(
+        cwd,
+        ctx.coverage_excludes,
+        opts.mutation_target,
+        ctx.mutation_exclude or {},
+        ctx.mutation_operators or "all"
+      )
+    )
+  )
 end
 
 return M

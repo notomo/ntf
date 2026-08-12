@@ -182,7 +182,7 @@ end
 
 --- @type NtfFlag
 local config = config_flag(
-  "take the mutation policy from FILE: its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing"
+  "take the mutation policy from FILE: its required operators say which operators run at all, its baseline of known-equivalent mutants leaves the score, its exclude paths stay unmutated; exit non-zero when an entry matches nothing"
 )
 
 --- @type NtfFlag
