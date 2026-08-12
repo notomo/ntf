@@ -130,7 +130,6 @@ function M.launch(item, opts, on_done)
   proc = vim.system(cmd, { cwd = opts.cwd, env = env, text = true }, function(obj)
     running[proc.pid] = nil
     if timer then
-      timer:stop()
       timer:close()
       timer = nil
     end
