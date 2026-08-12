@@ -8,6 +8,7 @@ local function f(a, b)
   if a == b and not a then
     return -a + 1, true
   end
+  g(a)
   return a < b or false
 end
 return f
@@ -177,6 +178,46 @@ end
     }, sites)
   end)
 
+  it("deletes a call that stands as a statement, whatever it is called through", function()
+    local sites = summarize([[
+f()
+a.b:c()
+require("x")
+do
+  d{}
+end
+]])
+
+    assert.same({
+      { operator = "delete-call", row = 1, original = "f()", replacement = "do end" },
+      { operator = "delete-call", row = 2, original = "a.b:c()", replacement = "do end" },
+      { operator = "delete-call", row = 3, original = 'require("x")', replacement = "do end" },
+      { operator = "delete-call", row = 5, original = "d{}", replacement = "do end" },
+    }, sites)
+  end)
+
+  it("leaves a call whose value is used, since deleting it takes the expression with it", function()
+    local sites = summarize([[
+local _ = g()
+return { k = h() }
+]])
+
+    assert.same({}, sites)
+  end)
+
+  it("takes a call chain whole, since the call it chains onto is not a statement of its own", function()
+    local src = table.concat({
+      "local a = b",
+      "f()",
+      "(g)()",
+    }, "\n")
+
+    local site = operators.enumerate(src)[1]
+
+    assert.equal("delete-call", site.operator)
+    assert.equal("local a = b\ndo end", splice.apply(src, site))
+  end)
+
   it("finds no site in a string or a comment", function()
     local sites = summarize([[
 -- a == b and 1
@@ -238,7 +279,7 @@ local _ = a
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(12, #sites)
+    assert.equal(13, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

@@ -57,6 +57,11 @@ M.operators = {
     description = "each side needs a test; a loop is only forced to the outcome that exits",
     example = "if a then end",
   },
+  {
+    name = "delete-call",
+    description = "a test has to observe what the call does, not merely reach its line",
+    example = "f()",
+  },
 }
 
 --- @type table<string, NtfMutationOperator> # the same operators, keyed by the name a report prints and a config writes
@@ -136,6 +141,14 @@ local BOOLEAN_FLIPS = {
 -- burning a whole trial timeout. `while` exits on false, `repeat` on true.
 -- NOT: emitting both for a loop and leaning on the runner's trial timeout to
 -- bound the infinite one.
+--- @type table<string, true> # the node types whose children are statements
+local STATEMENT_BLOCK = {
+  block = true,
+  chunk = true,
+}
+
+local DELETED_CALL = "do end"
+
 local FORCE_BRANCH = {
   if_statement = { "false", "true" },
   elseif_statement = { "false", "true" },
@@ -188,6 +201,16 @@ local function unary_sites(node, src, sites)
   end
 end
 
+--- @param node TSNode a `function_call`
+--- @param src string the full source text
+--- @param sites NtfMutantSite[]
+local function delete_call_sites(node, src, sites)
+  local parent = assert(node:parent())
+  if STATEMENT_BLOCK[parent:type()] then
+    table.insert(sites, site(node, "delete-call", vim.treesitter.get_node_text(node, src), DELETED_CALL))
+  end
+end
+
 --- @param node TSNode a decision node whose condition is forced to each outcome
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
@@ -218,6 +241,8 @@ function M.enumerate(src)
       binary_sites(node, sites)
     elseif kind == "unary_expression" then
       unary_sites(node, src, sites)
+    elseif kind == "function_call" then
+      delete_call_sites(node, src, sites)
     elseif BOOLEAN_FLIPS[kind] then
       table.insert(sites, site(node, "flip-boolean", kind, BOOLEAN_FLIPS[kind]))
     elseif kind == "number" then

@@ -142,9 +142,9 @@ end
 --- @param path string
 --- @param config NtfMutationConfig
 function M.write(path, config)
-  local f = assert(io.open(path, "w"))
-  f:write(M.format(config))
-  f:close()
+  local file = assert(io.open(path, "w"))
+  file:write(M.format(config))
+  file:close()
 end
 
 return M

@@ -17,11 +17,11 @@ function M.write(path, merged)
     out[#out + 1] = table.concat(counts, " ")
   end
 
-  local f = assert(io.open(path, "w"))
+  local file = assert(io.open(path, "w"))
   if #out > 0 then
-    f:write(table.concat(out, "\n"), "\n")
+    file:write(table.concat(out, "\n"), "\n")
   end
-  f:close()
+  file:close()
 end
 
 --- @param path string stats file path

@@ -52,14 +52,14 @@ function M.write(path, summary)
     end)
   end
 
-  local f = assert(io.open(path, "w"))
-  f:write(vim.json.encode({
+  local file = assert(io.open(path, "w"))
+  file:write(vim.json.encode({
     version = VERSION,
     score = summary.score,
     counts = summary.counts,
     files = next(files) and files or vim.empty_dict(),
   }))
-  f:close()
+  file:close()
 end
 
 --- @param path string
