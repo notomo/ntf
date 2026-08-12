@@ -1282,7 +1282,7 @@ describe("ntf mutation", function()
     assert.no.match("passed", obj.stdout)
   end)
 
-  it("counts a mutant that hangs the tests as detected", function()
+  it("counts the mutants that hang the tests as detected", function()
     local root = helper.test_data.full_path
     local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
     helper.test_data:create_file(
@@ -1312,10 +1312,10 @@ describe("ntf mutation", function()
     local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "--timeout=1000", "spec" }, root)
 
     assert.equal(0, obj.code)
-    assert.match("1 timeout", obj.stdout)
+    assert.match("2 timeout", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
-    assert.equal(1, results.counts.timeout)
+    assert.equal(2, results.counts.timeout)
   end)
 
   it("skips the mutation run when the tests fail", function()

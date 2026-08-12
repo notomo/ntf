@@ -63,6 +63,11 @@ M.operators = {
     example = "f()",
   },
   {
+    name = "delete-assign",
+    description = "a test has to observe what the assignment stores, not merely reach it",
+    example = "a.b = c",
+  },
+  {
     name = "drop-return",
     description = "a test has to depend on what the function answers, not merely reach it",
     example = "function f() return a end",
@@ -152,7 +157,7 @@ local STATEMENT_BLOCK = {
   chunk = true,
 }
 
-local DELETED_CALL = "do end"
+local DELETED_STATEMENT = "do end"
 
 local DROPPED_RETURN_VALUE = "nil"
 
@@ -233,7 +238,23 @@ end
 local function delete_call_sites(node, src, sites)
   local parent = assert(node:parent())
   if STATEMENT_BLOCK[parent:type()] then
-    table.insert(sites, site(node, "delete-call", vim.treesitter.get_node_text(node, src), DELETED_CALL))
+    table.insert(sites, site(node, "delete-call", vim.treesitter.get_node_text(node, src), DELETED_STATEMENT))
+  end
+end
+
+-- WHY: a `local` declaration parses as an assignment_statement under a
+-- variable_declaration, so the block parent is what keeps one out: deleting it
+-- would leave every later mention of the name reading a global instead, which
+-- is a rewrite of the scope rather than of the store.
+-- NOT: matching on the `local` keyword, which the assignment_statement the
+-- declaration wraps does not carry.
+--- @param node TSNode an `assignment_statement`
+--- @param src string the full source text
+--- @param sites NtfMutantSite[]
+local function delete_assign_sites(node, src, sites)
+  local parent = assert(node:parent())
+  if STATEMENT_BLOCK[parent:type()] then
+    table.insert(sites, site(node, "delete-assign", vim.treesitter.get_node_text(node, src), DELETED_STATEMENT))
   end
 end
 
@@ -305,6 +326,8 @@ function M.enumerate(src)
       unary_sites(node, src, sites)
     elseif kind == "function_call" then
       delete_call_sites(node, src, sites)
+    elseif kind == "assignment_statement" then
+      delete_assign_sites(node, src, sites)
     elseif kind == "return_statement" then
       drop_return_value_sites(node, src, sites)
     elseif BOOLEAN_FLIPS[kind] then

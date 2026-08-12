@@ -216,6 +216,16 @@ describe("ntf.coverage.decorate", function()
     assert.same({}, signs(bufnr))
   end)
 
+  it("reads the default stats path when called with no options at all", function()
+    local ok, err = pcall(coverage.decorate)
+
+    assert.is_false(ok)
+    assert.equal(
+      "[ntf] coverage file is not found: " .. vim.fs.normalize(vim.fn.fnamemodify("./luacov.stats.out", ":p")),
+      err
+    )
+  end)
+
   it("errors, unprefixed, when the coverage file does not exist", function()
     local src = create_module(MODULE)
     local path = helper.test_data:path("missing.stats.out")

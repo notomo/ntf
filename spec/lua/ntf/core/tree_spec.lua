@@ -108,12 +108,48 @@ end)
 end)
 
 describe("ntf.core.tree.pending", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
   it("signals a pending() that has no node to attach to with a table, which lua never prefixes", function()
     local ok, thrown = pcall(tree.pending, "outside any describe")
 
     assert.is_false(ok)
     assert.equal("outside any describe", thrown.message)
     assert.is_true(thrown[tree.PENDING])
+  end)
+
+  it("signals it too after a build whose file would not compile, which leaves a stack behind if unwound", function()
+    tree.build(helper.write_spec([[describe((]]))
+
+    local ok, thrown = pcall(tree.pending, "outside any describe")
+
+    assert.is_false(ok)
+    assert.is_true(thrown[tree.PENDING])
+  end)
+end)
+
+describe("ntf.core.tree.collect_finallies", function()
+  it("gives back only the callbacks of the run it wraps", function()
+    local outer_fn, inner_fn = function() end, function() end
+
+    local collected
+    local outer = tree.collect_finallies(function()
+      collected = tree.collect_finallies(function()
+        tree.finally(inner_fn)
+      end)
+      tree.finally(outer_fn)
+    end)
+
+    assert.same({ inner_fn }, collected)
+    assert.same({ outer_fn }, outer)
+  end)
+
+  it("collects nothing once it has returned, so a stray finally has nowhere to land", function()
+    local collected = tree.collect_finallies(function() end)
+    tree.finally(function() end)
+
+    assert.same({}, collected)
   end)
 end)
 

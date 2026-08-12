@@ -58,6 +58,31 @@ describe("ntf.core.controller.schedule", function()
     })
   end)
 
+  it("orders by a cache key it normalizes, so an odd spelling of a path still finds its entry", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+    schedule.save(path, schedule.load(path), {
+      result(root, "spec/a_spec.lua", "fast", 0.01),
+      result(root, "spec/a_spec.lua", "slow", 2.0),
+    }, root)
+
+    local ordered = schedule.order({
+      item(root, "spec/./a_spec.lua", "fast"),
+      item(root, "spec/./a_spec.lua", "slow"),
+    }, schedule.load(path), root .. "/")
+
+    assert.same({ "slow", "fast" }, { ordered[1].names[2], ordered[2].names[2] })
+  end)
+
+  it("saves under a cache key it normalizes, so an odd spelling of the working directory still keys it", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+
+    schedule.save(path, schedule.load(path), { result(root, "spec/./a_spec.lua", "one", 0.25) }, root .. "/")
+
+    assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
+  end)
+
   it("treats a test the cache does not know as the slowest", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")

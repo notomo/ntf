@@ -279,6 +279,42 @@ return M
     assert.equal("real other", other.name)
   end)
 
+  it("drops a module already in package.loaded, which no loader is reached for", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/loaded.lua",
+      [[
+local M = {}
+function M.f(a, b)
+  return a < b
+end
+return M
+]]
+    )
+
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+    vim.opt.runtimepath:append(cwd)
+    finally(function()
+      package.loaded["loaded"] = nil
+      vim.opt.runtimepath:remove(cwd)
+      for i = #package.loaders, 1, -1 do
+        if not original_loaders[package.loaders[i]] then
+          table.remove(package.loaders, i)
+        end
+      end
+    end)
+    assert.is_true(require("loaded").f(1, 2))
+
+    local applied = mutate.install(first_mutation(module, "swap-relational"), cwd)
+    local reloaded = require("loaded")
+
+    assert.is_true(applied())
+    assert.is_true(reloaded.f(2, 2))
+  end)
+
   it("reports the compile error of a mutant that does not compile, so the require does not fail silently", function()
     local cwd = helper.test_data.full_path
     -- WHY: outside lua/, so no runtimepath loader can serve the module and the

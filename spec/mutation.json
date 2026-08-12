@@ -378,6 +378,36 @@
       "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
     },
     {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 4,
+      "operator": "delete-assign",
+      "original": "decided[source] = result",
+      "replacement": "do end",
+      "line": "    decided[source] = result",
+      "rationale": "the decided cache only memoizes measured_path, a pure function of source, so never storing the result recomputes the identical one",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 2,
+      "operator": "delete-assign",
+      "original": "active = data",
+      "replacement": "do end",
+      "line": "  active = data",
+      "rationale": "the hook installed on the line above takes over the accumulator this line is recorded into, so no run reports coverage for it and no trial can reach the mutant",
+      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 2,
+      "operator": "delete-assign",
+      "original": "active = {}",
+      "replacement": "do end",
+      "line": "  active = {}",
+      "rationale": "stop turns its own line hook off on the line above, so the lines that hand the counts back and clear the accumulator are the ones no run can record",
+      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
+    },
+    {
       "path": "lua/ntf/core/controller/list.lua",
       "col": 5,
       "operator": "force-branch",
@@ -651,6 +681,15 @@
       "replacement": "1",
       "line": "    timer:start(timeout, 0, function()",
       "rationale": "the callback only kills a process already being killed, and the exit callback closes the timer, so repeating it changes nothing"
+    },
+    {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "col": 6,
+      "operator": "delete-assign",
+      "original": "timer = nil",
+      "replacement": "do end",
+      "line": "      timer = nil",
+      "rationale": "the exit callback runs once per worker and nothing reads timer after it, so clearing the closed handle is hygiene no run can observe"
     },
     {
       "path": "lua/ntf/core/mutation/baseline.lua",

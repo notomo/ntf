@@ -47,6 +47,15 @@ describe("ntf.core.coverage.collector.line_hook", function()
     end
   )
 
+  it("records an oddly spelled source under its normalized path, so one file never gets two keys", function()
+    local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+    local path = vim.fs.normalize(helper.test_data:path("covered.lua"))
+
+    run_hook(hook, "@" .. helper.test_data.full_path .. "/./covered.lua", { 1 })
+
+    assert.same({ path }, vim.tbl_keys(data))
+  end)
+
   it("keys the recorded lines by string, since vim.json.encode rejects the sparse array they would form", function()
     local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
 
@@ -193,6 +202,14 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({}, files)
   end)
 
+  it("lists the same files for an odd spelling of the working directory", function()
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path .. "/./", {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
+
   it("lists the files sorted, not in the order the walk reaches them", function()
     local nested = helper.test_data:create_file("lua/sub/a.lua", "return 1")
     local top = helper.test_data:create_file("lua/z.lua", "return 1")
@@ -250,6 +267,12 @@ describe("ntf.core.coverage.collector.exclude_roots", function()
 
   it("dedups roots shared by many spec files", function()
     local roots = collector.exclude_roots({ repo .. "/spec/a_spec.lua", repo .. "/spec/lua/b_spec.lua" }, repo)
+
+    assert.same({ repo .. "/spec/" }, roots)
+  end)
+
+  it("derives the roots against a normalized cwd, so an odd spelling of it still matches", function()
+    local roots = collector.exclude_roots({ repo .. "/spec/lua/x/a_spec.lua" }, repo .. "/./")
 
     assert.same({ repo .. "/spec/" }, roots)
   end)

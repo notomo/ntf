@@ -141,6 +141,16 @@ describe("ntf.mutation.decorate", function()
     assert.same({}, marks(bufnr))
   end)
 
+  it("reads the default results path when called with no options at all", function()
+    local ok, err = pcall(mutation.decorate)
+
+    assert.is_false(ok)
+    assert.equal(
+      "[ntf] mutation results file is not found: " .. vim.fs.normalize(vim.fn.fnamemodify("./ntf-mutation.json", ":p")),
+      err
+    )
+  end)
+
   it("errors, unprefixed, when the results file does not exist", function()
     local path = helper.test_data:path("nope.json")
 

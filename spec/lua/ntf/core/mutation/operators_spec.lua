@@ -9,6 +9,7 @@ local function f(a, b)
     return -a + 1, true
   end
   g(a)
+  h.x = a
   return a < b or false
 end
 return f
@@ -218,6 +219,47 @@ local _ = { k = h() }
     assert.equal("local a = b\ndo end", splice.apply(src, site))
   end)
 
+  it("deletes an assignment that stands as a statement, whatever it stores into", function()
+    local sites = summarize([[
+x = a
+t.k = a
+t[k] = a
+t.k, t[j] = a, b
+do
+  t.k = a
+end
+]])
+
+    assert.same({
+      { operator = "delete-assign", row = 1, original = "x = a", replacement = "do end" },
+      { operator = "delete-assign", row = 2, original = "t.k = a", replacement = "do end" },
+      { operator = "delete-assign", row = 3, original = "t[k] = a", replacement = "do end" },
+      { operator = "delete-assign", row = 4, original = "t.k, t[j] = a, b", replacement = "do end" },
+      { operator = "delete-assign", row = 6, original = "t.k = a", replacement = "do end" },
+    }, sites)
+  end)
+
+  it("leaves a local declaration, whose deletion would rewrite the scope and not the store", function()
+    local sites = summarize([[
+local x = a
+local y
+y = a
+]])
+
+    assert.same({
+      { operator = "delete-assign", row = 3, original = "y = a", replacement = "do end" },
+    }, sites)
+  end)
+
+  it("takes the assignment whole, so the call that gives it its value goes with it", function()
+    local src = "t.k = f()"
+
+    local site = operators.enumerate(src)[1]
+
+    assert.equal("delete-assign", site.operator)
+    assert.equal("do end", splice.apply(src, site))
+  end)
+
   it("drops what a function answers, however many values the return lists", function()
     local sites = summarize([[
 local function f()
@@ -226,7 +268,7 @@ end
 function M.g()
   return a, b
 end
-M.h = function()
+local h = function()
   do
     return b
   end
@@ -392,7 +434,7 @@ local _ = a
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(15, #sites)
+    assert.equal(16, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

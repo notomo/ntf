@@ -55,6 +55,14 @@ describe("ntf.core.worker.driver.launch", function()
     assert.equal("passed", outcome.results[1].status)
   end)
 
+  it("stamps the item's file onto every result, which the worker never sends back itself", function()
+    local item = item_of(ONE_TEST)
+
+    local outcome = launch(item)
+
+    assert.equal(item.file, outcome.results[1].file)
+  end)
+
   it("errors on a worker that reported no result, since it was asked for exactly one node", function()
     local item = item_of(ONE_TEST)
     item.node_id = "a node the rebuilt tree does not hold"

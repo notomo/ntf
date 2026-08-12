@@ -163,6 +163,32 @@ describe("ntf.core.controller.report.build", function()
     assert.no.match("x_spec%.lua:", text)
   end)
 
+  it("normalizes a source before stripping the working directory off it", function()
+    local results = {
+      {
+        status = "failed",
+        names = { "unnormalized" },
+        message = "x",
+        trace = { source = "@" .. vim.fn.getcwd() .. "//spec/./x_spec.lua", line = 1 },
+      },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.match("\n  spec/x_spec%.lua:1", text)
+  end)
+
+  it("renders with no load errors given, which the caller may leave out", function()
+    local results = {
+      { status = "passed", names = { "a" } },
+    }
+
+    local text, code = report.build(results, nil, { color = false })
+
+    assert.match("1 passed", text)
+    assert.equal(0, code)
+  end)
+
   it("includes a traceback with ntf's own frames stripped out", function()
     local traceback = table.concat({
       "stack traceback:",

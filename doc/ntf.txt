@@ -281,6 +281,9 @@ entry:
   delete-call      f() -> do end
       a test has to observe what the call does, not merely reach its line
 
+  delete-assign    a.b = c -> do end
+      a test has to observe what the assignment stores, not merely reach it
+
   drop-return      function f() return a end -> function f() return nil end
       a test has to depend on what the function answers, not merely reach it
 <
