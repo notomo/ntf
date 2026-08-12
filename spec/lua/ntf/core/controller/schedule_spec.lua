@@ -113,6 +113,16 @@ describe("ntf.core.controller.schedule", function()
     assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
   end)
 
+  it("closes the cache file it read", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
+
+    assert.is_false(helper.leaves_file_open(path, function()
+      schedule.load(path)
+    end))
+  end)
+
   it("merges into the existing cache instead of replacing it", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")

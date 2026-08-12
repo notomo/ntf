@@ -8,7 +8,7 @@ describe("ntf.core.runtime.setup", function()
     finally(function()
       vim.o.runtimepath = original
     end)
-    vim.opt.runtimepath:remove(vim.fn.getcwd())
+    vim.o.runtimepath = vim.fn.tempname()
 
     runtime.setup()
 

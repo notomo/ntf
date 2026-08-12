@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local mutate = require("ntf.core.worker.mutate")
 local operators = require("ntf.core.mutation.operators")
 local driver = require("ntf.core.worker.driver")
@@ -175,6 +176,38 @@ return M
 
     local only_the_mutated_source_is_positive_at_zero = mod.is_positive(0)
     assert.is_true(only_the_mutated_source_is_positive_at_zero)
+  end)
+
+  it("closes the file it read the mutated source from", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/mod.lua",
+      [[
+local M = {}
+function M.is_positive(n)
+  return n > 0
+end
+return M
+]]
+    )
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+    local mutation = first_mutation(module, "swap-relational")
+    mutate.install(mutation, cwd)
+    finally(function()
+      package.loaded["mod"] = nil
+      for i = #package.loaders, 1, -1 do
+        if not original_loaders[package.loaders[i]] then
+          table.remove(package.loaders, i)
+        end
+      end
+    end)
+
+    assert.is_false(helper.leaves_file_open(mutation.path, function()
+      require("mod")
+    end))
   end)
 
   it("names the mutated chunk after the original path, so tracebacks stay attributable to it", function()

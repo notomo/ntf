@@ -98,6 +98,14 @@ describe("ntf.core.mutation.results", function()
     assert.match('"files":%s*{}', table.concat(vim.fn.readfile(out), "\n"))
   end)
 
+  it("closes the file it read", function()
+    local out = helper.test_data:create_file("results.json", '{ "version": 1, "files": {} }')
+
+    assert.is_false(helper.leaves_file_open(out, function()
+      results.read(out)
+    end))
+  end)
+
   it("returns nil for a missing file", function()
     assert.is_nil(results.read(helper.test_data:path("nope.json")))
   end)

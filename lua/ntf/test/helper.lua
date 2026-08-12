@@ -39,6 +39,31 @@ end
 local is_win = vim.fn.has("win32") == 1
 local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 
+--- @param path string a file the call reads
+--- @param read fun() calls production code that opens `path` for reading
+--- @return boolean # whether the call left the file open
+function helper.leaves_file_open(path, read)
+  if is_win then
+    read()
+    local windows_refuses_to_delete_a_file_a_handle_still_holds = vim.fn.delete(path) ~= 0
+    return windows_refuses_to_delete_a_file_a_handle_still_holds
+  end
+
+  --- @return integer # the descriptor the next open takes, which one left open shifts
+  local function next_descriptor()
+    local fd = assert(vim.uv.fs_open(path, "r", tonumber("666", 8)))
+    vim.uv.fs_close(fd)
+    return fd
+  end
+
+  collectgarbage("stop")
+  local before = next_descriptor()
+  read()
+  local after = next_descriptor()
+  collectgarbage("restart")
+  return after ~= before
+end
+
 --- @param args string[] CLI arguments (paths and flags)
 --- @param cwd string? working directory for the subprocess (default: plugin root)
 --- @return { code: integer, stdout: string, stderr: string }

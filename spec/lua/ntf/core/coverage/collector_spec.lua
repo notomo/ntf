@@ -219,6 +219,14 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({}, files)
   end)
 
+  it("closes the file it read the first line of", function()
+    local path = vim.fs.normalize(helper.test_data:create_file("lua/mod.lua", "return 1"))
+
+    assert.is_false(helper.leaves_file_open(path, function()
+      collector.is_meta_file(path)
+    end))
+  end)
+
   it("treats a file it cannot read as non-meta, called directly since chmod 0 still allows reads on Windows", function()
     local missing = helper.test_data:path("lua/missing.lua")
 

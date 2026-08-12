@@ -159,6 +159,15 @@ describe("ntf.core.coverage.report.summary", function()
     assert.same(vim.tbl_map(vim.fs.basename, ascending), listed)
   end)
 
+  it("closes each source file it read", function()
+    local path = vim.fs.normalize(helper.test_data:create_file("mod.lua", "return 1"))
+    local merged = { [path] = { max = 1, lines = { [1] = 1 } } }
+
+    assert.is_false(helper.leaves_file_open(path, function()
+      report.summary(merged, helper.test_data.full_path)
+    end))
+  end)
+
   it("leaves out a measured file that can no longer be read", function()
     local merged = { [vim.fs.normalize(helper.test_data:path("gone.lua"))] = { max = 1, lines = { [1] = 1 } } }
 

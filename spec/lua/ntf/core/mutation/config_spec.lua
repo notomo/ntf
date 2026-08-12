@@ -102,6 +102,14 @@ describe("ntf.core.mutation.config.load", function()
     assert.match('operators names an operator no run produces: "swap%-relatinal"', config.load(file))
   end)
 
+  it("closes the file it read", function()
+    local file = create_file({ version = 1 })
+
+    assert.is_false(helper.leaves_file_open(file, function()
+      config.load(file)
+    end))
+  end)
+
   it("rejects a file that is not JSON", function()
     local file = helper.test_data:create_file("mutation.json", "not json")
 

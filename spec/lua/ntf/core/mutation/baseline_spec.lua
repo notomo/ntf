@@ -117,6 +117,15 @@ describe("ntf.core.mutation.baseline.build", function()
     }, built)
   end)
 
+  it("closes the file it read the source from", function()
+    local cwd = project()
+    local module = vim.fs.normalize(helper.test_data:path("lua/mod.lua"))
+
+    assert.is_false(helper.leaves_file_open(module, function()
+      baseline.build(request(), cwd)
+    end))
+  end)
+
   it("carries the invariant_spec into the entry", function()
     local cwd = project()
 

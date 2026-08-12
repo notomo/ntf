@@ -80,6 +80,14 @@ describe("ntf.core.coverage.stats.read", function()
     assert.same({ ["/x.lua"] = { max = 3, lines = { [1] = 2, [2] = 0, [3] = 5 } } }, stats.read(out))
   end)
 
+  it("closes the file it read", function()
+    local out = helper.test_data:create_file("luacov.stats.out", "3:/x.lua\n2 0 5\n")
+
+    assert.is_false(helper.leaves_file_open(out, function()
+      stats.read(out)
+    end))
+  end)
+
   it("round-trips write -> read", function()
     local out = helper.test_data:path("luacov.stats.out")
     local merged = {

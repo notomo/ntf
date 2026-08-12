@@ -81,15 +81,6 @@
       "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
     },
     {
-      "path": "lua/ntf/core/coverage/stats.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
-    },
-    {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 30,
       "operator": "flip-boolean",
@@ -151,15 +142,6 @@
       "replacement": "<=",
       "line": "        return a.row < b.row",
       "rationale": "only reached when the rows differ, so <= behaves identically"
-    },
-    {
-      "path": "lua/ntf/core/mutation/results.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
     },
     {
       "path": "lua/ntf/core/tree.lua",
@@ -355,15 +337,6 @@
       "rationale": "reached only to compare two tests of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
     },
     {
-      "path": "lua/ntf/core/controller/schedule.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
-    },
-    {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 7,
       "operator": "force-branch",
@@ -391,15 +364,6 @@
       "line": "      if n then",
       "rationale": "merge's line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only assign lines[nil], which the max-indexed writer never reads",
       "invariant_spec": "ntf.core.coverage.collector.line_hook keys every recorded line by a string tonumber parses, which its readers rely on"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the first line is already read out of the handle and nothing reads from it again, so the close only frees a descriptor"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -466,15 +430,6 @@
       "replacement": "false",
       "line": "    if not chunk then",
       "rationale": "enumerate_mutants only dispatches a mutant whose mutated source already compiled via loadstring, so the loader's loadstring of the same source never fails"
-    },
-    {
-      "path": "lua/ntf/core/worker/mutate.lua",
-      "col": 4,
-      "operator": "delete-call",
-      "original": "file:close()",
-      "replacement": "do end",
-      "line": "    file:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
     },
     {
       "path": "lua/ntf/helper.lua",
@@ -578,15 +533,6 @@
       "replacement": "1",
       "line": "  local width = 0",
       "rationale": "a listed row's name is a file path, so it is never shorter than one character and the seed never survives math.max"
-    },
-    {
-      "path": "lua/ntf/core/coverage/report.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the lines are already read to the end of the handle, so the close only frees a descriptor"
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
@@ -731,24 +677,6 @@
       "replacement": "false",
       "line": "    line = vim.split(src, \"\\n\", { plain = true })[site.row],",
       "rationale": "the separator is a lone newline, which is the same string read as a Lua pattern as read plainly, so both ways of splitting cut the source at the same places"
-    },
-    {
-      "path": "lua/ntf/core/mutation/baseline.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
-    },
-    {
-      "path": "lua/ntf/core/mutation/config.lua",
-      "col": 2,
-      "operator": "delete-call",
-      "original": "f:close()",
-      "replacement": "do end",
-      "line": "  f:close()",
-      "rationale": "the whole content is already read out of the handle, so the close only frees a descriptor"
     }
   ],
   "exclude": [
@@ -779,7 +707,9 @@
     },
     {
       "path": "lua/ntf/core/worker/watchdog.lua",
-      "operators": ["delete-call"],
+      "operators": [
+        "delete-call"
+      ],
       "rationale": "structural: the only statement calls are the thread this file spawns and the two lines the thread runs. The spawn is reached from the worker bootstrap, before coverage starts, and a test that called it instead would have to outlive the SIGKILL it arranges to report anything; the two inside run in a Lua state of their own, which no line hook of this process sees. Its other operators stay in the run"
     }
   ],
