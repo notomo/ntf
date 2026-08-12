@@ -20,37 +20,37 @@ M.operators = {
   {
     name = "swap-relational",
     description = "a test has to exercise the boundary value the two disagree on",
-    example = "return a <= b",
+    example = "local _ = a <= b",
   },
   {
     name = "swap-logical",
     description = "a test has to reach operands the two connectives disagree on",
-    example = "return a and b",
+    example = "local _ = a and b",
   },
   {
     name = "swap-arith",
     description = "a test has to exercise a right operand the two disagree on",
-    example = "return a + b * c % d ^ e",
+    example = "local _ = a + b * c % d ^ e",
   },
   {
     name = "flip-boolean",
     description = "a test has to depend on the value, not merely execute the line",
-    example = "return true",
+    example = "local _ = true",
   },
   {
     name = "drop-not",
     description = "a test has to reach the branch the negation decides",
-    example = "return not a",
+    example = "local _ = not a",
   },
   {
     name = "drop-neg",
     description = "a test has to exercise a nonzero operand and depend on its sign",
-    example = "return -a",
+    example = "local _ = -a",
   },
   {
     name = "perturb-number",
     description = "a test has to depend on the exact value, not on its being non-zero",
-    example = "return 1",
+    example = "local _ = 1",
   },
   {
     name = "force-branch",
@@ -61,6 +61,11 @@ M.operators = {
     name = "delete-call",
     description = "a test has to observe what the call does, not merely reach its line",
     example = "f()",
+  },
+  {
+    name = "drop-return",
+    description = "a test has to depend on what the function answers, not merely reach it",
+    example = "function f() return a end",
   },
 }
 
@@ -149,6 +154,27 @@ local STATEMENT_BLOCK = {
 
 local DELETED_CALL = "do end"
 
+local DROPPED_RETURN_VALUE = "nil"
+
+--- @type table<string, true> # value kinds whose own operator already owns the return of a single one of them
+local OWNED_LITERAL = {
+  ["nil"] = true,
+  ["true"] = true,
+  ["false"] = true,
+  number = true,
+}
+
+-- WHY: a return the chunk itself answers with is the module, not an answer a
+-- caller weighs, so emptying it fails every user of the module at once instead
+-- of asking any test for the precision the operator is about.
+-- NOT: taking every return and leaving the module ones to a baseline, which
+-- would spend a trial per file to learn only that some spec requires it.
+--- @type table<string, true> # the node types a return answers for
+local RETURNING_FUNCTION = {
+  function_definition = true,
+  function_declaration = true,
+}
+
 local FORCE_BRANCH = {
   if_statement = { "false", "true" },
   elseif_statement = { "false", "true" },
@@ -211,6 +237,42 @@ local function delete_call_sites(node, src, sites)
   end
 end
 
+--- @param node TSNode a `return_statement`
+--- @return boolean # whether it answers for a function, not for the chunk itself
+local function answers_for_function(node)
+  local current = node:parent()
+  while current do
+    if RETURNING_FUNCTION[current:type()] then
+      return true
+    end
+    current = current:parent()
+  end
+  return false
+end
+
+--- @param node TSNode a `return_statement`
+--- @param src string the full source text
+--- @param sites NtfMutantSite[]
+local function drop_return_value_sites(node, src, sites)
+  if not answers_for_function(node) then
+    return
+  end
+  local values
+  for child in node:iter_children() do
+    if child:type() == "expression_list" then
+      values = child
+    end
+  end
+  if not values then
+    return
+  end
+  if not values:named_child(1) and OWNED_LITERAL[values:named_child(0):type()] then
+    return
+  end
+  local text = vim.treesitter.get_node_text(values, src)
+  table.insert(sites, site(values, "drop-return", text, DROPPED_RETURN_VALUE))
+end
+
 --- @param node TSNode a decision node whose condition is forced to each outcome
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
@@ -243,6 +305,8 @@ function M.enumerate(src)
       unary_sites(node, src, sites)
     elseif kind == "function_call" then
       delete_call_sites(node, src, sites)
+    elseif kind == "return_statement" then
+      drop_return_value_sites(node, src, sites)
     elseif BOOLEAN_FLIPS[kind] then
       table.insert(sites, site(node, "flip-boolean", kind, BOOLEAN_FLIPS[kind]))
     elseif kind == "number" then

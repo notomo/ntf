@@ -29,6 +29,13 @@ describe("ntf.core.controller.schedule", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
+  it("defaults the cache to a file named for the working directory, under the cache directory", function()
+    local path = schedule.default_path()
+
+    assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "schedule"), vim.fs.dirname(path))
+    assert.match("^%%.*%%.*%.json$", vim.fs.basename(path))
+  end)
+
   it("orders the slowest test first", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
@@ -64,20 +71,22 @@ describe("ntf.core.controller.schedule", function()
     assert.equal("unknown", ordered[1].names[2])
   end)
 
-  it("keeps the given order between tests with the same duration", function()
+  it("keeps the given order between tests with the same duration, however the sort shuffles a tie", function()
     local root = helper.test_data.full_path
     local items = {
       item(root, "spec/a_spec.lua", "one"),
       item(root, "spec/a_spec.lua", "two"),
       item(root, "spec/a_spec.lua", "three"),
+      item(root, "spec/a_spec.lua", "four"),
     }
 
     local ordered = schedule.order(items, schedule.load(helper.test_data:path("nope.json")), root)
 
-    assert.same({ "one", "two", "three" }, {
+    assert.same({ "one", "two", "three", "four" }, {
       ordered[1].names[2],
       ordered[2].names[2],
       ordered[3].names[2],
+      ordered[4].names[2],
     })
   end)
 

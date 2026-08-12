@@ -745,7 +745,7 @@ describe("ntf mutation", function()
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
     assert.equal(0, results.counts.not_applied)
-    assert.equal(4, results.counts.killed)
+    assert.equal(7, results.counts.killed)
   end)
 
   it("reports a mutant no test reaches as uncovered", function()
@@ -1155,7 +1155,7 @@ describe("ntf mutation", function()
 
     assert.equal(0, obj.code)
     assert.match("Mutation: 50%.0%% %(1/2 mutants detected%)", obj.stdout)
-    assert.match("3 unadopted", obj.stdout)
+    assert.match("6 unadopted", obj.stdout)
     assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
   end)
 

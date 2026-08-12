@@ -199,7 +199,7 @@ end
   it("leaves a call whose value is used, since deleting it takes the expression with it", function()
     local sites = summarize([[
 local _ = g()
-return { k = h() }
+local _ = { k = h() }
 ]])
 
     assert.same({}, sites)
@@ -216,6 +216,110 @@ return { k = h() }
 
     assert.equal("delete-call", site.operator)
     assert.equal("local a = b\ndo end", splice.apply(src, site))
+  end)
+
+  it("drops what a function answers, however many values the return lists", function()
+    local sites = summarize([[
+local function f()
+  return a
+end
+function M.g()
+  return a, b
+end
+M.h = function()
+  do
+    return b
+  end
+end
+]])
+
+    assert.same({
+      { operator = "drop-return", row = 2, original = "a", replacement = "nil" },
+      { operator = "drop-return", row = 5, original = "a, b", replacement = "nil" },
+      { operator = "drop-return", row = 9, original = "b", replacement = "nil" },
+    }, sites)
+  end)
+
+  it("leaves the return a chunk answers with, which is the module rather than an answer", function()
+    local sites = summarize([[
+local function f()
+  return a
+end
+do
+  return f
+end
+]])
+
+    assert.same({
+      { operator = "drop-return", row = 2, original = "a", replacement = "nil" },
+    }, sites)
+  end)
+
+  it("leaves a return of one literal to the operator that owns the literal", function()
+    local sites = summarize([[
+local function f()
+  return nil
+end
+local function g()
+  return true
+end
+local function h()
+  return false
+end
+local function i()
+  return 1
+end
+]])
+
+    assert.same({
+      { operator = "flip-boolean", row = 5, original = "true", replacement = "false" },
+      { operator = "flip-boolean", row = 8, original = "false", replacement = "true" },
+      { operator = "perturb-number", row = 11, original = "1", replacement = "2" },
+    }, sites)
+  end)
+
+  it("takes a return of a literal among others, which no single literal's operator empties", function()
+    local sites = summarize([[
+local function f()
+  return nil, err
+end
+]])
+
+    assert.same({
+      { operator = "drop-return", row = 2, original = "nil, err", replacement = "nil" },
+    }, sites)
+  end)
+
+  it("finds no site in a return that gives nothing back", function()
+    local sites = summarize([[
+local function f()
+  return
+end
+]])
+
+    assert.same({}, sites)
+  end)
+
+  it("leaves the semicolon of a return, taking only the values", function()
+    local src = "local function f() return g; end"
+
+    local site = operators.enumerate(src)[1]
+
+    assert.equal("drop-return", site.operator)
+    assert.equal("local function f() return nil; end", splice.apply(src, site))
+  end)
+
+  it("anchors a return of a closure on the row its hit lands, not on the return", function()
+    local sites = operators.enumerate(table.concat({
+      "local function f()",
+      "  return function()",
+      "    g()",
+      "  end",
+      "end",
+    }, "\n"))
+
+    assert.equal("drop-return", sites[1].operator)
+    assert.same({ 4 }, sites[1].anchor_rows)
   end)
 
   it("finds no site in a string or a comment", function()
@@ -265,6 +369,15 @@ local _ = a
     assert.equal("==", src:sub(site.start_byte + 1, site.end_byte))
   end)
 
+  it("sorts sites that start at one byte by operator name, so the order never rests on the walk", function()
+    local sites = summarize([[local function f() return -a end]])
+
+    assert.same({
+      { operator = "drop-neg", row = 1, original = "-a", replacement = "a" },
+      { operator = "drop-return", row = 1, original = "-a", replacement = "nil" },
+    }, sites)
+  end)
+
   it("sorts sites by position", function()
     local sites = summarize([[local _ = 1 + 2 == 3]])
 
@@ -279,7 +392,7 @@ local _ = a
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(13, #sites)
+    assert.equal(15, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

@@ -56,12 +56,7 @@ end
 local function hit_row(node)
   local kind = node:type()
   if kind == "function_call" then
-    for child in node:iter_children() do
-      if child:type() == "arguments" then
-        return (child:start())
-      end
-    end
-    return (node:start())
+    return (node:field("arguments")[1]:start())
   end
   if kind == "assignment_statement" or kind == "return_statement" then
     if only_closure_rows(node) then

@@ -199,6 +199,13 @@ describe("ntf.assert", function()
     end))
   end)
 
+  it("gives a passing assertion its arguments back, as the callable form does", function()
+    local a, b = assert.equal(1, 1)
+
+    assert.equal(1, a)
+    assert.equal(1, b)
+  end)
+
   it("callable form reports the given message at the caller's line", function()
     local function failing()
       assert(false, "boom")

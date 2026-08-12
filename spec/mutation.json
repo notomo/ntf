@@ -273,15 +273,6 @@
       "invariant_spec": "lua grammar gives an anonymous node no children, so a walk that skips one reaches no named descendant"
     },
     {
-      "path": "lua/ntf/core/mutation/operators.lua",
-      "col": 7,
-      "operator": "force-branch",
-      "original": "a.start_byte ~= b.start_byte",
-      "replacement": "true",
-      "line": "    if a.start_byte ~= b.start_byte then",
-      "rationale": "the operator tiebreak is reached only for two sites sharing a start byte, which are only the two force-branch mutants of one condition; they share the operator name too, so the tiebreak returns false either way and the order is identical"
-    },
-    {
       "path": "lua/ntf/core/tree.lua",
       "col": 5,
       "operator": "force-branch",
@@ -326,15 +317,6 @@
       "line": "        if row then",
       "rationale": "coverage line keys are the collector's numeric strings, so tonumber never returns nil; a nil would only populate lines[nil], which item_indexes, keyed by numeric rows, never reads",
       "invariant_spec": "ntf.core.coverage.collector.line_hook keys every recorded line by a string tonumber parses, which its readers rely on"
-    },
-    {
-      "path": "lua/ntf/core/controller/schedule.lua",
-      "col": 7,
-      "operator": "force-branch",
-      "original": "a.ms ~= b.ms",
-      "replacement": "true",
-      "line": "    if a.ms ~= b.ms then",
-      "rationale": "reached only to compare two tests of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -386,6 +368,16 @@
       "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
     },
     {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 9,
+      "operator": "drop-return",
+      "original": "data",
+      "replacement": "nil",
+      "line": "  return data",
+      "rationale": "stop turns its own line hook off on the line above, so the return that hands the counts back is the one line no run can record",
+      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
+    },
+    {
       "path": "lua/ntf/core/controller/list.lua",
       "col": 5,
       "operator": "force-branch",
@@ -394,15 +386,6 @@
       "line": "  if lines[#lines] == \"\" then",
       "rationale": "each load-error block ends with a blank separator line, so the last line is empty whenever one exists; forcing the guard true only ever drops that blank or no-ops on the empty list",
       "invariant_spec": "ntf.core.controller.report.load_error_block ends every block with a blank separator line"
-    },
-    {
-      "path": "lua/ntf/core/mutation/order.lua",
-      "col": 7,
-      "operator": "force-branch",
-      "original": "a.ms ~= b.ms",
-      "replacement": "true",
-      "line": "    if a.ms ~= b.ms then",
-      "rationale": "reached only to compare two tasks of equal ms, whose order the sort then leaves in place, so forcing the guard true cannot change any dispatch order an assertion observes"
     },
     {
       "path": "lua/ntf/core/worker/mutate.lua",
@@ -421,15 +404,6 @@
       "replacement": "false",
       "line": "    if not mutated then",
       "rationale": "enumerate_mutants only dispatches a mutant whose splice.apply already succeeded, so the loader's splice of the same site never returns nil"
-    },
-    {
-      "path": "lua/ntf/core/worker/mutate.lua",
-      "col": 7,
-      "operator": "force-branch",
-      "original": "not chunk",
-      "replacement": "false",
-      "line": "    if not chunk then",
-      "rationale": "enumerate_mutants only dispatches a mutant whose mutated source already compiled via loadstring, so the loader's loadstring of the same source never fails"
     },
     {
       "path": "lua/ntf/helper.lua",
@@ -596,6 +570,15 @@
       "replacement": "1",
       "line": "    counts[result.status] = (counts[result.status] or 0) + 1",
       "rationale": "the four counted statuses are seeded in the table, so the fallback only ever starts a count nothing reads"
+    },
+    {
+      "path": "lua/ntf/core/controller/report.lua",
+      "col": 11,
+      "operator": "drop-return",
+      "original": "path",
+      "replacement": "nil",
+      "line": "    return path",
+      "rationale": "every caller hands strip_cwd a working directory, so the nil guard this return sits in is never taken"
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",

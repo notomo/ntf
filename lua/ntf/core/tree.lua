@@ -31,7 +31,6 @@ local function add_child(node)
   table.insert(parent.children, node)
   local prefix = parent.id == "" and "" or parent.id .. "."
   node.id = prefix .. tostring(#parent.children)
-  return node
 end
 
 --- @return NtfTrace?
@@ -50,7 +49,6 @@ end
 
 --- @param name string
 --- @param fn fun()
---- @return NtfNode node
 local function new_describe(name, fn)
   local node = {
     type = "describe",
@@ -68,13 +66,11 @@ local function new_describe(name, fn)
   if not ok then
     node.load_error = err
   end
-  return node
 end
 
 --- @param name string
 --- @param fn fun()
 --- @param opts NtfItOption?
---- @return NtfNode node
 local function new_it(name, fn, opts)
   local node = {
     type = "it",
@@ -83,12 +79,11 @@ local function new_it(name, fn, opts)
     trace = trace_of(fn),
     timeout = opts and opts.timeout or nil,
   }
-  return add_child(node)
+  add_child(node)
 end
 
 --- @param name string
 --- @param fn fun()? optional body (ignored; pending is never executed)
---- @return NtfNode node
 local function new_pending(name, fn)
   if not current() then
     error({ [M.PENDING] = true, message = name }, 0)
@@ -99,7 +94,7 @@ local function new_pending(name, fn)
     fn = nil,
     trace = trace_of(fn, 3),
   }
-  return add_child(node)
+  add_child(node)
 end
 
 local function add_hook(field)

@@ -250,28 +250,28 @@ the code under test and runs the tests again. Each kind of change is an operator
 under whose name the mutant is reported and, below, written into a baseline
 entry:
 >
-  swap-relational  return a <= b -> return a < b
+  swap-relational  local _ = a <= b -> local _ = a < b
       a test has to exercise the boundary value the two disagree on
 
-  swap-logical     return a and b -> return a or b
+  swap-logical     local _ = a and b -> local _ = a or b
       a test has to reach operands the two connectives disagree on
 
-  swap-arith       return a + b * c % d ^ e -> return a - b * c % d ^ e
-                   return a + b * c % d ^ e -> return a + b / c % d ^ e
-                   return a + b * c % d ^ e -> return a + b * c * d ^ e
-                   return a + b * c % d ^ e -> return a + b * c % d * e
+  swap-arith       local _ = a + b * c % d ^ e -> local _ = a - b * c % d ^ e
+                   local _ = a + b * c % d ^ e -> local _ = a + b / c % d ^ e
+                   local _ = a + b * c % d ^ e -> local _ = a + b * c * d ^ e
+                   local _ = a + b * c % d ^ e -> local _ = a + b * c % d * e
       a test has to exercise a right operand the two disagree on
 
-  flip-boolean     return true -> return false
+  flip-boolean     local _ = true -> local _ = false
       a test has to depend on the value, not merely execute the line
 
-  drop-not         return not a -> return a
+  drop-not         local _ = not a -> local _ = a
       a test has to reach the branch the negation decides
 
-  drop-neg         return -a -> return a
+  drop-neg         local _ = -a -> local _ = a
       a test has to exercise a nonzero operand and depend on its sign
 
-  perturb-number   return 1 -> return 2
+  perturb-number   local _ = 1 -> local _ = 2
       a test has to depend on the exact value, not on its being non-zero
 
   force-branch     if a then end -> if false then end
@@ -280,6 +280,9 @@ entry:
 
   delete-call      f() -> do end
       a test has to observe what the call does, not merely reach its line
+
+  drop-return      function f() return a end -> function f() return nil end
+      a test has to depend on what the function answers, not merely reach it
 <
 A mutant that makes a test fail is detected; one that leaves the whole suite
 green is a hole in the tests, and is reported with the change it got away with:

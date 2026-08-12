@@ -279,6 +279,40 @@ return M
     assert.equal("real other", other.name)
   end)
 
+  it("reports the compile error of a mutant that does not compile, so the require does not fail silently", function()
+    local cwd = helper.test_data.full_path
+    -- WHY: outside lua/, so no runtimepath loader can serve the module and the
+    -- error the mutation loader gives back is the only one require can report.
+    -- NOT: a module under lua/, which falls through to its unmutated source.
+    local module = helper.test_data:create_file("broken.lua", "return { name = 'ok' }\n")
+
+    local original_loaders = {}
+    for _, loader in ipairs(package.loaders) do
+      original_loaders[loader] = true
+    end
+    finally(function()
+      package.loaded["broken"] = nil
+      for i = #package.loaders, 1, -1 do
+        if not original_loaders[package.loaders[i]] then
+          table.remove(package.loaders, i)
+        end
+      end
+    end)
+
+    mutate.install({
+      path = vim.fs.normalize(module),
+      start_byte = 0,
+      end_byte = 6,
+      original = "return",
+      replacement = "return return",
+    }, cwd)
+
+    local ok, err = pcall(require, "broken")
+
+    assert.is_false(ok)
+    assert.match("unexpected symbol", err)
+  end)
+
   it("reports that the mutation was not applied when the module is never required", function()
     local cwd = helper.test_data.full_path
     helper.test_data:create_file(

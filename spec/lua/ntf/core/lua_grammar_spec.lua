@@ -35,6 +35,25 @@ describe("lua grammar", function()
     assert.same({}, parents)
   end)
 
+  it("gives every function call an arguments field, whatever the call is spelled with", function()
+    local without = {}
+    local calls = 0
+    for _, parse in ipairs(parses()) do
+      walk(parse.root, function(node)
+        if node:type() ~= "function_call" then
+          return
+        end
+        calls = calls + 1
+        if not node:field("arguments")[1] then
+          table.insert(without, vim.treesitter.get_node_text(node, parse.src))
+        end
+      end)
+    end
+
+    assert.same({}, without)
+    assert.is_true(calls > 0)
+  end)
+
   it("spells every number node so that tonumber parses it", function()
     local unparsed = {}
     local numbers = 0
