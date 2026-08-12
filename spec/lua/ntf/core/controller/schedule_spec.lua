@@ -104,6 +104,15 @@ describe("ntf.core.controller.schedule", function()
     assert.equal("failed", entry.status)
   end)
 
+  it("creates the directory the cache file goes in, which nothing else makes", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("cache/ntf/schedule.json")
+
+    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
+
+    assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
+  end)
+
   it("merges into the existing cache instead of replacing it", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")

@@ -31,11 +31,35 @@ describe("ntf.core.coverage.stats.write", function()
   it("emits one block per file, sorted by path", function()
     local out = helper.test_data:path("luacov.stats.out")
     stats.write(out, {
-      ["/b.lua"] = { max = 1, lines = { [1] = 1 } },
+      ["/z.lua"] = { max = 1, lines = { [1] = 1 } },
       ["/a.lua"] = { max = 2, lines = { [2] = 4 } },
     })
 
-    assert.equal("2:/a.lua\n0 4\n1:/b.lua\n1\n", read_all(out))
+    assert.equal("2:/a.lua\n0 4\n1:/z.lua\n1\n", read_all(out))
+  end)
+
+  it("orders the blocks by path, whatever order the keys come out of the table in", function()
+    local out = helper.test_data:path("luacov.stats.out")
+    local ascending = helper.unsorted_hash_order(function(salt)
+      return vim.tbl_map(function(letter)
+        return ("/%s%d.lua"):format(letter, salt)
+      end, { "a", "b", "c", "d", "e", "f" })
+    end)
+    local merged = {}
+    for _, path in ipairs(ascending) do
+      merged[path] = { max = 1, lines = { [1] = 1 } }
+    end
+
+    stats.write(out, merged)
+
+    local written = {}
+    for _, line in ipairs(vim.split(read_all(out), "\n", { plain = true })) do
+      local path = line:match("^%d+:(.+)$")
+      if path then
+        table.insert(written, path)
+      end
+    end
+    assert.same(ascending, written)
   end)
 
   it("writes an empty file when nothing was measured", function()

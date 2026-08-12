@@ -13,6 +13,14 @@ describe("ntf.core.mutation.coverage_map", function()
     assert.same({ 1, 2 }, map.item_indexes("/x.lua", { 1, 3 }))
   end)
 
+  it("returns the items in ascending order, whatever order their coverage arrived in", function()
+    local map = coverage_map.new()
+    map.add(10, { ["/x.lua"] = { max = 1, lines = { ["1"] = 1 } } })
+    map.add(3, { ["/x.lua"] = { max = 1, lines = { ["1"] = 1 } } })
+
+    assert.same({ 3, 10 }, map.item_indexes("/x.lua", { 1 }))
+  end)
+
   it("returns no item for an unhit row", function()
     local map = coverage_map.new()
     map.add(1, { ["/x.lua"] = { max = 1, lines = { ["1"] = 1 } } })

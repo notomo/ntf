@@ -135,6 +135,30 @@ describe("ntf.core.coverage.report.summary", function()
     )
   end)
 
+  it("orders the rows by name, whatever order the keys come out of the table in", function()
+    local ascending = helper.unsorted_hash_order(function(salt)
+      return vim.tbl_map(function(letter)
+        return vim.fs.normalize(helper.test_data:path(("%s%d.lua"):format(letter, salt)))
+      end, { "a", "b", "c", "d", "e", "f" })
+    end)
+    local merged = {}
+    for _, path in ipairs(ascending) do
+      helper.test_data:create_file(vim.fs.basename(path), "return 1")
+      merged[path] = { max = 1, lines = { [1] = 1 } }
+    end
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    local listed = {}
+    for _, line in ipairs(vim.split(text, "\n", { plain = true })) do
+      local name = line:match("^  (%S+)")
+      if name then
+        table.insert(listed, name)
+      end
+    end
+    assert.same(vim.tbl_map(vim.fs.basename, ascending), listed)
+  end)
+
   it("leaves out a measured file that can no longer be read", function()
     local merged = { [vim.fs.normalize(helper.test_data:path("gone.lua"))] = { max = 1, lines = { [1] = 1 } } }
 

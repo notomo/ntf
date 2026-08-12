@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local collector = require("ntf.core.coverage.collector")
 local helper = require("ntf.test.helper")
 
@@ -127,6 +128,17 @@ describe("ntf.core.coverage.collector.start/stop", function()
     assert.same(body_line_hits, data[vim.fs.normalize(measured)].lines)
   end)
 
+  it("leaves no hook behind, so nothing keeps recording into the data it handed back", function()
+    local measured_cwd = vim.fn.getcwd()
+    collector.start({ cwd = measured_cwd })
+    collector.stop()
+    finally(function()
+      collector.start({ cwd = measured_cwd })
+    end)
+
+    assert.is_nil(debug.gethook())
+  end)
+
   it("does not measure files outside cwd", function()
     local module_outside_cwd = "ntf.core.coverage.report"
 
@@ -179,6 +191,15 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     local files = collector.measurable_files(helper.test_data.full_path, excludes)
 
     assert.same({}, files)
+  end)
+
+  it("lists the files sorted, not in the order the walk reaches them", function()
+    local nested = helper.test_data:create_file("lua/sub/a.lua", "return 1")
+    local top = helper.test_data:create_file("lua/z.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(nested), vim.fs.normalize(top) }, files)
   end)
 
   it("lists only lua files", function()

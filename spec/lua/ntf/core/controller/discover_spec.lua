@@ -20,6 +20,15 @@ describe("ntf.core.controller.discover.specs", function()
     assert.match("z_spec%.lua$", files[2])
   end)
 
+  it("sorts the files, whatever order the paths name them", function()
+    local a = helper.test_data:create_file("dir/a_spec.lua", "")
+    local z = helper.test_data:create_file("dir/z_spec.lua", "")
+
+    local files = discover.specs({ z, a })
+
+    assert.same({ vim.fs.normalize(a), vim.fs.normalize(z) }, files)
+  end)
+
   it("dedupes a file passed twice and one passed both directly and via its directory", function()
     local file = helper.test_data:create_file("dir/a_spec.lua", "")
 

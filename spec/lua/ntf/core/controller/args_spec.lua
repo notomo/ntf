@@ -672,6 +672,30 @@ describe("ntf.core.controller.args.usage", function()
     assert.is_true(vim.tbl_contains(lines, "list the mutants with coverage, without scoring them"))
   end)
 
+  --- @param lines string[]
+  --- @param line string
+  --- @return integer
+  local function index_of(lines, line)
+    for index, candidate in ipairs(lines) do
+      if candidate == line then
+        return index
+      end
+    end
+    error(("no such line: %s"):format(line))
+  end
+
+  it("sets the options heading off from what comes above it with a blank line", function()
+    local lines = vim.split(args.usage("run"), "\n", { plain = true })
+
+    assert.equal("", lines[index_of(lines, "Options:") - 1])
+  end)
+
+  it("sets the note about the default paths off from the options with a blank line", function()
+    local lines = vim.split(args.usage("run"), "\n", { plain = true })
+
+    assert.equal("", lines[index_of(lines, "With no paths, the *_spec.lua files under ./spec are used.") - 1])
+  end)
+
   it("aligns the longest label two spaces from its description", function()
     local command = command_of({ "mutation" })
     local longest = command.flags[1]

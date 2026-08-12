@@ -2,6 +2,7 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local work = require("ntf.core.controller.work")
 local pool = require("ntf.core.controller.pool")
+local driver = require("ntf.core.worker.driver")
 local helper = require("ntf.test.helper")
 
 local one_test = [[
@@ -87,6 +88,31 @@ end)
 
     assert.equal(1, #results)
     assert.equal("passed", results[1].status)
+  end)
+
+  it("kills the workers still running when a callback aborts the run", function()
+    local items = work.plan({
+      helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("finishes at once", function() end)
+  ntf.it("outlives the abort", function()
+    vim.uv.sleep(3000)
+  end)
+end)
+]]),
+    })
+
+    local ok = pcall(pool.run, items, {
+      root = helper.root,
+      jobs = 2,
+      on_item = function()
+        error("aborted by the callback", 0)
+      end,
+    })
+
+    assert.is_false(ok)
+    assert.equal(0, driver.kill_all())
   end)
 
   it("merges nothing and calls no coverage callback when coverage is off", function()

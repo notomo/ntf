@@ -73,6 +73,36 @@ describe("ntf.assert", function()
     )
   end)
 
+  it("reports the failing values in the same failure message", function()
+    assert.match(
+      "expected to be the same.\nleft : { 1 }\nright: { 2 }",
+      failure(function()
+        assert.same({ 1 }, { 2 })
+      end)
+    )
+    assert.match(
+      "expected to be not the same, but both are: { 1 }",
+      failure(function()
+        assert.no.same({ 1 }, { 1 })
+      end)
+    )
+  end)
+
+  it("reports the pattern and the value in the match failure message", function()
+    assert.match(
+      'expected to match pattern "zzz", but got: "abcd"',
+      failure(function()
+        assert.match("zzz", "abcd")
+      end)
+    )
+    assert.match(
+      'expected not to match pattern "b.d", but got: "abcd"',
+      failure(function()
+        assert.no.match("b.d", "abcd")
+      end)
+    )
+  end)
+
   it("reports the got value for truthy / falsy failures", function()
     assert.match(
       "expected a truthy value, but got: false",
@@ -190,6 +220,67 @@ describe("ntf.assert", function()
     assert.is_true(fails(function()
       assert.even(3)
     end))
+  end)
+
+  it("reports the messages a custom assertion sets for itself", function()
+    require("ntf.assert").register("spec_even_message", function(self)
+      self:set_positive("should be even")
+      self:set_negative("should not be even")
+      return function(_, args)
+        return args[1] % 2 == 0
+      end
+    end)
+
+    assert.match(
+      "should be even",
+      failure(function()
+        assert.spec_even_message(3)
+      end)
+    )
+    assert.match(
+      "should not be even",
+      failure(function()
+        assert.no.spec_even_message(2)
+      end)
+    )
+  end)
+
+  it("reports the expected and the actual of a register_eq assertion", function()
+    require("ntf.assert").register_eq("spec_eq_message", function(n)
+      return n * 2
+    end)
+
+    assert.match(
+      "spec_eq_message should be 7, but actual: 6",
+      failure(function()
+        assert.spec_eq_message(3, 7)
+      end)
+    )
+    assert.match(
+      "spec_eq_message should not be 6, but actual: 6",
+      failure(function()
+        assert.no.spec_eq_message(3, 6)
+      end)
+    )
+  end)
+
+  it("reports the expected and the actual of a register_same assertion", function()
+    require("ntf.assert").register_same("spec_same_message", function(n)
+      return { n }
+    end)
+
+    assert.match(
+      "spec_same_message should be { 4 }, but actual: { 3 }",
+      failure(function()
+        assert.spec_same_message(3, { 4 })
+      end)
+    )
+    assert.match(
+      "spec_same_message should not be { 3 }, but actual: { 3 }",
+      failure(function()
+        assert.no.spec_same_message(3, { 3 })
+      end)
+    )
   end)
 
   it("registers custom asserts through ntf.assert (assertlib path)", function()

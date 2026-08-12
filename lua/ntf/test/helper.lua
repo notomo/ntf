@@ -20,6 +20,22 @@ function helper.write_spec(source)
   return helper.test_data:create_file("temp_spec.lua", source)
 end
 
+--- @param candidates fun(salt: integer): string[] ascending keys, built from a salt so that another call gives them other hashes
+--- @return string[] # the first candidate set a table does not already hand back ascending
+function helper.unsorted_hash_order(candidates)
+  for salt = 1, 100 do
+    local ascending = candidates(salt)
+    local keyed = {}
+    for _, key in ipairs(ascending) do
+      keyed[key] = true
+    end
+    if not vim.deep_equal(ascending, vim.tbl_keys(keyed)) then
+      return ascending
+    end
+  end
+  error("every candidate set came back out of a table ascending")
+end
+
 local is_win = vim.fn.has("win32") == 1
 local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 
