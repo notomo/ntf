@@ -8,9 +8,7 @@ local protocol = require("ntf.core.worker.protocol")
 
 local payload = protocol.payload()
 
-if payload.watchdog_ms then
-  require("ntf.core.worker.watchdog").start(payload.watchdog_ms)
-end
+require("ntf.core.worker.watchdog").start(payload.watchdog_ms)
 
 local function main()
   require("ntf.core.runtime").setup()

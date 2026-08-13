@@ -9,6 +9,51 @@ describe("ntf.core.worker.watchdog.deadline", function()
   end)
 end)
 
+describe("ntf.core.worker.watchdog.poll_interval", function()
+  it("reads the parent five times a second", function()
+    assert.equal(200, watchdog.poll_interval())
+  end)
+end)
+
+--- @param started integer a vim.uv.hrtime reading
+--- @return number ms since that reading
+local function ms_since(started)
+  local ns_per_ms = 1000000
+  return (vim.uv.hrtime() - started) / ns_per_ms
+end
+
+describe("ntf.core.worker.watchdog.wait", function()
+  it("returns to a process whose parent is no longer the one it was born under", function()
+    local a_parent_this_process_never_had = 0
+
+    local reason = watchdog.wait(a_parent_this_process_never_had, nil, watchdog.poll_interval())
+
+    assert.equal("orphaned", reason)
+  end)
+
+  it("returns before its first sleep to a process whose deadline is already spent", function()
+    local a_sleep_no_test_here_waits_out = 10000
+    local spent = 0
+    local started = vim.uv.hrtime()
+
+    local reason = watchdog.wait(vim.uv.os_getppid(), spent, a_sleep_no_test_here_waits_out)
+
+    assert.equal("deadline", reason)
+    assert.is_true(ms_since(started) < a_sleep_no_test_here_waits_out)
+  end)
+
+  it("sleeps a whole poll out for a deadline with any time left on it", function()
+    local interval_ms = 100
+    local shorter_than_one_poll = 1
+    local started = vim.uv.hrtime()
+
+    local reason = watchdog.wait(vim.uv.os_getppid(), shorter_than_one_poll, interval_ms)
+
+    assert.equal("deadline", reason)
+    assert.is_true(ms_since(started) >= interval_ms)
+  end)
+end)
+
 describe("ntf.core.worker.watchdog.start", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
