@@ -947,6 +947,54 @@ describe("ntf mutation", function()
     assert.equal(1, results.counts.survived)
   end)
 
+  it("holds a baseline entry a trial killed only once, re-running that trial", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file("lua/mod.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "spec/flaky_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("fails the run after the one the whole gate waits on", function()',
+        '    local counter = "runs"',
+        "    local ran = vim.fn.filereadable(counter) == 1 and tonumber(vim.fn.readfile(counter)[1]) or 0",
+        "    local runs = ran + 1",
+        "    vim.fn.writefile({ tostring(runs) }, counter)",
+        "    assert.is_true(mod.is_positive(1))",
+        "    local the_baseline_run_and_then_the_first_trial = 2",
+        "    assert.no.equal(the_baseline_run_and_then_the_first_trial, runs)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 11,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "no test here tells the boundary apart",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
+    assert.no.match("BASELINE KILLABLE", obj.stdout)
+  end)
+
   it("exits non-zero when baseline verify finds a baseline entry a test kills", function()
     local root = mutation_project()
     helper.test_data:create_file(

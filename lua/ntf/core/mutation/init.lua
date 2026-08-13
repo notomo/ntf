@@ -179,7 +179,7 @@ function M.run(opts, ctx)
       if opts.mutation_verify_baseline then
         local trials = covering_trials(ctx, durations, mutant)
         if #trials > 0 then
-          table.insert(tasks, { mutant = mutant, trials = trials })
+          table.insert(tasks, { mutant = mutant, trials = trials, confirm_kill = true })
           table.insert(task_records, #records)
           table.insert(task_verify, true)
         end

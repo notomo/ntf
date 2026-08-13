@@ -11,6 +11,7 @@ local M = {}
 --- @class NtfMutantTask one mutant and the tests that can detect it
 --- @field mutant NtfMutant
 --- @field trials NtfMutantTrial[] cheapest first, so a kill is found early
+--- @field confirm_kill boolean? take a kill only from a trial that kills twice, for a task that runs every trial it has and so meets a test failing for reasons of its own far more often than one stopping at its first kill
 
 --- @param baseline_ms number
 --- @param timeout integer the run's per-test timeout in ms (0 disables)
@@ -58,7 +59,8 @@ function M.run(tasks, opts)
   --- @param task_index integer
   --- @param trial_index integer
   --- @param progress NtfMutantProgress what the earlier trials showed
-  local function run_trial(task_index, trial_index, progress)
+  --- @param confirming boolean? this run repeats a trial that came back killed
+  local function run_trial(task_index, trial_index, progress, confirming)
     local task = tasks[task_index]
     local trial = task.trials[trial_index]
     if not trial then
@@ -80,6 +82,9 @@ function M.run(tasks, opts)
     }, function(outcome)
       local ok, err = xpcall(function()
         local settled, next_progress = verdict.step(outcome, progress)
+        if settled and settled.status == "killed" and task.confirm_kill and not confirming then
+          return run_trial(task_index, trial_index, next_progress, true)
+        end
         if settled then
           return settle(task_index, settled)
         end

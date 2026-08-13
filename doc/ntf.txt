@@ -429,8 +429,11 @@ of quietly unmooring the rationale.
 An entry is only ever trusted, not checked: a mutant a new test would now detect
 stays out of the score behind a mark that no longer holds. `ntf mutation
 baseline verify` runs the listed mutants instead of trusting them and exits
-non-zero, reporting each as BASELINE KILLABLE, when a test kills one — the mirror
-of LOST, catching a stale judgement the code line never gave away. It leaves every
+non-zero, reporting each as BASELINE KILLABLE and naming the test that did it, when
+a test kills one — the mirror of LOST, catching a stale judgement the code line
+never gave away. An entry runs every trial covering it rather than stopping at the
+first kill, which is where a test that fails for reasons of its own is met, so the
+kill has to repeat in a re-run of that trial before it counts. It leaves every
 other mutant unrun, scoring nothing and writing no results file, which is what you
 want right after editing the baseline:
 >sh
