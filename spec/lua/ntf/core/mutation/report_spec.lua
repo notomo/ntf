@@ -342,6 +342,33 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("BASELINE KILLABLE lua/a%.lua:2:swap%-relational < %-> <=", text)
   end)
 
+  it("names the test that killed a baseline entry, since every covering trial ran", function()
+    local killable = record(abs("lua/a.lua"), 2, "baseline_killable")
+    killable.killed_by = "ntf.core.mod keeps a and b apart"
+    local summary = {
+      records = { killable },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 1,
+      },
+      verified = 1,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match(
+      'BASELINE KILLABLE lua/a%.lua:2:swap%-relational < %-> <= killed by "ntf%.core%.mod keeps a and b apart"',
+      text
+    )
+  end)
+
   it("counts the baseline entries re-run in place of a score when verifying the baseline", function()
     local summary = {
       records = {

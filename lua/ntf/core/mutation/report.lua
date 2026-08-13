@@ -75,16 +75,21 @@ function M.summary(summary, cwd, opts)
       if mutant.shares_row then
         col = (" --col=%d"):format(mutant.col)
       end
+      local killer = ""
+      if record.killed_by then
+        killer = (" killed by %q"):format(record.killed_by)
+      end
       table.insert(
         lines,
-        ("%s %s:%d:%s%s %s -> %s"):format(
+        ("%s %s:%d:%s%s %s -> %s%s"):format(
           paint(listed.color, listed.label),
           relative(mutant.path, cwd),
           mutant.row,
           mutant.operator,
           col,
           oneline(mutant.original),
-          oneline(mutant.replacement)
+          oneline(mutant.replacement),
+          killer
         )
       )
     end
