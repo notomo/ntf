@@ -1,5 +1,6 @@
 local tree = require("ntf.core.tree")
 local operators = require("ntf.core.mutation.operators")
+local oneline = require("ntf.core.controller.report").oneline
 
 local M = {}
 
@@ -61,7 +62,12 @@ end
 local function listed(sites)
   return table.concat(
     vim.tbl_map(function(site)
-      return ("\n  col %d %s: %s -> %s"):format(site.col, site.operator, site.original, site.replacement)
+      return ("\n  --col=%d %s %s -> %s"):format(
+        site.col,
+        site.operator,
+        oneline(site.original),
+        oneline(site.replacement)
+      )
     end, sites),
     ""
   )
@@ -146,11 +152,11 @@ function M.insert(entries, entry)
   local index = #entries
   for i, existing in ipairs(entries) do
     if key_of(existing.path, existing.line, existing) == key then
-      return ("already in the baseline: %s %s: %s -> %s"):format(
+      return ("already in the baseline: %s %s %s -> %s"):format(
         entry.path,
         entry.operator,
-        entry.original,
-        entry.replacement
+        oneline(entry.original),
+        oneline(entry.replacement)
       )
     end
     if existing.path == entry.path then

@@ -740,7 +740,7 @@ describe("ntf mutation", function()
     assert.equal(0, obj.code)
     assert.match("2 tests: 2 passed", obj.stdout)
     assert.match("Mutation: %d+%.%d%%", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:swap%-relational < %-> <=", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
@@ -940,8 +940,8 @@ describe("ntf mutation", function()
 
     assert.equal(1, obj.code)
     assert.match("Mutation: %d+%.%d%%", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
-    assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:swap%-relational < %-> <=", obj.stdout)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3:swap%-relational > %-> >=", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
@@ -971,7 +971,7 @@ describe("ntf mutation", function()
     local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
 
     assert.equal(1, obj.code)
-    assert.match("BASELINE KILLABLE lua/mod%.lua:3 swap%-relational: > %-> >=", obj.stdout)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3:swap%-relational > %-> >=", obj.stdout)
     assert.match("mutation gate failed: 1 baseline entry killable", obj.stderr)
   end)
 
@@ -989,7 +989,7 @@ describe("ntf mutation", function()
     }, root)
 
     assert.equal(0, added.code)
-    assert.match("added to mutation%.json: lua/mod%.lua:6 swap%-relational: < %-> <=", added.stdout)
+    assert.match("added to mutation%.json: lua/mod%.lua:6:swap%-relational < %-> <=", added.stdout)
 
     local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
 
@@ -1013,7 +1013,7 @@ describe("ntf mutation", function()
     local obj = helper.run_cli(argv, root)
 
     assert.equal(2, obj.code)
-    assert.match("already in the baseline: lua/mod%.lua swap%-relational: < %-> <=", obj.stderr)
+    assert.match("already in the baseline: lua/mod%.lua swap%-relational < %-> <=", obj.stderr)
   end)
 
   it("exits non-zero when a --config baseline entry matches nothing", function()
@@ -1156,7 +1156,7 @@ describe("ntf mutation", function()
     assert.equal(0, obj.code)
     assert.match("Mutation: 50%.0%% %(1/2 mutants detected%)", obj.stdout)
     assert.match("6 unadopted", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6 swap%-relational: < %-> <=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:swap%-relational < %-> <=", obj.stdout)
   end)
 
   it("rejects a --config operators name no run produces before running the tests", function()

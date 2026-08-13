@@ -44,8 +44,8 @@ function M.mutants(entries)
         mutant.row,
         mutant.col,
         mutant.operator,
-        mutant.original,
-        mutant.replacement,
+        report.oneline(mutant.original),
+        report.oneline(mutant.replacement),
         annotation(entry)
       )
     )

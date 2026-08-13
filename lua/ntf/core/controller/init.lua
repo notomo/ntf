@@ -14,6 +14,7 @@ local MODES = {
 --- @return integer exit_code
 local function add_baseline(opts, config)
   local baseline = require("ntf.core.mutation.baseline")
+  local oneline = require("ntf.core.controller.report").oneline
   local mutant = assert(opts.mutation_mutant)
   local entry = baseline.build({
     path = mutant.path,
@@ -37,13 +38,13 @@ local function add_baseline(opts, config)
   config.baseline = entries
   require("ntf.core.mutation.config").write(opts.mutation_config, config)
   io.stdout:write(
-    ("added to %s: %s:%d %s: %s -> %s\n"):format(
+    ("added to %s: %s:%d:%s %s -> %s\n"):format(
       opts.mutation_config,
       entry.path,
       mutant.row,
       entry.operator,
-      entry.original,
-      entry.replacement
+      oneline(entry.original),
+      oneline(entry.replacement)
     )
   )
   return 0

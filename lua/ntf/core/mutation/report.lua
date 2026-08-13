@@ -1,6 +1,7 @@
 local controller_report = require("ntf.core.controller.report")
 local painter = controller_report.painter
 local duration = controller_report.duration
+local oneline = controller_report.oneline
 
 local M = {}
 
@@ -70,15 +71,20 @@ function M.summary(summary, cwd, opts)
     local listed = LISTED[record.status]
     if listed then
       local mutant = record.mutant
+      local col = ""
+      if mutant.shares_row then
+        col = (" --col=%d"):format(mutant.col)
+      end
       table.insert(
         lines,
-        ("%s %s:%d %s: %s -> %s"):format(
+        ("%s %s:%d:%s%s %s -> %s"):format(
           paint(listed.color, listed.label),
           relative(mutant.path, cwd),
           mutant.row,
           mutant.operator,
-          mutant.original,
-          mutant.replacement
+          col,
+          oneline(mutant.original),
+          oneline(mutant.replacement)
         )
       )
     end
@@ -99,8 +105,8 @@ function M.summary(summary, cwd, opts)
         paint("red", "UNPINNED BASELINE"),
         entry.path,
         entry.operator,
-        entry.original,
-        entry.replacement,
+        oneline(entry.original),
+        oneline(entry.replacement),
         entry.invariant_spec
       )
     )
@@ -113,8 +119,8 @@ function M.summary(summary, cwd, opts)
         paint("red", "LOST BASELINE"),
         entry.path,
         entry.operator,
-        entry.original,
-        entry.replacement,
+        oneline(entry.original),
+        oneline(entry.replacement),
         entry.line
       )
     )

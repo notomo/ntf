@@ -166,7 +166,7 @@ describe("ntf.core.mutation.baseline.build", function()
     local err = baseline.build(request({ operator = "perturb-number" }), cwd)
 
     assert.match("lua/mod%.lua:3 has no perturb%-number mutant", err)
-    assert.match("\n  col 7 swap%-relational: < %-> <=", err)
+    assert.match("\n  %-%-col=7 swap%-relational < %-> <=", err)
   end)
 
   it("lists nothing for a row holding no mutant at all", function()
@@ -183,7 +183,7 @@ describe("ntf.core.mutation.baseline.build", function()
     local err = baseline.build(request({ row = 9 }), cwd)
 
     assert.match("lua/mod%.lua:9 has 2 swap%-relational mutants; name one with %-%-col", err)
-    assert.match("\n  col 11 swap%-relational: < %-> <=\n  col 21 swap%-relational: < %-> <=", err)
+    assert.match("\n  %-%-col=11 swap%-relational < %-> <=\n  %-%-col=21 swap%-relational < %-> <=", err)
   end)
 
   it("takes the mutant the col names out of the several a row holds", function()
@@ -201,7 +201,7 @@ describe("ntf.core.mutation.baseline.build", function()
     local err = baseline.build(request({ row = 9, col = 12 }), cwd)
 
     assert.match("lua/mod%.lua:9 has no swap%-relational mutant at col 12", err)
-    assert.match("\n  col 11 swap%-relational: < %-> <=", err)
+    assert.match("\n  %-%-col=11 swap%-relational < %-> <=", err)
   end)
 
   it("holds the built entry to what the config accepts", function()
@@ -261,7 +261,7 @@ describe("ntf.core.mutation.baseline.insert", function()
 
     local err = baseline.insert(entries, entry({ rationale = "a second opinion" }))
 
-    assert.equal("already in the baseline: lua/mod.lua swap-relational: < -> <=", err)
+    assert.equal("already in the baseline: lua/mod.lua swap-relational < -> <=", err)
   end)
 
   it("adds an entry that differs from one on the same line only by its column", function()

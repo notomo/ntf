@@ -460,8 +460,11 @@ file — running no test, since what it writes is the claim that no test can tel
 the difference:]],
           util.help_code_block(mutation_baseline_add_command, { language = "sh" }),
           [[
-`--col` is only needed when one line holds more than one of that operator's
-mutants; without it, such a line is reported with the columns to choose from
+A report spells every mutant it lists as `PATH:ROW:OPERATOR`, which is what
+`--mutant` takes, so naming one is a copy rather than a translation. `--col` is
+only needed when one line holds more than one of that operator's mutants, and
+the report is what says so: it prints the `--col` to pass on those lines and on
+no others. Without it, such a line is answered with the columns to choose from
 rather than guessed at. The `baseline` entry shown above is what that command
 wrote, and the file stays a plain document written in one shape, so editing it
 by hand remains first-class. An entry names its mutant by the line's text

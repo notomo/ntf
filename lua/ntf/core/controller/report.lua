@@ -115,6 +115,26 @@ function M.output_block(out, color)
   return table.concat(lines, "\n") .. "\n"
 end
 
+--- @type integer characters of a mutant's own source a listed line keeps
+local TEXT_LIMIT = 60
+
+-- WHY: a mutant whose node is a whole statement — every delete-call and
+-- delete-assign, and a force-branch over a wrapped condition — carries the
+-- source's own newlines, which would spread one mutant over as many lines as it
+-- spans and leave a list unreadable by line.
+-- NOT: taking only the head of the node, which every operator would have to name
+-- a different part of; the text is here to recognize the mutant by, and the
+-- position in front of it is where it is read in full.
+--- @param text string a mutant's original or replacement, as the source spells it
+--- @return string # the same text on one line, cut to a width the position in front of it stays readable at
+function M.oneline(text)
+  local single = (text:gsub("%s+", " "))
+  if vim.fn.strchars(single) <= TEXT_LIMIT then
+    return single
+  end
+  return vim.fn.strcharpart(single, 0, TEXT_LIMIT - 1) .. "…"
+end
+
 --- @param seconds number
 --- @return string # ms below a second, where one decimal of seconds is all zeroes
 function M.duration(seconds)
