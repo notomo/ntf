@@ -206,6 +206,7 @@ return M
     end)
 
     assert.is_false(helper.leaves_file_open(mutation.path, function()
+      package.loaded["mod"] = nil
       require("mod")
     end))
   end)

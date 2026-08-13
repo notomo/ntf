@@ -40,7 +40,7 @@ local is_win = vim.fn.has("win32") == 1
 local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 
 --- @param path string a file the call reads
---- @param read fun() calls production code that opens `path` for reading
+--- @param read fun() calls production code that opens `path` for reading, and is called again while the descriptor keeps shifting
 --- @return boolean # whether the call left the file open
 function helper.leaves_file_open(path, read)
   if is_win then
@@ -56,12 +56,29 @@ function helper.leaves_file_open(path, read)
     return fd
   end
 
+  -- WHY: the descriptor an open takes is the lowest the whole process has free,
+  -- so anything else in the process moves the number. A worker starts the libuv
+  -- loop of its watchdog thread once, and under load that start lands inside the
+  -- call being measured, where the epoll and the pipes the loop takes shift the
+  -- descriptor exactly as a file left open would. One start cannot reach a
+  -- second reading, while a file left open shifts every one.
+  -- NOT: taking a single reading, which reports a file the call did close as
+  -- left open.
+  --- @type integer readings that have to shift before the file counts as left open
+  local agreeing_readings = 3
+
   collectgarbage("stop")
-  local before = next_descriptor()
-  read()
-  local after = next_descriptor()
+  local left_open = true
+  for _ = 1, agreeing_readings do
+    local before = next_descriptor()
+    read()
+    if next_descriptor() == before then
+      left_open = false
+      break
+    end
+  end
   collectgarbage("restart")
-  return after ~= before
+  return left_open
 end
 
 --- @param args string[] CLI arguments (paths and flags)
