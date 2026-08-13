@@ -394,7 +394,7 @@
       "original": "active = data",
       "replacement": "do end",
       "line": "  active = data",
-      "rationale": "the hook installed on the line above takes over the accumulator this line is recorded into, so no run reports coverage for it and no trial can reach the mutant",
+      "rationale": "the hook installed on the line above is live by the time this line runs, so every test covers it and every one of them is a trial, but nothing a trial runs reads what stop hands back: the specs that do are this file's own start/stop ones, whose stop hands the worker's accumulator over and clears it, leaving them with no coverage of their own to be picked from",
       "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
     },
     {
