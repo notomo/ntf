@@ -33,7 +33,9 @@ describe("ntf.core.controller.schedule", function()
     local path = schedule.default_path()
 
     assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "schedule"), vim.fs.dirname(path))
-    assert.match("^%%.*%%.*%.json$", vim.fs.basename(path))
+
+    local escaped = table.concat(vim.split(vim.fs.normalize(vim.fn.getcwd()), "[/\\:]"), "%")
+    assert.equal(escaped .. ".json", vim.fs.basename(path))
   end)
 
   it("orders the slowest test first", function()
