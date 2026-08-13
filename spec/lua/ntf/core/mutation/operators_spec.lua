@@ -8,7 +8,7 @@ local function f(a, b)
   if a == b and not a then
     return -a + 1, true
   end
-  g(a)
+  g(#a)
   h.x = a
   return a < b or false
 end
@@ -94,8 +94,40 @@ local _ = a ^ b
     }, sites)
   end)
 
-  it("leaves the length operator alone", function()
-    assert.same({}, summarize([[local _ = #a]]))
+  it("leaves the bitwise operators alone, the one family no operator of the set rewrites", function()
+    local sites = summarize([[
+local _ = ~a
+local _ = a ~ b
+local _ = a & b | c
+local _ = a << b >> c
+]])
+
+    assert.same({}, sites)
+  end)
+
+  it("perturbs a length, however the thing it counts is spelled", function()
+    local sites = summarize([[
+local _ = #a
+local _ = #a.b[c]
+local _ = #f(a)
+local _ = #"literal"
+]])
+
+    assert.same({
+      { operator = "perturb-length", row = 1, original = "#a", replacement = "(#a - 1)" },
+      { operator = "perturb-length", row = 2, original = "#a.b[c]", replacement = "(#a.b[c] - 1)" },
+      { operator = "perturb-length", row = 3, original = "#f(a)", replacement = "(#f(a) - 1)" },
+      { operator = "perturb-length", row = 4, original = '#"literal"', replacement = '(#"literal" - 1)' },
+    }, sites)
+  end)
+
+  it("parenthesizes a perturbed length, so the operator it sits under still takes the whole count", function()
+    local src = [[local _ = n * #a]]
+
+    local site = operators.enumerate(src)[2]
+
+    assert.equal("perturb-length", site.operator)
+    assert.equal([[local _ = n * (#a - 1)]], splice.apply(src, site))
   end)
 
   it("flips boolean literals", function()
@@ -483,7 +515,7 @@ local _ = a < b and c
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(16, #sites)
+    assert.equal(17, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

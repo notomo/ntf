@@ -274,6 +274,9 @@ entry:
   perturb-number   local _ = 1 -> local _ = 2
       a test has to depend on the exact value, not on its being non-zero
 
+  perturb-length   local _ = #a -> local _ = (#a - 1)
+      a test has to depend on the exact count, not on its being non-zero
+
   force-branch     if a then end -> if false then end
                    if a then end -> if true then end
       each side needs a test; a loop is only forced to the outcome that exits

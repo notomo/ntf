@@ -54,6 +54,11 @@ M.operators = {
     example = "local _ = 1",
   },
   {
+    name = "perturb-length",
+    description = "a test has to depend on the exact count, not on its being non-zero",
+    example = "local _ = #a",
+  },
+  {
     name = "force-branch",
     description = "each side needs a test; a loop is only forced to the outcome that exits",
     example = "if a then end",
@@ -136,9 +141,24 @@ local BINARY_SWAPS = {
   ["^"] = { operator = "swap-arith", to = "*" },
 }
 
-local UNARY_DROPS = {
-  ["not"] = "drop-not",
-  ["-"] = "drop-neg",
+--- @param _ string the whole unary expression
+--- @param operand string what the operator is applied to
+--- @return string # the operand alone, the operator dropped
+local function dropped(_, operand)
+  return operand
+end
+
+--- @param text string the whole `#` expression
+--- @return string # the count one short, parenthesized so that whatever the expression sits under takes all of it
+local function one_shorter(text)
+  return ("(%s - 1)"):format(text)
+end
+
+--- @type table<string, { operator: string, mutate: fun(text: string, operand: string): string }> # the unary operators, and what a site of one puts in place of the whole expression
+local UNARY_MUTATIONS = {
+  ["not"] = { operator = "drop-not", mutate = dropped },
+  ["-"] = { operator = "drop-neg", mutate = dropped },
+  ["#"] = { operator = "perturb-length", mutate = one_shorter },
 }
 
 local BOOLEAN_FLIPS = {
@@ -234,10 +254,13 @@ end
 --- @param sites NtfMutantSite[]
 local function unary_sites(node, src, sites)
   local operand = node:named_child(0)
-  local operator = UNARY_DROPS[node:child(0):type()]
-  if operand and operator then
+  local mutation = UNARY_MUTATIONS[node:child(0):type()]
+  if operand and mutation then
     local text = vim.treesitter.get_node_text(node, src)
-    table.insert(sites, site(node, operator, text, vim.treesitter.get_node_text(operand, src)))
+    table.insert(
+      sites,
+      site(node, mutation.operator, text, mutation.mutate(text, vim.treesitter.get_node_text(operand, src)))
+    )
   end
 end
 

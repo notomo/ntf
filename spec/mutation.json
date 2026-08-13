@@ -81,6 +81,16 @@
       "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
     },
     {
+      "path": "lua/ntf/core/coverage/stats.lua",
+      "col": 5,
+      "operator": "perturb-length",
+      "original": "#out",
+      "replacement": "(#out - 1)",
+      "line": "  if #out > 0 then",
+      "rationale": "out grows by two lines per file, so its length is never 1",
+      "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
+    },
+    {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 30,
       "operator": "flip-boolean",
@@ -414,6 +424,16 @@
       "original": "_, exclude in ipairs(excludes)",
       "replacement": "_ in pairs({})",
       "line": "        for _, exclude in ipairs(excludes) do",
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 27,
+      "operator": "perturb-length",
+      "original": "#exclude",
+      "replacement": "(#exclude - 1)",
+      "line": "          if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
     },
