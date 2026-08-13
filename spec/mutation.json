@@ -408,6 +408,16 @@
       "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
     },
     {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 12,
+      "operator": "force-branch",
+      "original": "_, exclude in ipairs(excludes)",
+      "replacement": "_ in pairs({})",
+      "line": "        for _, exclude in ipairs(excludes) do",
+      "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+    },
+    {
       "path": "lua/ntf/core/controller/list.lua",
       "col": 5,
       "operator": "force-branch",

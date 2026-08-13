@@ -168,6 +168,34 @@ end
     }, sites)
   end)
 
+  it("forces a for to the clause that iterates none, whether it counts or walks", function()
+    local sites = summarize([[
+for i = 1, n do end
+for i = 1, n, 2 do end
+for k, v in pairs(t) do end
+for x in f do end
+]])
+
+    assert.same({
+      { operator = "force-branch", row = 1, original = "i = 1, n", replacement = "_ = 1, 0" },
+      { operator = "perturb-number", row = 1, original = "1", replacement = "2" },
+      { operator = "force-branch", row = 2, original = "i = 1, n, 2", replacement = "_ = 1, 0" },
+      { operator = "perturb-number", row = 2, original = "1", replacement = "2" },
+      { operator = "perturb-number", row = 2, original = "2", replacement = "3" },
+      { operator = "force-branch", row = 3, original = "k, v in pairs(t)", replacement = "_ in pairs({})" },
+      { operator = "force-branch", row = 4, original = "x in f", replacement = "_ in pairs({})" },
+    }, sites)
+  end)
+
+  it("takes the whole for clause, so the loop it heads never enters its body", function()
+    local src = "for i = 1, n do f(i) end"
+
+    local site = operators.enumerate(src)[1]
+
+    assert.equal("force-branch", site.operator)
+    assert.equal("for _ = 1, 0 do f(i) end", splice.apply(src, site))
+  end)
+
   it("leaves a bare boolean condition to flip-boolean, forcing no branch", function()
     local sites = summarize([[
 if true then

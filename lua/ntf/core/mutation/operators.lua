@@ -145,12 +145,6 @@ local BOOLEAN_FLIPS = {
   ["false"] = "true",
 }
 
--- WHY: forcing a decision to each outcome is the branch-coverage analogue a line
--- hook cannot reach; a loop only gets the outcome that terminates it, since the
--- other spins forever to prove nothing a coverage hit does not already, while
--- burning a whole trial timeout. `while` exits on false, `repeat` on true.
--- NOT: emitting both for a loop and leaning on the runner's trial timeout to
--- bound the infinite one.
 --- @type table<string, true> # the node types whose children are statements
 local STATEMENT_BLOCK = {
   block = true,
@@ -180,11 +174,25 @@ local RETURNING_FUNCTION = {
   function_declaration = true,
 }
 
+-- WHY: forcing a decision to each outcome is the branch-coverage analogue a line
+-- hook cannot reach; a loop only gets the outcome that terminates it, since the
+-- other spins forever to prove nothing a coverage hit does not already, while
+-- burning a whole trial timeout. `while` exits on false, `repeat` on true, and a
+-- `for` by iterating none.
+-- NOT: emitting both for a loop and leaning on the runner's trial timeout to
+-- bound the infinite one.
+--- @type table<string, string[]> # the decision node types, and what their condition is forced to
 local FORCE_BRANCH = {
   if_statement = { "false", "true" },
   elseif_statement = { "false", "true" },
   while_statement = { "false" },
   repeat_statement = { "true" },
+}
+
+--- @type table<string, string> # the `for` clause types, and the clause of theirs that iterates none
+local FORCE_EMPTY_LOOP = {
+  for_numeric_clause = "_ = 1, 0",
+  for_generic_clause = "_ in pairs({})",
 }
 
 --- @param node TSNode
@@ -294,10 +302,15 @@ local function drop_return_value_sites(node, src, sites)
   table.insert(sites, site(values, "drop-return", text, DROPPED_RETURN_VALUE))
 end
 
---- @param node TSNode a decision node whose condition is forced to each outcome
+--- @param node TSNode a decision node whose condition is forced to each outcome, or a `for` clause forced to iterate none
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
 local function force_branch_sites(node, src, sites)
+  local empty = FORCE_EMPTY_LOOP[node:type()]
+  if empty then
+    table.insert(sites, site(node, "force-branch", vim.treesitter.get_node_text(node, src), empty))
+    return
+  end
   local forces = FORCE_BRANCH[node:type()]
   if not forces then
     return
