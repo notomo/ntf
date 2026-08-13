@@ -12,14 +12,28 @@ ntf.describe("x", function()
 end)
 ]]
 
-local NEVER_FINISHES = [[
+--- @type integer how long the spin lasts, past every wait below so no test sees it end on its own, and short enough that one escaping every kill frees the core it holds
+local spin_seconds = 120
+
+local SPINS = ([[
 local ntf = require("ntf")
 ntf.describe("x", function()
   ntf.it("spins", function()
-    while true do end
+    local deadline = os.time() + %d
+    while os.time() < deadline do end
   end)
 end)
-]]
+]]):format(spin_seconds)
+
+-- WHY: this process exits with the leaf it runs, so a worker still going by
+-- then is orphaned into a process no run can reach, and holds a core for the
+-- rest of its spin.
+-- NOT: leaving it to the worker's own deadline, which an untimed launch never
+-- sets.
+local function teardown()
+  driver.kill_all()
+  helper.after_each()
+end
 
 --- @param source string
 --- @return table # one NtfWorkItem
@@ -46,7 +60,7 @@ end
 
 describe("ntf.core.worker.driver.launch", function()
   before_each(helper.before_each)
-  after_each(helper.after_each)
+  after_each(teardown)
 
   it("reports one result for the node it asked for", function()
     local outcome = launch(item_of(ONE_TEST))
@@ -166,7 +180,7 @@ end)
   end)
 
   it("kills a worker that will not finish and reports how long it was given", function()
-    local outcome = launch(item_of(NEVER_FINISHES), { timeout = 1000 }, 10000)
+    local outcome = launch(item_of(SPINS), { timeout = 1000 }, 10000)
 
     assert.is_true(outcome.timed_out)
     assert.equal("error", outcome.results[1].status)
@@ -174,7 +188,7 @@ end)
   end)
 
   it("gives a worker the item's own timeout ahead of the run's", function()
-    local item = item_of(NEVER_FINISHES)
+    local item = item_of(SPINS)
     item.timeout = 500
 
     local outcome = launch(item, { timeout = 20000 }, 10000)
@@ -192,7 +206,7 @@ end)
 
 describe("ntf.core.worker.driver.payload", function()
   before_each(helper.before_each)
-  after_each(helper.after_each)
+  after_each(teardown)
 
   it("gives a worker a deadline of its own to be killed at", function()
     local payload, timeout = driver.payload(item_of(ONE_TEST), { cwd = helper.root, timeout = 1000 })
@@ -211,12 +225,12 @@ end)
 
 describe("ntf.core.worker.driver.kill_all", function()
   before_each(helper.before_each)
-  after_each(helper.after_each)
+  after_each(teardown)
 
   it("kills a worker still running, so none of them outlives the run", function()
     local done
     driver.launch(
-      item_of(NEVER_FINISHES),
+      item_of(SPINS),
       { root = helper.root, cwd = helper.test_data.full_path, timeout = 0 },
       function(outcome)
         done = outcome
