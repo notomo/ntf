@@ -166,8 +166,8 @@ describe("ntf.core.mutation.baseline.build", function()
 
     local err = baseline.build(request({ operator = "perturb-number" }), cwd)
 
-    assert.match("lua/mod%.lua:3:7:perturb%-number names no mutant", err)
-    assert.match("\n  lua/mod%.lua:3:7:swap%-relational < %-> <=", err)
+    assert.match("lua/mod%.lua:3:8:perturb%-number names no mutant", err)
+    assert.match("\n  lua/mod%.lua:3:8:swap%-relational < %-> <=", err)
   end)
 
   it("lists nothing for a row holding no mutant at all", function()
@@ -175,7 +175,7 @@ describe("ntf.core.mutation.baseline.build", function()
 
     local err = baseline.build(request({ row = 1 }), cwd)
 
-    assert.equal("lua/mod.lua:1:7:swap-relational names no mutant", err)
+    assert.equal("lua/mod.lua:1:8:swap-relational names no mutant", err)
   end)
 
   it("takes the mutant the col names out of the several a row holds", function()
@@ -192,9 +192,9 @@ describe("ntf.core.mutation.baseline.build", function()
 
     local err = baseline.build(request({ col = 5, operator = "force-branch" }), cwd)
 
-    assert.match("lua/mod%.lua:3:5:force%-branch names 2 mutants; take one with %-%-replacement", err)
+    assert.match("lua/mod%.lua:3:6:force%-branch names 2 mutants; take one with %-%-replacement", err)
     assert.match(
-      "\n  lua/mod%.lua:3:5:force%-branch a < b %-> false\n  lua/mod%.lua:3:5:force%-branch a < b %-> true",
+      "\n  lua/mod%.lua:3:6:force%-branch a < b %-> false\n  lua/mod%.lua:3:6:force%-branch a < b %-> true",
       err
     )
   end)
@@ -213,8 +213,8 @@ describe("ntf.core.mutation.baseline.build", function()
 
     local err = baseline.build(request({ col = 5, operator = "force-branch", replacement = "nil" }), cwd)
 
-    assert.match("lua/mod%.lua:3:5:force%-branch puts nothing like nil in place of the original", err)
-    assert.match("\n  lua/mod%.lua:3:5:force%-branch a < b %-> false", err)
+    assert.match("lua/mod%.lua:3:6:force%-branch puts nothing like nil in place of the original", err)
+    assert.match("\n  lua/mod%.lua:3:6:force%-branch a < b %-> false", err)
   end)
 
   it("holds the built entry to what the config accepts", function()

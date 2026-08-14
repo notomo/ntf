@@ -45,7 +45,7 @@ describe("ntf.core.controller.list.mutants", function()
   it("counts the covering tests in the annotation", function()
     local text = list.mutants({ mutant_entry({ covered_count = 4 }) })
 
-    assert.equal("lua/mod.lua:3:11:swap-relational > -> >= (covered by 4 tests)\n", text)
+    assert.equal("lua/mod.lua:3:12:swap-relational > -> >= (covered by 4 tests)\n", text)
   end)
 
   it("uses the singular for a single covering test", function()

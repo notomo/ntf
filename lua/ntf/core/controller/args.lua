@@ -21,7 +21,7 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
 --- @field mutation_results string mutation results output path (JSON)
---- @field mutation_mutant { path: string, row: integer, col: integer, operator: string }? the mutant a baseline entry is written for
+--- @field mutation_mutant { path: string, row: integer, col: integer, operator: string }? the mutant a baseline entry is written for, its col taken back to the 0-based one every site counts
 --- @field mutation_replacement string? what the mutant puts in place of the original, naming one of several mutants a position holds
 --- @field mutation_rationale string? why no test can detect the mutant the entry is written for
 --- @field mutation_invariant_spec string? full name of the test that fails once that rationale stops holding
@@ -222,7 +222,7 @@ local mutant = {
     opts.mutation_mutant = {
       path = path,
       row = assert(tonumber(row)),
-      col = assert(tonumber(col)),
+      col = assert(tonumber(col)) - 1,
       operator = operator,
     }
   end,

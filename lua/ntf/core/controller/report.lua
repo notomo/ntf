@@ -136,10 +136,10 @@ function M.oneline(text)
 end
 
 --- @param relative_path string working-directory-relative path of the mutated file
---- @param mutant { row: integer, col: integer, operator: string }
---- @return string # the name every listing prints a mutant under, which is also what `--mutant` spells
+--- @param mutant { row: integer, col: integer, operator: string } col 0-based, as every site counts it
+--- @return string # the name every listing prints a mutant under, which is also what `--mutant` spells: its column 1-based, like the one an errorformat reads
 function M.locator(relative_path, mutant)
-  return ("%s:%d:%d:%s"):format(relative_path, mutant.row, mutant.col, mutant.operator)
+  return ("%s:%d:%d:%s"):format(relative_path, mutant.row, mutant.col + 1, mutant.operator)
 end
 
 --- @param seconds number

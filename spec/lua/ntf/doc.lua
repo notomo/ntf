@@ -153,13 +153,13 @@ run_ntf({
   "baseline",
   "add",
   "--config=spec/mutation.json",
-  "--mutant=lua/mymod.lua:3:13:perturb-number",
+  "--mutant=lua/mymod.lua:3:14:perturb-number",
   "--rationale=" .. rationale,
   "--invariant-spec=" .. invariant_spec,
 }, { cwd = project_dir })
 local mutation_baseline_add_command = table.concat({
   "ntf mutation baseline add --config=spec/mutation.json \\",
-  "  --mutant=lua/mymod.lua:3:13:perturb-number \\",
+  "  --mutant=lua/mymod.lua:3:14:perturb-number \\",
   ("  --rationale='%s' \\"):format(rationale),
   ("  --invariant-spec='%s'"):format(invariant_spec),
 }, "\n")
@@ -462,7 +462,7 @@ assert_keys(labels_of(config_sections), documented, "config sections")
 --- @type { label: string, description: string }[] what a baseline entry names its mutant by
 local baseline_fields = {
   { label = "path", description = "the mutated file, relative to the working directory" },
-  { label = "col", description = "the column the mutant starts at" },
+  { label = "col", description = "the 1-based column the mutant starts at" },
   { label = "operator", description = "the change, named as the report names it" },
   { label = "original", description = "what the mutant replaces" },
   { label = "replacement", description = "what it puts there" },
@@ -829,7 +829,8 @@ what it writes is the claim that no test can tell the difference:]],
           [[
 - Every report spells a mutant as `PATH:ROW:COL:OPERATOR`, the same name
   `ntf mutation list` prints and the one `--mutant` takes, so naming one is a
-  copy rather than a translation.
+  copy rather than a translation. Its row and column are both counted from 1,
+  the way an editor and an 'errorformat' count them.
 - `--replacement` is only needed where a single position holds more than one of
   that operator's mutants — the forced branch, which has one per outcome. Such
   a position is answered with the replacements to choose from rather than

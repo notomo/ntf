@@ -481,13 +481,13 @@ describe("ntf.core.controller.args.parse", function()
       assert.equal("mutation.baseline.add", opts.command)
       assert.match("lua/mod%.lua$", opts.mutation_mutant.path)
       assert.equal(1, opts.mutation_mutant.row)
-      assert.equal(7, opts.mutation_mutant.col)
+      assert.equal(6, opts.mutation_mutant.col)
       assert.equal("perturb-number", opts.mutation_mutant.operator)
       assert.equal("nothing depends on the exact value", opts.mutation_rationale)
       assert.same({}, opts.paths)
     end)
 
-    it("takes the first column of a line, which is column zero", function()
+    it("takes the first column of a line, which the report spells as column one", function()
       local config = helper.test_data:create_file("mutation.json", "{}")
       local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
 
@@ -496,7 +496,7 @@ describe("ntf.core.controller.args.parse", function()
         "baseline",
         "add",
         "--config=" .. config,
-        "--mutant=" .. mutated .. ":1:0:perturb-number",
+        "--mutant=" .. mutated .. ":1:1:perturb-number",
         "--rationale=x",
       })
 

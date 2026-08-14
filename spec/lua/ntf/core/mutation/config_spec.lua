@@ -59,11 +59,19 @@ describe("ntf.core.mutation.config.load", function()
 
     assert.equal(1, #loaded.baseline)
     assert.equal("lua/mod.lua", loaded.baseline[1].path)
-    assert.equal(7, loaded.baseline[1].col)
     assert.equal(1, #loaded.exclude)
     assert.equal("lua/mod", loaded.exclude[1].path)
     assert.equal(1, #loaded.exclude_spec)
     assert.equal("spec/e2e_spec.lua", loaded.exclude_spec[1].path)
+  end)
+
+  it("takes a baseline entry's column back from the one the document counts from 1", function()
+    local file = create_file({ version = 1, baseline = { baseline_entry({ col = 7 }) } })
+
+    local loaded = assert(config.load(file))
+
+    local zero_based_as_every_site_counts_it = 6
+    assert.equal(zero_based_as_every_site_counts_it, loaded.baseline[1].col)
   end)
 
   it("leaves a section out as empty", function()
@@ -208,7 +216,7 @@ describe("ntf.core.mutation.config.format", function()
         '  "baseline": [',
         "    {",
         '      "path": "lua/mod.lua",',
-        '      "col": 7,',
+        '      "col": 8,',
         '      "operator": "swap-relational",',
         '      "original": "<",',
         '      "replacement": "<=",',
@@ -222,6 +230,12 @@ describe("ntf.core.mutation.config.format", function()
       }, "\n"),
       text
     )
+  end)
+
+  it("writes a baseline entry's column as the one every report counts from 1", function()
+    local text = config.format(document({ baseline = { baseline_entry({ col = 7 }) } }))
+
+    assert.match('"col": 8,', text)
   end)
 
   it("leaves out a field the entry does not carry", function()

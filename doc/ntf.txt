@@ -347,7 +347,7 @@ passed with `--config=FILE`:
     "baseline": [
       {
         "path": "lua/mymod.lua",
-        "col": 13,
+        "col": 14,
         "operator": "perturb-number",
         "original": "0",
         "replacement": "1",
@@ -423,7 +423,7 @@ and be held there with `--strict`.
 An entry names its mutant with the report's own words for it:
 >
   path            the mutated file, relative to the working directory
-  col             the column the mutant starts at
+  col             the 1-based column the mutant starts at
   operator        the change, named as the report names it
   original        what the mutant replaces
   replacement     what it puts there
@@ -436,13 +436,14 @@ the report spells it and the judgement you have to supply, and runs no test —
 what it writes is the claim that no test can tell the difference:
 >sh
   ntf mutation baseline add --config=spec/mutation.json \
-    --mutant=lua/mymod.lua:3:13:perturb-number \
+    --mutant=lua/mymod.lua:3:14:perturb-number \
     --rationale='the specs only ever ask about 0, whose answer the shifted boundary leaves false' \
     --invariant-spec='is false at the boundary'
 <
 - Every report spells a mutant as `PATH:ROW:COL:OPERATOR`, the same name
   `ntf mutation list` prints and the one `--mutant` takes, so naming one is a
-  copy rather than a translation.
+  copy rather than a translation. Its row and column are both counted from 1,
+  the way an editor and an 'errorformat' count them.
 - `--replacement` is only needed where a single position holds more than one of
   that operator's mutants — the forced branch, which has one per outcome. Such
   a position is answered with the replacements to choose from rather than

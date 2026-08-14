@@ -59,10 +59,12 @@ function M.load(path)
     return invalid("operators " .. selection_err)
   end
 
-  local baseline = load_section(decoded, "baseline", require("ntf.core.mutation.baseline").validate)
+  local baseline_module = require("ntf.core.mutation.baseline")
+  local baseline = load_section(decoded, "baseline", baseline_module.validate)
   if type(baseline) == "string" then
     return invalid(baseline)
   end
+  baseline = vim.tbl_map(baseline_module.from_document, baseline)
   local exclude_module = require("ntf.core.mutation.exclude")
   local exclude = load_section(decoded, "exclude", exclude_module.validate)
   if type(exclude) == "string" then
@@ -78,11 +80,14 @@ end
 
 local INDENT = "  "
 
---- @type { key: string, fields: string[] }[] the sections in the order the document carries them, each with the order its entries spell their fields in
+--- @type { key: string, fields: string[], to_document: (fun(entry: table): table)? }[] the sections in the order the document carries them, each with the order its entries spell their fields in and what a run's entry has to be taken back to to be written
 M.sections = {
   {
     key = "baseline",
     fields = { "path", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
+    to_document = function(entry)
+      return require("ntf.core.mutation.baseline").to_document(entry)
+    end,
   },
   { key = "exclude", fields = { "path", "operators", "rationale" } },
   { key = "exclude_spec", fields = { "path", "rationale" } },
@@ -127,8 +132,11 @@ function M.format(config)
   for _, section in ipairs(M.sections) do
     local entries = config[section.key]
     if #entries > 0 then
+      local to_document = section.to_document or function(entry)
+        return entry
+      end
       local encoded = vim.tbl_map(function(entry)
-        return INDENT .. INDENT .. encode_entry(entry, section.fields, INDENT .. INDENT)
+        return INDENT .. INDENT .. encode_entry(to_document(entry), section.fields, INDENT .. INDENT)
       end, entries)
       table.insert(
         written,

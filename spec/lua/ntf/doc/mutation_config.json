@@ -4,7 +4,7 @@
   "baseline": [
     {
       "path": "lua/mymod.lua",
-      "col": 13,
+      "col": 14,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",

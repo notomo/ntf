@@ -4,7 +4,7 @@
   "baseline": [
     {
       "path": "lua/ntf/core/controller/args.lua",
-      "col": 16,
+      "col": 17,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -14,7 +14,7 @@
     },
     {
       "path": "lua/ntf/core/controller/schedule.lua",
-      "col": 18,
+      "col": 19,
       "operator": "swap-relational",
       "original": ">",
       "replacement": ">=",
@@ -23,7 +23,7 @@
     },
     {
       "path": "lua/ntf/core/controller/schedule.lua",
-      "col": 19,
+      "col": 20,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
@@ -32,7 +32,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 24,
+      "col": 25,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -42,7 +42,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 19,
+      "col": 20,
       "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
@@ -52,7 +52,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 23,
+      "col": 24,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -62,7 +62,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 61,
+      "col": 62,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -72,7 +72,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/stats.lua",
-      "col": 12,
+      "col": 13,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -82,7 +82,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/stats.lua",
-      "col": 5,
+      "col": 6,
       "operator": "perturb-length",
       "original": "#out",
       "replacement": "(#out - 1)",
@@ -92,7 +92,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
-      "col": 30,
+      "col": 31,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -101,7 +101,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
-      "col": 27,
+      "col": 28,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -110,7 +110,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
-      "col": 26,
+      "col": 27,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
@@ -119,7 +119,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/order.lua",
-      "col": 18,
+      "col": 19,
       "operator": "swap-relational",
       "original": ">",
       "replacement": ">=",
@@ -128,7 +128,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/order.lua",
-      "col": 19,
+      "col": 20,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
@@ -137,7 +137,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/results.lua",
-      "col": 19,
+      "col": 20,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
@@ -146,7 +146,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/results.lua",
-      "col": 21,
+      "col": 22,
       "operator": "swap-relational",
       "original": "<",
       "replacement": "<=",
@@ -155,7 +155,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 29,
+      "col": 30,
       "operator": "swap-logical",
       "original": "or",
       "replacement": "and",
@@ -165,7 +165,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 32,
+      "col": 33,
       "operator": "perturb-number",
       "original": "3",
       "replacement": "4",
@@ -175,7 +175,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 50,
+      "col": 51,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -185,7 +185,7 @@
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 48,
+      "col": 49,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -195,7 +195,7 @@
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 37,
+      "col": 38,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -205,7 +205,7 @@
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 33,
+      "col": 34,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -215,7 +215,7 @@
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 30,
+      "col": 31,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -225,7 +225,7 @@
     },
     {
       "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 46,
+      "col": 47,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -235,7 +235,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 12,
+      "col": 13,
       "operator": "swap-relational",
       "original": ">",
       "replacement": ">=",
@@ -244,7 +244,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/lines.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "child:named()",
       "replacement": "true",
@@ -254,7 +254,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/lines.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "child:named()",
       "replacement": "true",
@@ -264,7 +264,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "number",
       "replacement": "true",
@@ -274,7 +274,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/operators.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "child:named()",
       "replacement": "true",
@@ -284,7 +284,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "not info",
       "replacement": "false",
@@ -293,7 +293,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "not ok",
       "replacement": "true",
@@ -302,7 +302,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "finally_collector",
       "replacement": "true",
@@ -311,7 +311,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "not ok",
       "replacement": "true",
@@ -320,7 +320,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
-      "col": 11,
+      "col": 12,
       "operator": "force-branch",
       "original": "row",
       "replacement": "true",
@@ -330,7 +330,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 7,
+      "col": 8,
       "operator": "force-branch",
       "original": "cached ~= nil",
       "replacement": "false",
@@ -339,7 +339,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 13,
+      "col": 14,
       "operator": "force-branch",
       "original": "prefix:sub(1, #exclude) == exclude",
       "replacement": "false",
@@ -349,7 +349,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "n",
       "replacement": "true",
@@ -359,7 +359,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 2,
+      "col": 3,
       "operator": "drop-call",
       "original": "require(\"jit\").off()",
       "replacement": "do end",
@@ -369,7 +369,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 2,
+      "col": 3,
       "operator": "drop-call",
       "original": "debug.sethook(hook, \"l\")",
       "replacement": "do end",
@@ -379,7 +379,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 9,
+      "col": 10,
       "operator": "drop-return-value",
       "original": "data",
       "replacement": "nil",
@@ -389,7 +389,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 4,
+      "col": 5,
       "operator": "drop-assignment",
       "original": "decided[source] = result",
       "replacement": "do end",
@@ -399,7 +399,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 2,
+      "col": 3,
       "operator": "drop-assignment",
       "original": "active = data",
       "replacement": "do end",
@@ -409,7 +409,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 2,
+      "col": 3,
       "operator": "drop-assignment",
       "original": "active = {}",
       "replacement": "do end",
@@ -419,7 +419,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 12,
+      "col": 13,
       "operator": "force-loop",
       "original": "_, exclude in ipairs(excludes)",
       "replacement": "_ in pairs({})",
@@ -429,7 +429,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 27,
+      "col": 28,
       "operator": "perturb-length",
       "original": "#exclude",
       "replacement": "(#exclude - 1)",
@@ -439,7 +439,7 @@
     },
     {
       "path": "lua/ntf/core/controller/list.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "lines[#lines] == \"\"",
       "replacement": "true",
@@ -449,7 +449,7 @@
     },
     {
       "path": "lua/ntf/core/worker/mutate.lua",
-      "col": 7,
+      "col": 8,
       "operator": "force-branch",
       "original": "not file",
       "replacement": "false",
@@ -458,7 +458,7 @@
     },
     {
       "path": "lua/ntf/core/worker/mutate.lua",
-      "col": 7,
+      "col": 8,
       "operator": "force-branch",
       "original": "not mutated",
       "replacement": "false",
@@ -467,7 +467,7 @@
     },
     {
       "path": "lua/ntf/helper.lua",
-      "col": 59,
+      "col": 60,
       "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
@@ -477,7 +477,7 @@
     },
     {
       "path": "lua/ntf/helper.lua",
-      "col": 62,
+      "col": 63,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -486,7 +486,7 @@
     },
     {
       "path": "lua/ntf/helper.lua",
-      "col": 63,
+      "col": 64,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -495,7 +495,7 @@
     },
     {
       "path": "lua/ntf/mutation/init.lua",
-      "col": 50,
+      "col": 51,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -505,7 +505,7 @@
     },
     {
       "path": "lua/ntf/mutation/init.lua",
-      "col": 85,
+      "col": 86,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -514,7 +514,7 @@
     },
     {
       "path": "lua/ntf/coverage/init.lua",
-      "col": 50,
+      "col": 51,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -524,7 +524,7 @@
     },
     {
       "path": "lua/ntf/coverage/init.lua",
-      "col": 61,
+      "col": 62,
       "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
@@ -534,7 +534,7 @@
     },
     {
       "path": "lua/ntf/coverage/init.lua",
-      "col": 85,
+      "col": 86,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
@@ -543,7 +543,16 @@
     },
     {
       "path": "lua/ntf/core/coverage/report.lua",
-      "col": 17,
+      "col": 18,
+      "operator": "swap-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "    seen[line] = true",
+      "rationale": "the seen set is only ever walked with pairs, so the stored boolean is never read"
+    },
+    {
+      "path": "lua/ntf/core/coverage/report.lua",
+      "col": 18,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -553,15 +562,6 @@
     {
       "path": "lua/ntf/core/coverage/report.lua",
       "col": 17,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "    seen[line] = true",
-      "rationale": "the seen set is only ever walked with pairs, so the stored boolean is never read"
-    },
-    {
-      "path": "lua/ntf/core/coverage/report.lua",
-      "col": 16,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -570,7 +570,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 5,
+      "col": 6,
       "operator": "force-branch",
       "original": "not cwd",
       "replacement": "false",
@@ -579,7 +579,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 67,
+      "col": 68,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -588,7 +588,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 43,
+      "col": 44,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -597,7 +597,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 46,
+      "col": 47,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -606,7 +606,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 45,
+      "col": 46,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -615,7 +615,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 54,
+      "col": 55,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
@@ -624,7 +624,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 54,
+      "col": 55,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -633,7 +633,7 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 11,
+      "col": 12,
       "operator": "drop-return-value",
       "original": "path",
       "replacement": "nil",
@@ -642,7 +642,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 7,
+      "col": 8,
       "operator": "force-branch",
       "original": "started >= total",
       "replacement": "false",
@@ -651,7 +651,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 15,
+      "col": 16,
       "operator": "swap-relational",
       "original": ">=",
       "replacement": ">",
@@ -660,7 +660,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 9,
+      "col": 10,
       "operator": "force-branch",
       "original": "not ok",
       "replacement": "true",
@@ -669,7 +669,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 11,
+      "col": 12,
       "operator": "perturb-number",
       "original": "10",
       "replacement": "11",
@@ -678,7 +678,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 16,
+      "col": 17,
       "operator": "perturb-number",
       "original": "60",
       "replacement": "61",
@@ -687,7 +687,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 21,
+      "col": 22,
       "operator": "perturb-number",
       "original": "1000",
       "replacement": "1001",
@@ -696,7 +696,7 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 7,
+      "col": 8,
       "operator": "perturb-number",
       "original": "20",
       "replacement": "21",
@@ -705,7 +705,7 @@
     },
     {
       "path": "lua/ntf/core/worker/driver.lua",
-      "col": 25,
+      "col": 26,
       "operator": "perturb-number",
       "original": "0",
       "replacement": "1",
@@ -714,7 +714,7 @@
     },
     {
       "path": "lua/ntf/core/worker/driver.lua",
-      "col": 6,
+      "col": 7,
       "operator": "drop-assignment",
       "original": "timer = nil",
       "replacement": "do end",
@@ -723,7 +723,7 @@
     },
     {
       "path": "lua/ntf/core/mutation/baseline.lua",
-      "col": 42,
+      "col": 43,
       "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",

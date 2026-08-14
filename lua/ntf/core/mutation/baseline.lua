@@ -16,6 +16,18 @@ local M = {}
 --- @field rationale string why no test can detect the mutant
 --- @field invariant_spec string? full name of the test that fails once the rationale stops holding
 
+--- @param entry NtfMutationBaselineEntry as the document spells it, its col 1-based like the one a report prints
+--- @return NtfMutationBaselineEntry # the entry a run matches against sites, its col 0-based like a site's
+function M.from_document(entry)
+  return vim.tbl_extend("force", entry, { col = entry.col - 1 })
+end
+
+--- @param entry NtfMutationBaselineEntry
+--- @return NtfMutationBaselineEntry # the entry as a document spells it
+function M.to_document(entry)
+  return vim.tbl_extend("force", entry, { col = entry.col + 1 })
+end
+
 --- @param path string working-directory-relative path
 --- @param line string text of the mutant's start line
 --- @param site { col: integer, operator: string, original: string, replacement: string }

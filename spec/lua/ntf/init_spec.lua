@@ -740,7 +740,7 @@ describe("ntf mutation", function()
     assert.equal(0, obj.code)
     assert.match("2 tests: 2 passed", obj.stdout)
     assert.match("Mutation: %d+%.%d%%", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6:7:swap%-relational < %-> <=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:8:swap%-relational < %-> <=", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
@@ -849,7 +849,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 7,
+            col = 8,
             operator = "swap-relational",
             original = "<",
             replacement = "<=",
@@ -883,7 +883,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 7,
+            col = 8,
             operator = "swap-relational",
             original = "<",
             replacement = "<=",
@@ -919,7 +919,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 11,
+            col = 12,
             operator = "swap-relational",
             original = ">",
             replacement = ">=",
@@ -940,8 +940,8 @@ describe("ntf mutation", function()
 
     assert.equal(1, obj.code)
     assert.match("Mutation: %d+%.%d%%", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6:7:swap%-relational < %-> <=", obj.stdout)
-    assert.match("BASELINE KILLABLE lua/mod%.lua:3:11:swap%-relational > %-> >=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:8:swap%-relational < %-> <=", obj.stdout)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3:12:swap%-relational > %-> >=", obj.stdout)
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
@@ -977,7 +977,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 11,
+            col = 12,
             operator = "swap-relational",
             original = ">",
             replacement = ">=",
@@ -1005,7 +1005,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 11,
+            col = 12,
             operator = "swap-relational",
             original = ">",
             replacement = ">=",
@@ -1019,7 +1019,7 @@ describe("ntf mutation", function()
     local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
 
     assert.equal(1, obj.code)
-    assert.match("BASELINE KILLABLE lua/mod%.lua:3:11:swap%-relational > %-> >=", obj.stdout)
+    assert.match("BASELINE KILLABLE lua/mod%.lua:3:12:swap%-relational > %-> >=", obj.stdout)
     assert.match("mutation gate failed: 1 baseline entry killable", obj.stderr)
   end)
 
@@ -1032,12 +1032,12 @@ describe("ntf mutation", function()
       "baseline",
       "add",
       "--config=mutation.json",
-      "--mutant=lua/mod.lua:6:7:swap-relational",
+      "--mutant=lua/mod.lua:6:8:swap-relational",
       "--rationale=min(1, 2) is 1 on either side of the boundary",
     }, root)
 
     assert.equal(0, added.code)
-    assert.match("added to mutation%.json: lua/mod%.lua:6:7:swap%-relational < %-> <=", added.stdout)
+    assert.match("added to mutation%.json: lua/mod%.lua:6:8:swap%-relational < %-> <=", added.stdout)
 
     local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
 
@@ -1053,7 +1053,7 @@ describe("ntf mutation", function()
       "baseline",
       "add",
       "--config=mutation.json",
-      "--mutant=lua/mod.lua:6:7:swap-relational",
+      "--mutant=lua/mod.lua:6:8:swap-relational",
       "--rationale=min(1, 2) is 1 on either side of the boundary",
     }
     helper.run_cli(argv, root)
@@ -1074,7 +1074,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 7,
+            col = 8,
             operator = "swap-relational",
             original = "<",
             replacement = "<=",
@@ -1102,7 +1102,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 7,
+            col = 8,
             operator = "swap-relational",
             original = "<",
             replacement = "<=",
@@ -1131,7 +1131,7 @@ describe("ntf mutation", function()
         baseline = {
           {
             path = "lua/mod.lua",
-            col = 7,
+            col = 8,
             operator = "swap-relational",
             original = "<",
             replacement = "<=",
@@ -1204,7 +1204,7 @@ describe("ntf mutation", function()
     assert.equal(0, obj.code)
     assert.match("Mutation: 50%.0%% %(1/2 mutants detected%)", obj.stdout)
     assert.match("6 unadopted", obj.stdout)
-    assert.match("SURVIVED lua/mod%.lua:6:7:swap%-relational < %-> <=", obj.stdout)
+    assert.match("SURVIVED lua/mod%.lua:6:8:swap%-relational < %-> <=", obj.stdout)
   end)
 
   it("rejects a --config operators name no run produces before running the tests", function()
