@@ -15,7 +15,7 @@ local SIGN = "▌"
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Mark a buffer's surviving mutants, read from an `ntf-mutation.json` (as
---- written by `ntf --mutation`): each line a mutant got away with is signed with
+--- written by `ntf mutation`): each line a mutant got away with is signed with
 --- the `NtfMutationSurvived` highlight and shows the change it survived as
 --- virtual text. Detected mutants are not drawn: they say nothing about the tests.
 --- @param opts NtfMutationDecorateOption?: |NtfMutationDecorateOption|
