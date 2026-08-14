@@ -311,6 +311,7 @@ operators it holds its tests to:
 - `"all"` takes every operator, including the ones a later ntf adds — the right
   answer for a project that upgrades ntf and its own tests together.
 - An array of names instead pins the set:
+
 >json
   {
     "version": 1,
