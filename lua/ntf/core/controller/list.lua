@@ -10,11 +10,11 @@ local function joined(lines)
 end
 
 --- @param items NtfWorkItem[]
---- @return string # one "path:line: full name" line per test
+--- @return string # one "path:line full name" line per test
 function M.tests(items)
   local lines = {}
   for _, item in ipairs(items) do
-    table.insert(lines, ("%s: %s"):format(report.rel_source(item.trace), tree.full_name(item.names)))
+    table.insert(lines, ("%s %s"):format(report.rel_source(item.trace), tree.full_name(item.names)))
   end
   return joined(lines)
 end
@@ -32,14 +32,14 @@ local function annotation(entry)
 end
 
 --- @param entries NtfMutantListEntry[]
---- @return string # one "path:row:col:operator: original -> replacement (annotation)" line per mutant
+--- @return string # one "path:row:col:operator original -> replacement (annotation)" line per mutant
 function M.mutants(entries)
   local lines = {}
   for _, entry in ipairs(entries) do
     local mutant = entry.mutant
     table.insert(
       lines,
-      ("%s: %s -> %s (%s)"):format(
+      ("%s %s -> %s (%s)"):format(
         report.locator(entry.relative_path, mutant),
         report.oneline(mutant.original),
         report.oneline(mutant.replacement),

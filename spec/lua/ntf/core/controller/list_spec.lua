@@ -23,7 +23,7 @@ local function mutant_entry(overrides)
 end
 
 describe("ntf.core.controller.list.tests", function()
-  it("formats one path:line: full name line per test", function()
+  it("formats one path:line full name line per test", function()
     local text = list.tests({
       {
         file = "x",
@@ -33,7 +33,7 @@ describe("ntf.core.controller.list.tests", function()
       },
     })
 
-    assert.equal("spec/x_spec.lua:12: group adds\n", text)
+    assert.equal("spec/x_spec.lua:12 group adds\n", text)
   end)
 
   it("renders no tests as empty text", function()
@@ -45,7 +45,7 @@ describe("ntf.core.controller.list.mutants", function()
   it("counts the covering tests in the annotation", function()
     local text = list.mutants({ mutant_entry({ covered_count = 4 }) })
 
-    assert.equal("lua/mod.lua:3:11:swap-relational: > -> >= (covered by 4 tests)\n", text)
+    assert.equal("lua/mod.lua:3:11:swap-relational > -> >= (covered by 4 tests)\n", text)
   end)
 
   it("uses the singular for a single covering test", function()
