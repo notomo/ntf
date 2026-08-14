@@ -52,8 +52,13 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   report labels (`core/mutation/report.lua`), or the config sections and their
   entry fields (`core/mutation/config.lua`). It regenerates `README.md` and
   `doc/ntf.txt`, and fails once the names it spells and the ones the
-  implementation works from have parted ways. CI does not run it, so a name
-  added without it goes unanswered until the next regeneration
+  implementation works from have parted ways
+- `make doc_ci` — what CI runs in place of the above, in the same job as the
+  other gates: it regenerates the documents and then fails on any difference
+  from the committed `README.md` and `doc/ntf.txt`, so a change that skipped
+  `make doc` is answered by CI instead of waiting for the next regeneration.
+  Its generation reads genvdoc from the workflow's own packages, so it needs no
+  plugin of yours to be installed
 
 ## Conventions
 

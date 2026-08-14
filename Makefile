@@ -6,7 +6,7 @@ else
 NTF=./bin/ntf
 endif
 
-CI_TARGETS=require_lint comment_lint requireall mutation_ci
+CI_TARGETS=require_lint comment_lint requireall doc_ci mutation_ci
 
 WORKFLOW_DIR ?= spec/.shared
 include $(WORKFLOW_DIR)/neovim-plugin.mk
