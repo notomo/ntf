@@ -123,17 +123,17 @@ describe("ntf.core.mutation.report.summary", function()
     local summary = {
       records = {
         record(abs("lua/a.lua"), 1, "survived", {
-          operator = "delete-call",
+          operator = "drop-call",
           original = "f(\n  a\n)",
           replacement = "do end",
         }),
         record(abs("lua/a.lua"), 2, "survived", {
-          operator = "delete-call",
+          operator = "drop-call",
           original = "vim.iter(collected_items):each(function(item)\n  print(item.name)\nend)",
           replacement = "do end",
         }),
         record(abs("lua/a.lua"), 3, "survived", {
-          operator = "delete-call",
+          operator = "drop-call",
           original = sixty_characters,
           replacement = "do end",
         }),
@@ -154,15 +154,15 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
-    assert.match(vim.pesc("SURVIVED lua/a.lua:1:0:delete-call f( a ) -> do end\n"), text)
+    assert.match(vim.pesc("SURVIVED lua/a.lua:1:0:drop-call f( a ) -> do end\n"), text)
     assert.match(
       vim.pesc(
-        "SURVIVED lua/a.lua:2:0:delete-call vim.iter(collected_items):each(function(item) print(item.na… -> do end\n"
+        "SURVIVED lua/a.lua:2:0:drop-call vim.iter(collected_items):each(function(item) print(item.na… -> do end\n"
       ),
       text
     )
     local text_the_width_leaves_whole =
-      vim.pesc(("SURVIVED lua/a.lua:3:0:delete-call %s -> do end\n"):format(sixty_characters))
+      vim.pesc(("SURVIVED lua/a.lua:3:0:drop-call %s -> do end\n"):format(sixty_characters))
     assert.match(text_the_width_leaves_whole, text)
   end)
 
@@ -185,7 +185,7 @@ describe("ntf.core.mutation.report.summary", function()
         {
           path = "lua/b.lua",
           col = 3,
-          operator = "flip-boolean",
+          operator = "swap-boolean",
           original = "true",
           replacement = "false",
           line = "  local x = true",
@@ -200,7 +200,7 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("1 equivalent", text)
     local settled_equivalent_mutant = "lua/a%.lua:2"
     assert.no.match(settled_equivalent_mutant, text)
-    assert.match('LOST BASELINE lua/b%.lua flip%-boolean: true %-> false at "  local x = true"', text)
+    assert.match('LOST BASELINE lua/b%.lua swap%-boolean: true %-> false at "  local x = true"', text)
   end)
 
   it("counts the mutants of an operator the config did not adopt", function()
@@ -298,7 +298,7 @@ describe("ntf.core.mutation.report.summary", function()
         {
           path = "lua/b.lua",
           col = 3,
-          operator = "flip-boolean",
+          operator = "swap-boolean",
           original = "true",
           replacement = "false",
           line = "  local x = true",
@@ -311,7 +311,7 @@ describe("ntf.core.mutation.report.summary", function()
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match(
-      'UNPINNED BASELINE lua/b%.lua flip%-boolean: true %-> false wants a passing "mod keeps a and b apart"',
+      'UNPINNED BASELINE lua/b%.lua swap%-boolean: true %-> false wants a passing "mod keeps a and b apart"',
       text
     )
   end)

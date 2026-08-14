@@ -43,7 +43,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 19,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
       "line": "            return false",
@@ -93,7 +93,7 @@
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 30,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "          items[item_index] = true",
@@ -102,7 +102,7 @@
     {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 27,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "        seen[item_index] = true",
@@ -186,7 +186,7 @@
     {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 48,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  local from = stdout and stdout:find(BEGIN, 1, true)",
@@ -196,7 +196,7 @@
     {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 37,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  local from = stdout:find(BEGIN, 1, true)",
@@ -206,7 +206,7 @@
     {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 33,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  local to = stdout:find(END, 1, true)",
@@ -360,7 +360,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 2,
-      "operator": "delete-call",
+      "operator": "drop-call",
       "original": "require(\"jit\").off()",
       "replacement": "do end",
       "line": "  require(\"jit\").off()",
@@ -370,7 +370,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 2,
-      "operator": "delete-call",
+      "operator": "drop-call",
       "original": "debug.sethook(hook, \"l\")",
       "replacement": "do end",
       "line": "  debug.sethook(hook, \"l\")",
@@ -380,7 +380,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 9,
-      "operator": "drop-return",
+      "operator": "drop-return-value",
       "original": "data",
       "replacement": "nil",
       "line": "  return data",
@@ -390,7 +390,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 4,
-      "operator": "delete-assign",
+      "operator": "drop-assignment",
       "original": "decided[source] = result",
       "replacement": "do end",
       "line": "    decided[source] = result",
@@ -400,7 +400,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 2,
-      "operator": "delete-assign",
+      "operator": "drop-assignment",
       "original": "active = data",
       "replacement": "do end",
       "line": "  active = data",
@@ -410,7 +410,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 2,
-      "operator": "delete-assign",
+      "operator": "drop-assignment",
       "original": "active = {}",
       "replacement": "do end",
       "line": "  active = {}",
@@ -468,7 +468,7 @@
     {
       "path": "lua/ntf/helper.lua",
       "col": 59,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
       "line": "  local file = vim.api.nvim_get_runtime_file(root_pattern, false)[1]",
@@ -478,7 +478,7 @@
     {
       "path": "lua/ntf/helper.lua",
       "col": 62,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  return vim.split((file:gsub(\"\\\\\", \"/\")), \"/lua/\", { plain = true })[1]",
@@ -487,7 +487,7 @@
     {
       "path": "lua/ntf/helper.lua",
       "col": 63,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  return vim.split(module_name:gsub(\"%.\", \"/\"), \"/\", { plain = true })[1]",
@@ -525,7 +525,7 @@
     {
       "path": "lua/ntf/coverage/init.lua",
       "col": 61,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
       "line": "  local buf_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)",
@@ -544,7 +544,7 @@
     {
       "path": "lua/ntf/core/coverage/report.lua",
       "col": 17,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "    seen[line] = true",
@@ -553,7 +553,7 @@
     {
       "path": "lua/ntf/core/coverage/report.lua",
       "col": 17,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "    seen[line] = true",
@@ -580,7 +580,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 67,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  for _, line in ipairs(vim.split(traceback or \"\", \"\\n\", { plain = true })) do",
@@ -589,7 +589,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 43,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "    local drop = line:find(\"/lua/ntf/\", 1, true)",
@@ -598,7 +598,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 46,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "      or line:find(\"in function 'xpcall'\", 1, true)",
@@ -607,7 +607,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 45,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "      or line:find(\"in function 'error'\", 1, true)",
@@ -616,7 +616,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 54,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "  local lines = vim.split(text or \"\", \"\\n\", { plain = true })",
@@ -634,7 +634,7 @@
     {
       "path": "lua/ntf/core/controller/report.lua",
       "col": 11,
-      "operator": "drop-return",
+      "operator": "drop-return-value",
       "original": "path",
       "replacement": "nil",
       "line": "    return path",
@@ -715,7 +715,7 @@
     {
       "path": "lua/ntf/core/worker/driver.lua",
       "col": 6,
-      "operator": "delete-assign",
+      "operator": "drop-assignment",
       "original": "timer = nil",
       "replacement": "do end",
       "line": "      timer = nil",
@@ -724,7 +724,7 @@
     {
       "path": "lua/ntf/core/mutation/baseline.lua",
       "col": 42,
-      "operator": "flip-boolean",
+      "operator": "swap-boolean",
       "original": "true",
       "replacement": "false",
       "line": "    line = vim.split(src, \"\\n\", { plain = true })[site.row],",
@@ -760,7 +760,7 @@
     {
       "path": "lua/ntf/core/worker/watchdog.lua",
       "operators": [
-        "delete-call"
+        "drop-call"
       ],
       "rationale": "structural: the only statement calls are the thread this file spawns and the two lines the thread runs. The spawn is reached from the worker bootstrap, before coverage starts, and a test that called it instead would have to outlive the SIGKILL it arranges to report anything; the two inside run in a Lua state of their own, which no line hook of this process sees. Its other operators stay in the run"
     }

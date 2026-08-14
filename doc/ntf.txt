@@ -214,47 +214,51 @@ the tests once and lists the mutants with the number of tests that reach each:
 MUTATION OPERATORS                                    *ntf-MUTATION-OPERATORS*
 
 An operator is one kind of change. A mutant is reported under its operator's
-name, and written into a baseline entry under it too. Each is shown here with
-the change its own example gets, and with what a test has to do to detect it:
+name, and written into a baseline entry under it too. A name is a verb and what
+it acts on, and the verbs are a closed set: `swap-` puts a sibling of the same
+kind in place of the original, `drop-` takes something out and leaves what
+surrounded it, `force-` pins a decision to one outcome, and `perturb-` shifts a
+value by one. Each is shown here with the change its own example gets, and with
+what a test has to do to detect it:
 >
-  swap-relational  local _ = a <= b -> local _ = a < b
+  swap-relational   local _ = a <= b -> local _ = a < b
       a test has to exercise the boundary value the two disagree on
 
-  swap-logical     local _ = a and b -> local _ = a or b
+  swap-logical      local _ = a and b -> local _ = a or b
       a test has to reach operands the two connectives disagree on
 
-  swap-arith       local _ = a + b * c % d ^ e -> local _ = a - b * c % d ^ e
-                   local _ = a + b * c % d ^ e -> local _ = a + b / c % d ^ e
-                   local _ = a + b * c % d ^ e -> local _ = a + b * c * d ^ e
-                   local _ = a + b * c % d ^ e -> local _ = a + b * c % d * e
+  swap-arithmetic   local _ = a + b * c % d ^ e -> local _ = a - b * c % d ^ e
+                    local _ = a + b * c % d ^ e -> local _ = a + b / c % d ^ e
+                    local _ = a + b * c % d ^ e -> local _ = a + b * c * d ^ e
+                    local _ = a + b * c % d ^ e -> local _ = a + b * c % d * e
       a test has to exercise a right operand the two disagree on
 
-  flip-boolean     local _ = true -> local _ = false
+  swap-boolean      local _ = true -> local _ = false
       a test has to depend on the value, not merely execute the line
 
-  drop-not         local _ = not a -> local _ = a
+  drop-not          local _ = not a -> local _ = a
       a test has to reach the branch the negation decides
 
-  drop-neg         local _ = -a -> local _ = a
+  drop-negation     local _ = -a -> local _ = a
       a test has to exercise a nonzero operand and depend on its sign
 
-  perturb-number   local _ = 1 -> local _ = 2
+  perturb-number    local _ = 1 -> local _ = 2
       a test has to depend on the exact value, not on its being non-zero
 
-  perturb-length   local _ = #a -> local _ = (#a - 1)
+  perturb-length    local _ = #a -> local _ = (#a - 1)
       a test has to depend on the exact count, not on its being non-zero
 
-  force-branch     if a then end -> if false then end
-                   if a then end -> if true then end
+  force-branch      if a then end -> if false then end
+                    if a then end -> if true then end
       each side needs a test; a loop is only forced to the outcome that exits
 
-  delete-call      f() -> do end
+  drop-call         f() -> do end
       a test has to observe what the call does, not merely reach its line
 
-  delete-assign    a.b = c -> do end
+  drop-assignment   a.b = c -> do end
       a test has to observe what the assignment stores, not merely reach it
 
-  drop-return      function f() return a end -> function f() return nil end
+  drop-return-value function f() return a end -> function f() return nil end
       a test has to depend on what the function answers, not merely reach it
 <
 
@@ -318,7 +322,7 @@ operators it holds its tests to:
     "operators": [
       "swap-relational",
       "swap-logical",
-      "flip-boolean",
+      "swap-boolean",
       "drop-not",
       "perturb-number",
       "force-branch"

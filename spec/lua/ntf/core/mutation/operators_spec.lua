@@ -67,12 +67,12 @@ local _ = a ^ b
 ]])
 
     assert.same({
-      { operator = "swap-arith", row = 1, original = "+", replacement = "-" },
-      { operator = "swap-arith", row = 2, original = "-", replacement = "+" },
-      { operator = "swap-arith", row = 3, original = "*", replacement = "/" },
-      { operator = "swap-arith", row = 4, original = "/", replacement = "*" },
-      { operator = "swap-arith", row = 5, original = "%", replacement = "*" },
-      { operator = "swap-arith", row = 6, original = "^", replacement = "*" },
+      { operator = "swap-arithmetic", row = 1, original = "+", replacement = "-" },
+      { operator = "swap-arithmetic", row = 2, original = "-", replacement = "+" },
+      { operator = "swap-arithmetic", row = 3, original = "*", replacement = "/" },
+      { operator = "swap-arithmetic", row = 4, original = "/", replacement = "*" },
+      { operator = "swap-arithmetic", row = 5, original = "%", replacement = "*" },
+      { operator = "swap-arithmetic", row = 6, original = "^", replacement = "*" },
     }, sites)
   end)
 
@@ -87,9 +87,9 @@ local _ = a ^ b
     local sites = summarize([[local _ = b - -(a + 1)]])
 
     assert.same({
-      { operator = "swap-arith", row = 1, original = "-", replacement = "+" },
-      { operator = "drop-neg", row = 1, original = "-(a + 1)", replacement = "(a + 1)" },
-      { operator = "swap-arith", row = 1, original = "+", replacement = "-" },
+      { operator = "swap-arithmetic", row = 1, original = "-", replacement = "+" },
+      { operator = "drop-negation", row = 1, original = "-(a + 1)", replacement = "(a + 1)" },
+      { operator = "swap-arithmetic", row = 1, original = "+", replacement = "-" },
       { operator = "perturb-number", row = 1, original = "1", replacement = "2" },
     }, sites)
   end)
@@ -137,8 +137,8 @@ local _ = false
 ]])
 
     assert.same({
-      { operator = "flip-boolean", row = 1, original = "true", replacement = "false" },
-      { operator = "flip-boolean", row = 2, original = "false", replacement = "true" },
+      { operator = "swap-boolean", row = 1, original = "true", replacement = "false" },
+      { operator = "swap-boolean", row = 2, original = "false", replacement = "true" },
     }, sites)
   end)
 
@@ -228,14 +228,14 @@ for x in f do end
     assert.equal("for _ = 1, 0 do f(i) end", splice.apply(src, site))
   end)
 
-  it("leaves a bare boolean condition to flip-boolean, forcing no branch", function()
+  it("leaves a bare boolean condition to swap-boolean, forcing no branch", function()
     local sites = summarize([[
 if true then
 end
 ]])
 
     assert.same({
-      { operator = "flip-boolean", row = 1, original = "true", replacement = "false" },
+      { operator = "swap-boolean", row = 1, original = "true", replacement = "false" },
     }, sites)
   end)
 
@@ -250,10 +250,10 @@ end
 ]])
 
     assert.same({
-      { operator = "delete-call", row = 1, original = "f()", replacement = "do end" },
-      { operator = "delete-call", row = 2, original = "a.b:c()", replacement = "do end" },
-      { operator = "delete-call", row = 3, original = 'require("x")', replacement = "do end" },
-      { operator = "delete-call", row = 5, original = "d{}", replacement = "do end" },
+      { operator = "drop-call", row = 1, original = "f()", replacement = "do end" },
+      { operator = "drop-call", row = 2, original = "a.b:c()", replacement = "do end" },
+      { operator = "drop-call", row = 3, original = 'require("x")', replacement = "do end" },
+      { operator = "drop-call", row = 5, original = "d{}", replacement = "do end" },
     }, sites)
   end)
 
@@ -275,7 +275,7 @@ local _ = { k = h() }
 
     local site = operators.enumerate(src)[1]
 
-    assert.equal("delete-call", site.operator)
+    assert.equal("drop-call", site.operator)
     assert.equal("local a = b\ndo end", splice.apply(src, site))
   end)
 
@@ -291,11 +291,11 @@ end
 ]])
 
     assert.same({
-      { operator = "delete-assign", row = 1, original = "x = a", replacement = "do end" },
-      { operator = "delete-assign", row = 2, original = "t.k = a", replacement = "do end" },
-      { operator = "delete-assign", row = 3, original = "t[k] = a", replacement = "do end" },
-      { operator = "delete-assign", row = 4, original = "t.k, t[j] = a, b", replacement = "do end" },
-      { operator = "delete-assign", row = 6, original = "t.k = a", replacement = "do end" },
+      { operator = "drop-assignment", row = 1, original = "x = a", replacement = "do end" },
+      { operator = "drop-assignment", row = 2, original = "t.k = a", replacement = "do end" },
+      { operator = "drop-assignment", row = 3, original = "t[k] = a", replacement = "do end" },
+      { operator = "drop-assignment", row = 4, original = "t.k, t[j] = a, b", replacement = "do end" },
+      { operator = "drop-assignment", row = 6, original = "t.k = a", replacement = "do end" },
     }, sites)
   end)
 
@@ -307,7 +307,7 @@ y = a
 ]])
 
     assert.same({
-      { operator = "delete-assign", row = 3, original = "y = a", replacement = "do end" },
+      { operator = "drop-assignment", row = 3, original = "y = a", replacement = "do end" },
     }, sites)
   end)
 
@@ -316,7 +316,7 @@ y = a
 
     local site = operators.enumerate(src)[1]
 
-    assert.equal("delete-assign", site.operator)
+    assert.equal("drop-assignment", site.operator)
     assert.equal("do end", splice.apply(src, site))
   end)
 
@@ -336,9 +336,9 @@ end
 ]])
 
     assert.same({
-      { operator = "drop-return", row = 2, original = "a", replacement = "nil" },
-      { operator = "drop-return", row = 5, original = "a, b", replacement = "nil" },
-      { operator = "drop-return", row = 9, original = "b", replacement = "nil" },
+      { operator = "drop-return-value", row = 2, original = "a", replacement = "nil" },
+      { operator = "drop-return-value", row = 5, original = "a, b", replacement = "nil" },
+      { operator = "drop-return-value", row = 9, original = "b", replacement = "nil" },
     }, sites)
   end)
 
@@ -353,7 +353,7 @@ end
 ]])
 
     assert.same({
-      { operator = "drop-return", row = 2, original = "a", replacement = "nil" },
+      { operator = "drop-return-value", row = 2, original = "a", replacement = "nil" },
     }, sites)
   end)
 
@@ -374,8 +374,8 @@ end
 ]])
 
     assert.same({
-      { operator = "flip-boolean", row = 5, original = "true", replacement = "false" },
-      { operator = "flip-boolean", row = 8, original = "false", replacement = "true" },
+      { operator = "swap-boolean", row = 5, original = "true", replacement = "false" },
+      { operator = "swap-boolean", row = 8, original = "false", replacement = "true" },
       { operator = "perturb-number", row = 11, original = "1", replacement = "2" },
     }, sites)
   end)
@@ -388,7 +388,7 @@ end
 ]])
 
     assert.same({
-      { operator = "drop-return", row = 2, original = "nil, err", replacement = "nil" },
+      { operator = "drop-return-value", row = 2, original = "nil, err", replacement = "nil" },
     }, sites)
   end)
 
@@ -407,7 +407,7 @@ end
 
     local site = operators.enumerate(src)[1]
 
-    assert.equal("drop-return", site.operator)
+    assert.equal("drop-return-value", site.operator)
     assert.equal("local function f() return nil; end", splice.apply(src, site))
   end)
 
@@ -420,7 +420,7 @@ end
       "end",
     }, "\n"))
 
-    assert.equal("drop-return", sites[1].operator)
+    assert.equal("drop-return-value", sites[1].operator)
     assert.same({ 4 }, sites[1].anchor_rows)
   end)
 
@@ -475,15 +475,15 @@ local _ = a
     local sites = summarize([[local function f() return -a end]])
 
     assert.same({
-      { operator = "drop-neg", row = 1, original = "-a", replacement = "a" },
-      { operator = "drop-return", row = 1, original = "-a", replacement = "nil" },
+      { operator = "drop-negation", row = 1, original = "-a", replacement = "a" },
+      { operator = "drop-return-value", row = 1, original = "-a", replacement = "nil" },
     }, sites)
   end)
 
   it("sorts sites by position", function()
     local sites = summarize([[local _ = 1 + 2 == 3]])
 
-    assert.same({ "perturb-number", "swap-arith", "perturb-number", "swap-relational", "perturb-number" }, {
+    assert.same({ "perturb-number", "swap-arithmetic", "perturb-number", "swap-relational", "perturb-number" }, {
       sites[1].operator,
       sites[2].operator,
       sites[3].operator,

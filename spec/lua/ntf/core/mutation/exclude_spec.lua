@@ -26,7 +26,7 @@ describe("ntf.core.mutation.exclude.validate", function()
   end)
 
   it("accepts an entry naming the operators it leaves out", function()
-    assert.is_nil(exclude.validate(entry({ operators = { "flip-boolean", "perturb-number" } })))
+    assert.is_nil(exclude.validate(entry({ operators = { "swap-boolean", "perturb-number" } })))
   end)
 
   it("rejects an entry that lacks a field", function()
@@ -53,14 +53,14 @@ describe("ntf.core.mutation.exclude.validate", function()
   end)
 
   it("rejects an operators that is neither the string nor an array", function()
-    assert.match('needs an operators of "all"', exclude.validate(entry({ operators = "flip-boolean" })))
+    assert.match('needs an operators of "all"', exclude.validate(entry({ operators = "swap-boolean" })))
   end)
 
   it("rejects an operator no run produces", function()
     assert.match(
       'names an operator no run produces: "swap%-bool"',
       exclude.validate(entry({
-        operators = { "flip-boolean", "swap-bool" },
+        operators = { "swap-boolean", "swap-bool" },
       }))
     )
   end)
@@ -132,7 +132,7 @@ describe("ntf.core.mutation.exclude.partition", function()
   it("keeps a file an entry only names operators of, counting the entry as used", function()
     local files = { "/project/lua/a.lua" }
 
-    local kept, unused = exclude.partition(files, { entry({ path = "lua", operators = { "flip-boolean" } }) }, cwd)
+    local kept, unused = exclude.partition(files, { entry({ path = "lua", operators = { "swap-boolean" } }) }, cwd)
 
     assert.same(files, kept)
     assert.same({}, unused)
@@ -170,22 +170,22 @@ describe("ntf.core.mutation.exclude.operator_filter", function()
   local cwd = "/project"
 
   it("leaves out the operators an entry names, under the path it names", function()
-    local excluded = exclude.operator_filter({ entry({ path = "lua", operators = { "flip-boolean" } }) }, cwd)
+    local excluded = exclude.operator_filter({ entry({ path = "lua", operators = { "swap-boolean" } }) }, cwd)
 
-    assert.is_true(excluded("/project/lua/sub/a.lua", "flip-boolean"))
+    assert.is_true(excluded("/project/lua/sub/a.lua", "swap-boolean"))
     assert.is_false(excluded("/project/lua/sub/a.lua", "perturb-number"))
-    assert.is_false(excluded("/project/other/a.lua", "flip-boolean"))
+    assert.is_false(excluded("/project/other/a.lua", "swap-boolean"))
   end)
 
   it("leaves out nothing for an entry covering the whole file, which never reaches a mutant", function()
     local excluded = exclude.operator_filter({ entry({ path = "lua" }) }, cwd)
 
-    assert.is_false(excluded("/project/lua/a.lua", "flip-boolean"))
+    assert.is_false(excluded("/project/lua/a.lua", "swap-boolean"))
   end)
 
   it("leaves out an operator any one of the entries names", function()
     local excluded = exclude.operator_filter({
-      entry({ path = "lua", operators = { "flip-boolean" } }),
+      entry({ path = "lua", operators = { "swap-boolean" } }),
       entry({ path = "lua/a.lua", operators = { "perturb-number" } }),
     }, cwd)
 
@@ -196,7 +196,7 @@ describe("ntf.core.mutation.exclude.operator_filter", function()
   it("leaves out nothing when no entry is given", function()
     local excluded = exclude.operator_filter({}, cwd)
 
-    assert.is_false(excluded("/project/lua/a.lua", "flip-boolean"))
+    assert.is_false(excluded("/project/lua/a.lua", "swap-boolean"))
   end)
 end)
 

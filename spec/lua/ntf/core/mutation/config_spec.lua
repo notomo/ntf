@@ -237,7 +237,7 @@ describe("ntf.core.mutation.config.format", function()
   end)
 
   it("writes the adopted operators a line at a time", function()
-    local text = config.format(document({ operators = { "swap-relational", "flip-boolean" } }))
+    local text = config.format(document({ operators = { "swap-relational", "swap-boolean" } }))
 
     assert.equal(
       table.concat({
@@ -245,7 +245,7 @@ describe("ntf.core.mutation.config.format", function()
         '  "version": 1,',
         '  "operators": [',
         '    "swap-relational",',
-        '    "flip-boolean"',
+        '    "swap-boolean"',
         "  ]",
         "}",
         "",
@@ -276,10 +276,10 @@ describe("ntf.core.mutation.config.format", function()
 
   it("writes an operators array a line at a time", function()
     local text = config.format(document({
-      exclude = { exclude_entry({ operators = { "swap-relational", "flip-boolean" } }) },
+      exclude = { exclude_entry({ operators = { "swap-relational", "swap-boolean" } }) },
     }))
 
-    assert.match('      "operators": %[\n        "swap%-relational",\n        "flip%-boolean"\n      %],\n', text)
+    assert.match('      "operators": %[\n        "swap%-relational",\n        "swap%-boolean"\n      %],\n', text)
   end)
 
   it("escapes what a JSON string has to escape, leaving what it does not alone", function()

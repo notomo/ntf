@@ -309,16 +309,19 @@ end
 local operator_descriptions = {
   { label = "swap-relational", description = "a test has to exercise the boundary value the two disagree on" },
   { label = "swap-logical", description = "a test has to reach operands the two connectives disagree on" },
-  { label = "swap-arith", description = "a test has to exercise a right operand the two disagree on" },
-  { label = "flip-boolean", description = "a test has to depend on the value, not merely execute the line" },
+  { label = "swap-arithmetic", description = "a test has to exercise a right operand the two disagree on" },
+  { label = "swap-boolean", description = "a test has to depend on the value, not merely execute the line" },
   { label = "drop-not", description = "a test has to reach the branch the negation decides" },
-  { label = "drop-neg", description = "a test has to exercise a nonzero operand and depend on its sign" },
+  { label = "drop-negation", description = "a test has to exercise a nonzero operand and depend on its sign" },
   { label = "perturb-number", description = "a test has to depend on the exact value, not on its being non-zero" },
   { label = "perturb-length", description = "a test has to depend on the exact count, not on its being non-zero" },
   { label = "force-branch", description = "each side needs a test; a loop is only forced to the outcome that exits" },
-  { label = "delete-call", description = "a test has to observe what the call does, not merely reach its line" },
-  { label = "delete-assign", description = "a test has to observe what the assignment stores, not merely reach it" },
-  { label = "drop-return", description = "a test has to depend on what the function answers, not merely reach it" },
+  { label = "drop-call", description = "a test has to observe what the call does, not merely reach its line" },
+  { label = "drop-assignment", description = "a test has to observe what the assignment stores, not merely reach it" },
+  {
+    label = "drop-return-value",
+    description = "a test has to depend on what the function answers, not merely reach it",
+  },
 }
 assert_names(
   labels_of(operator_descriptions),
@@ -335,6 +338,10 @@ end
 --- @param width integer the document width a line has to fit in
 --- @return string # every operator with the change its example gets and what detects it
 local operator_list = function(width)
+  local name_width = 0
+  for _, operator in ipairs(operators.operators) do
+    name_width = math.max(name_width, #operator.name)
+  end
   local blocks = {}
   for _, operator in ipairs(operators.operators) do
     local sites = operators.enumerate(operator.example)
@@ -345,7 +352,7 @@ local operator_list = function(width)
     local name = operator.name
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(operator.example, site), "example does not match its site")
-      table.insert(lines, ("%-16s %s -> %s"):format(name, operator.example, mutated))
+      table.insert(lines, ("%-" .. name_width .. "s %s -> %s"):format(name, operator.example, mutated))
       name = ""
     end
     table.insert(lines, "    " .. description_by_operator[operator.name])
@@ -689,8 +696,12 @@ the tests once and lists the mutants with the number of tests that reach each:]]
         return table.concat({
           [[
 An operator is one kind of change. A mutant is reported under its operator's
-name, and written into a baseline entry under it too. Each is shown here with
-the change its own example gets, and with what a test has to do to detect it:]],
+name, and written into a baseline entry under it too. A name is a verb and what
+it acts on, and the verbs are a closed set: `swap-` puts a sibling of the same
+kind in place of the original, `drop-` takes something out and leaves what
+surrounded it, `force-` pins a decision to one outcome, and `perturb-` shifts a
+value by one. Each is shown here with the change its own example gets, and with
+what a test has to do to detect it:]],
           util.help_code_block(operator_list(ctx.width)),
         }, "\n")
       end,

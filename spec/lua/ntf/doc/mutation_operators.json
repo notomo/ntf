@@ -3,7 +3,7 @@
   "operators": [
     "swap-relational",
     "swap-logical",
-    "flip-boolean",
+    "swap-boolean",
     "drop-not",
     "perturb-number",
     "force-branch"

@@ -118,8 +118,8 @@ end
 --- @type integer characters of a mutant's own source a listed line keeps
 local TEXT_LIMIT = 60
 
--- WHY: a mutant whose node is a whole statement — every delete-call and
--- delete-assign, and a force-branch over a wrapped condition — carries the
+-- WHY: a mutant whose node is a whole statement — every drop-call and
+-- drop-assignment, and a force-branch over a wrapped condition — carries the
 -- source's own newlines, which would spread one mutant over as many lines as it
 -- spans and leave a list unreadable by line.
 -- NOT: taking only the head of the node, which every operator would have to name

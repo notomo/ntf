@@ -33,7 +33,7 @@ describe("ntf.core.mutation.results", function()
   it("writes the records grouped by file", function()
     local out = helper.test_data:path("ntf-mutation.json")
     local summary = {
-      records = { record("/x.lua", 2, "swap-relational", "survived"), record("/x.lua", 1, "flip-boolean", "killed") },
+      records = { record("/x.lua", 2, "swap-relational", "survived"), record("/x.lua", 1, "swap-boolean", "killed") },
       counts = { killed = 1, timeout = 0, survived = 1, no_coverage = 0, not_applied = 0 },
       score = 50,
     }

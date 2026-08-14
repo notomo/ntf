@@ -25,11 +25,11 @@ M.operators = {
     example = "local _ = a and b",
   },
   {
-    name = "swap-arith",
+    name = "swap-arithmetic",
     example = "local _ = a + b * c % d ^ e",
   },
   {
-    name = "flip-boolean",
+    name = "swap-boolean",
     example = "local _ = true",
   },
   {
@@ -37,7 +37,7 @@ M.operators = {
     example = "local _ = not a",
   },
   {
-    name = "drop-neg",
+    name = "drop-negation",
     example = "local _ = -a",
   },
   {
@@ -53,15 +53,15 @@ M.operators = {
     example = "if a then end",
   },
   {
-    name = "delete-call",
+    name = "drop-call",
     example = "f()",
   },
   {
-    name = "delete-assign",
+    name = "drop-assignment",
     example = "a.b = c",
   },
   {
-    name = "drop-return",
+    name = "drop-return-value",
     example = "function f() return a end",
   },
 }
@@ -119,12 +119,12 @@ local BINARY_SWAPS = {
   [">="] = { operator = "swap-relational", to = ">" },
   ["and"] = { operator = "swap-logical", to = "or" },
   ["or"] = { operator = "swap-logical", to = "and" },
-  ["+"] = { operator = "swap-arith", to = "-" },
-  ["-"] = { operator = "swap-arith", to = "+" },
-  ["*"] = { operator = "swap-arith", to = "/" },
-  ["/"] = { operator = "swap-arith", to = "*" },
-  ["%"] = { operator = "swap-arith", to = "*" },
-  ["^"] = { operator = "swap-arith", to = "*" },
+  ["+"] = { operator = "swap-arithmetic", to = "-" },
+  ["-"] = { operator = "swap-arithmetic", to = "+" },
+  ["*"] = { operator = "swap-arithmetic", to = "/" },
+  ["/"] = { operator = "swap-arithmetic", to = "*" },
+  ["%"] = { operator = "swap-arithmetic", to = "*" },
+  ["^"] = { operator = "swap-arithmetic", to = "*" },
 }
 
 --- @param _ string the whole unary expression
@@ -143,11 +143,11 @@ end
 --- @type table<string, { operator: string, mutate: fun(text: string, operand: string): string }> # the unary operators, and what a site of one puts in place of the whole expression
 local UNARY_MUTATIONS = {
   ["not"] = { operator = "drop-not", mutate = dropped },
-  ["-"] = { operator = "drop-neg", mutate = dropped },
+  ["-"] = { operator = "drop-negation", mutate = dropped },
   ["#"] = { operator = "perturb-length", mutate = one_shorter },
 }
 
-local BOOLEAN_FLIPS = {
+local BOOLEAN_SWAPS = {
   ["true"] = "false",
   ["false"] = "true",
 }
@@ -158,7 +158,7 @@ local STATEMENT_BLOCK = {
   chunk = true,
 }
 
-local DELETED_STATEMENT = "do end"
+local DROPPED_STATEMENT = "do end"
 
 local DROPPED_RETURN_VALUE = "nil"
 
@@ -253,10 +253,10 @@ end
 --- @param node TSNode a `function_call`
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
-local function delete_call_sites(node, src, sites)
+local function drop_call_sites(node, src, sites)
   local parent = assert(node:parent())
   if STATEMENT_BLOCK[parent:type()] then
-    table.insert(sites, site(node, "delete-call", vim.treesitter.get_node_text(node, src), DELETED_STATEMENT))
+    table.insert(sites, site(node, "drop-call", vim.treesitter.get_node_text(node, src), DROPPED_STATEMENT))
   end
 end
 
@@ -269,10 +269,10 @@ end
 --- @param node TSNode an `assignment_statement`
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
-local function delete_assign_sites(node, src, sites)
+local function drop_assignment_sites(node, src, sites)
   local parent = assert(node:parent())
   if STATEMENT_BLOCK[parent:type()] then
-    table.insert(sites, site(node, "delete-assign", vim.treesitter.get_node_text(node, src), DELETED_STATEMENT))
+    table.insert(sites, site(node, "drop-assignment", vim.treesitter.get_node_text(node, src), DROPPED_STATEMENT))
   end
 end
 
@@ -309,7 +309,7 @@ local function drop_return_value_sites(node, src, sites)
     return
   end
   local text = vim.treesitter.get_node_text(values, src)
-  table.insert(sites, site(values, "drop-return", text, DROPPED_RETURN_VALUE))
+  table.insert(sites, site(values, "drop-return-value", text, DROPPED_RETURN_VALUE))
 end
 
 --- @param node TSNode a decision node whose condition is forced to each outcome, or a `for` clause forced to iterate none
@@ -326,7 +326,7 @@ local function force_branch_sites(node, src, sites)
     return
   end
   local cond = node:field("condition")[1]
-  if BOOLEAN_FLIPS[cond:type()] then
+  if BOOLEAN_SWAPS[cond:type()] then
     return
   end
   local text = vim.treesitter.get_node_text(cond, src)
@@ -348,13 +348,13 @@ function M.enumerate(src)
     elseif kind == "unary_expression" then
       unary_sites(node, src, sites)
     elseif kind == "function_call" then
-      delete_call_sites(node, src, sites)
+      drop_call_sites(node, src, sites)
     elseif kind == "assignment_statement" then
-      delete_assign_sites(node, src, sites)
+      drop_assignment_sites(node, src, sites)
     elseif kind == "return_statement" then
       drop_return_value_sites(node, src, sites)
-    elseif BOOLEAN_FLIPS[kind] then
-      table.insert(sites, site(node, "flip-boolean", kind, BOOLEAN_FLIPS[kind]))
+    elseif BOOLEAN_SWAPS[kind] then
+      table.insert(sites, site(node, "swap-boolean", kind, BOOLEAN_SWAPS[kind]))
     elseif kind == "number" then
       local text = vim.treesitter.get_node_text(node, src)
       local number = tonumber(text)
