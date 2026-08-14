@@ -218,52 +218,122 @@ name, and written into a baseline entry under it too. A name is a verb and what
 it acts on, and the verbs are a closed set: `swap-` puts a sibling of the same
 kind in place of the original, `drop-` takes something out and leaves what
 surrounded it, `force-` pins a decision to one outcome, and `perturb-` shifts a
-value by one. Each is shown here with the change its own example gets, and with
-what a test has to do to detect it:
+value by one.
+
+Each has a tag of its own, and is shown with the change its own example gets
+and with what a test has to do to detect it.
+
+swap-relational                                          *ntf-swap-relational*
 >
-  swap-relational   local _ = a <= b -> local _ = a < b
-      a test has to exercise the boundary value the two disagree on
-
-  swap-logical      local _ = a and b -> local _ = a or b
-      a test has to reach operands the two connectives disagree on
-
-  swap-arithmetic   local _ = a + b * c % d ^ e -> local _ = a - b * c % d ^ e
-                    local _ = a + b * c % d ^ e -> local _ = a + b / c % d ^ e
-                    local _ = a + b * c % d ^ e -> local _ = a + b * c * d ^ e
-                    local _ = a + b * c % d ^ e -> local _ = a + b * c % d * e
-      a test has to exercise a right operand the two disagree on
-
-  swap-boolean      local _ = true -> local _ = false
-      a test has to depend on the value, not merely execute the line
-
-  drop-not          local _ = not a -> local _ = a
-      a test has to reach the branch the negation decides
-
-  drop-negation     local _ = -a -> local _ = a
-      a test has to exercise a nonzero operand and depend on its sign
-
-  perturb-number    local _ = 1 -> local _ = 2
-      a test has to depend on the exact value, not on its being non-zero
-
-  perturb-length    local _ = #a -> local _ = (#a - 1)
-      a test has to depend on the exact count, not on its being non-zero
-
-  force-branch      if a then end -> if false then end
-                    if a then end -> if true then end
-      each outcome needs a test that depends on which side ran
-
-  force-loop        while a do end -> while false do end
-      a test has to depend on the body running, which a repeat still does once
-
-  drop-call         f() -> do end
-      a test has to observe what the call does, not merely reach its line
-
-  drop-assignment   a.b = c -> do end
-      a test has to observe what the assignment stores, not merely reach it
-
-  drop-return-value function f() return a end -> function f() return nil end
-      a test has to depend on what the function answers, not merely reach it
+  local _ = a <= b -> local _ = a < b
 <
+  a test has to exercise the boundary value the two disagree on
+
+swap-logical                                                *ntf-swap-logical*
+>
+  local _ = a and b -> local _ = a or b
+<
+  a test has to reach operands the two connectives disagree on
+
+swap-arithmetic                                          *ntf-swap-arithmetic*
+>
+  local _ = a + b * c % d ^ e -> local _ = a - b * c % d ^ e
+  local _ = a + b * c % d ^ e -> local _ = a + b / c % d ^ e
+  local _ = a + b * c % d ^ e -> local _ = a + b * c * d ^ e
+  local _ = a + b * c % d ^ e -> local _ = a + b * c % d * e
+<
+  a test has to exercise a right operand the two disagree on
+
+  The bitwise operators have no site of this operator, and neither does
+  `//`, which the runtime a mutant is loaded in cannot compile.
+
+swap-boolean                                                *ntf-swap-boolean*
+>
+  local _ = true -> local _ = false
+<
+  a test has to depend on the value, not merely execute the line
+
+  A condition spelled as a bare `true` or `false` is a site of this operator
+  rather than of |ntf-force-branch|, so it is changed once instead of forced
+  to each outcome it already names.
+
+drop-not                                                        *ntf-drop-not*
+>
+  local _ = not a -> local _ = a
+<
+  a test has to reach the branch the negation decides
+
+drop-negation                                              *ntf-drop-negation*
+>
+  local _ = -a -> local _ = a
+<
+  a test has to exercise a nonzero operand and depend on its sign
+
+perturb-number                                            *ntf-perturb-number*
+>
+  local _ = 1 -> local _ = 2
+<
+  a test has to depend on the exact value, not on its being non-zero
+
+  A hexadecimal literal is shifted into decimal, so `0x10` becomes `17`.
+
+perturb-length                                            *ntf-perturb-length*
+>
+  local _ = #a -> local _ = (#a - 1)
+<
+  a test has to depend on the exact count, not on its being non-zero
+
+  The shifted count is parenthesized, so whatever the expression sits under
+  still takes all of it.
+
+force-branch                                                *ntf-force-branch*
+>
+  if a then end -> if false then end
+  if a then end -> if true then end
+<
+  each outcome needs a test that depends on which side ran
+
+  Only the condition is rewritten, so each mutant keeps the body it decides
+  over.
+
+force-loop                                                    *ntf-force-loop*
+>
+  while a do end -> while false do end
+<
+  a test has to depend on the body running, which a repeat still does once
+
+  A `while` is pinned to false and a `repeat` to true — the outcome that
+  leaves the loop, since the other spins forever to prove nothing a coverage
+  hit does not already. A `for` is rewritten to the clause of its own kind
+  that iterates none, so its body never runs.
+
+drop-call                                                      *ntf-drop-call*
+>
+  f() -> do end
+<
+  a test has to observe what the call does, not merely reach its line
+
+  Only a call standing as a statement of its own: deleting one whose value
+  is used would take the expression around it too.
+
+drop-assignment                                          *ntf-drop-assignment*
+>
+  a.b = c -> do end
+<
+  a test has to observe what the assignment stores, not merely reach it
+
+  A `local` declaration is left alone, since deleting it would rewrite the
+  scope every later mention of the name is read through, and not the store.
+
+drop-return-value                                      *ntf-drop-return-value*
+>
+  function f() return a end -> function f() return nil end
+<
+  a test has to depend on what the function answers, not merely reach it
+
+  Only a return that answers for a function: the one a chunk answers with is
+  the module itself. A return of a single literal is left to that literal's
+  own operator, which already owns the change.
 
 ==============================================================================
 MUTATION CONFIG                                          *ntf-MUTATION-CONFIG*

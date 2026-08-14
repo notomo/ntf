@@ -305,26 +305,76 @@ local labels_of = function(entries)
     :totable()
 end
 
---- @type { label: string, description: string }[] what a test has to do to detect each operator's mutant, in the order the document lists them
+--- @type { label: string, description: string, note: string? }[] what a test has to do to detect each operator's mutant, and what its own section adds, in the order the document lists them
 local operator_descriptions = {
   { label = "swap-relational", description = "a test has to exercise the boundary value the two disagree on" },
   { label = "swap-logical", description = "a test has to reach operands the two connectives disagree on" },
-  { label = "swap-arithmetic", description = "a test has to exercise a right operand the two disagree on" },
-  { label = "swap-boolean", description = "a test has to depend on the value, not merely execute the line" },
+  {
+    label = "swap-arithmetic",
+    description = "a test has to exercise a right operand the two disagree on",
+    note = [[
+The bitwise operators have no site of this operator, and neither does
+`//`, which the runtime a mutant is loaded in cannot compile.]],
+  },
+  {
+    label = "swap-boolean",
+    description = "a test has to depend on the value, not merely execute the line",
+    note = [[
+A condition spelled as a bare `true` or `false` is a site of this operator
+rather than of |ntf-force-branch|, so it is changed once instead of forced
+to each outcome it already names.]],
+  },
   { label = "drop-not", description = "a test has to reach the branch the negation decides" },
   { label = "drop-negation", description = "a test has to exercise a nonzero operand and depend on its sign" },
-  { label = "perturb-number", description = "a test has to depend on the exact value, not on its being non-zero" },
-  { label = "perturb-length", description = "a test has to depend on the exact count, not on its being non-zero" },
-  { label = "force-branch", description = "each outcome needs a test that depends on which side ran" },
+  {
+    label = "perturb-number",
+    description = "a test has to depend on the exact value, not on its being non-zero",
+    note = "A hexadecimal literal is shifted into decimal, so `0x10` becomes `17`.",
+  },
+  {
+    label = "perturb-length",
+    description = "a test has to depend on the exact count, not on its being non-zero",
+    note = [[
+The shifted count is parenthesized, so whatever the expression sits under
+still takes all of it.]],
+  },
+  {
+    label = "force-branch",
+    description = "each outcome needs a test that depends on which side ran",
+    note = [[
+Only the condition is rewritten, so each mutant keeps the body it decides
+over.]],
+  },
   {
     label = "force-loop",
     description = "a test has to depend on the body running, which a repeat still does once",
+    note = [[
+A `while` is pinned to false and a `repeat` to true — the outcome that
+leaves the loop, since the other spins forever to prove nothing a coverage
+hit does not already. A `for` is rewritten to the clause of its own kind
+that iterates none, so its body never runs.]],
   },
-  { label = "drop-call", description = "a test has to observe what the call does, not merely reach its line" },
-  { label = "drop-assignment", description = "a test has to observe what the assignment stores, not merely reach it" },
+  {
+    label = "drop-call",
+    description = "a test has to observe what the call does, not merely reach its line",
+    note = [[
+Only a call standing as a statement of its own: deleting one whose value
+is used would take the expression around it too.]],
+  },
+  {
+    label = "drop-assignment",
+    description = "a test has to observe what the assignment stores, not merely reach it",
+    note = [[
+A `local` declaration is left alone, since deleting it would rewrite the
+scope every later mention of the name is read through, and not the store.]],
+  },
   {
     label = "drop-return-value",
     description = "a test has to depend on what the function answers, not merely reach it",
+    note = [[
+Only a return that answers for a function: the one a chunk answers with is
+the module itself. A return of a single literal is left to that literal's
+own operator, which already owns the change.]],
   },
 }
 assert_names(
@@ -336,40 +386,53 @@ assert_names(
 )
 local description_by_operator = {}
 for _, entry in ipairs(operator_descriptions) do
-  description_by_operator[entry.label] = entry.description
+  description_by_operator[entry.label] = entry
 end
 
---- @param width integer the document width a line has to fit in
---- @return string # every operator with the change its example gets and what detects it
-local operator_list = function(width)
-  local name_width = 0
-  for _, operator in ipairs(operators.operators) do
-    name_width = math.max(name_width, #operator.name)
+-- WHY: the note under swap-arithmetic names source no example can show, since
+-- what it says is that nothing is enumerated from it at all.
+-- NOT: trusting the note, which is the one claim the examples cannot carry.
+for _, src in ipairs({ "local _ = a // b", "local _ = a & b | c", "local _ = ~a" }) do
+  if #operators.enumerate(src) > 0 then
+    error(("the document says no operator answers for it: %s"):format(src))
   end
-  local blocks = {}
+end
+
+--- @param ctx { width: integer } the document width a line has to fit in
+--- @return string # every operator under a tag of its own, with the change its example gets and what detects it
+local operator_sections = function(ctx)
+  local sections = {}
   for _, operator in ipairs(operators.operators) do
     local sites = operators.enumerate(operator.example)
     if #sites == 0 then
       error(("no site in the example of %s: %s"):format(operator.name, operator.example))
     end
-    local lines = {}
-    local name = operator.name
+    local changes = {}
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(operator.example, site), "example does not match its site")
-      table.insert(lines, ("%-" .. name_width .. "s %s -> %s"):format(name, operator.example, mutated))
-      name = ""
+      table.insert(changes, ("%s -> %s"):format(operator.example, mutated))
     end
-    table.insert(lines, "    " .. description_by_operator[operator.name])
 
-    local indent = 2
-    for _, line in ipairs(lines) do
-      if #line + indent > width then
+    local entry = description_by_operator[operator.name]
+    local prose = { entry.description }
+    if entry.note then
+      table.insert(prose, "")
+      table.insert(prose, vim.trim(entry.note))
+    end
+    local body = util.indent(table.concat(prose, "\n"), 2)
+
+    local section = util.help_tagged(ctx, operator.name, "ntf-" .. operator.name)
+      .. util.help_code_block(table.concat(changes, "\n"))
+      .. "\n"
+      .. body
+    for _, line in ipairs(vim.split(section, "\n", { plain = true })) do
+      if #line > ctx.width then
         error(("too long for the document width: %s"):format(line))
       end
     end
-    table.insert(blocks, table.concat(lines, "\n"))
+    table.insert(sections, section)
   end
-  return table.concat(blocks, "\n\n")
+  return table.concat(sections, "\n\n")
 end
 
 --- @type { label: string, description: string }[] the config file's sections
@@ -704,9 +767,11 @@ name, and written into a baseline entry under it too. A name is a verb and what
 it acts on, and the verbs are a closed set: `swap-` puts a sibling of the same
 kind in place of the original, `drop-` takes something out and leaves what
 surrounded it, `force-` pins a decision to one outcome, and `perturb-` shifts a
-value by one. Each is shown here with the change its own example gets, and with
-what a test has to do to detect it:]],
-          util.help_code_block(operator_list(ctx.width)),
+value by one.
+
+Each has a tag of its own, and is shown with the change its own example gets
+and with what a test has to do to detect it.]],
+          "\n" .. operator_sections(ctx),
         }, "\n")
       end,
     },
@@ -1013,5 +1078,21 @@ end
 for row, line in ipairs(vim.split(help_text, "\n")) do
   if vim.startswith(line, ">") and not code_block_rows[row] then
     error(("%s:%d opens a code block the help parser does not see: %s"):format(help_path, row, line))
+  end
+end
+
+-- WHY: the prose now sends a reader to a tag per operator, so a name that moves
+-- would leave a link `:help` answers with an error instead of a section.
+-- NOT: matching the bars by hand, which reads a link out of every `|` the
+-- documented Lua happens to spell.
+--- @type table<string, true> every tag the help defines
+local help_tags = {}
+for _, node in vim.treesitter.query.parse("vimdoc", "(tag (word) @tag)"):iter_captures(help_root, help_text) do
+  help_tags[vim.treesitter.get_node_text(node, help_text)] = true
+end
+for _, node in vim.treesitter.query.parse("vimdoc", "(taglink (word) @link)"):iter_captures(help_root, help_text) do
+  local link = vim.treesitter.get_node_text(node, help_text)
+  if not help_tags[link] then
+    error(("%s links to a tag it does not define: %s"):format(help_path, link))
   end
 end
