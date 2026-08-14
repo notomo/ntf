@@ -40,44 +40,34 @@ local is_win = vim.fn.has("win32") == 1
 local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 
 --- @param path string a file the call reads
---- @param read fun() calls production code that opens `path` for reading, and is called again while the descriptor keeps shifting
+--- @param read fun() calls production code that opens `path` for reading
 --- @return boolean # whether the call left the file open
 function helper.leaves_file_open(path, read)
-  if is_win then
-    read()
-    local windows_refuses_to_delete_a_file_a_handle_still_holds = vim.fn.delete(path) ~= 0
-    return windows_refuses_to_delete_a_file_a_handle_still_holds
+  local wanted = vim.fs.normalize(path)
+  --- @type file*[] handles the call took on `path`, held so that no finalizer closes one before it is read
+  local opened = {}
+
+  local open = io.open
+  --- @diagnostic disable-next-line: duplicate-set-field
+  io.open = function(name, ...)
+    local file, err = open(name, ...)
+    if file and vim.fs.normalize(name) == wanted then
+      table.insert(opened, file)
+    end
+    return file, err
   end
+  local ok, err = pcall(read)
+  io.open = open
+  assert(ok, err)
+  assert(#opened > 0, "the call opened no file at " .. wanted)
 
-  --- @return integer # the descriptor the next open takes, which one left open shifts
-  local function next_descriptor()
-    local fd = assert(vim.uv.fs_open(path, "r", tonumber("666", 8)))
-    vim.uv.fs_close(fd)
-    return fd
-  end
-
-  -- WHY: the descriptor an open takes is the lowest the whole process has free,
-  -- so anything else in the process moves the number. A worker starts the libuv
-  -- loop of its watchdog thread once, and under load that start lands inside the
-  -- call being measured, where the epoll and the pipes the loop takes shift the
-  -- descriptor exactly as a file left open would. One start cannot reach a
-  -- second reading, while a file left open shifts every one.
-  -- NOT: taking a single reading, which reports a file the call did close as
-  -- left open.
-  --- @type integer readings that have to shift before the file counts as left open
-  local agreeing_readings = 3
-
-  collectgarbage("stop")
-  local left_open = true
-  for _ = 1, agreeing_readings do
-    local before = next_descriptor()
-    read()
-    if next_descriptor() == before then
-      left_open = false
-      break
+  local left_open = false
+  for _, file in ipairs(opened) do
+    if io.type(file) == "file" then
+      file:close()
+      left_open = true
     end
   end
-  collectgarbage("restart")
   return left_open
 end
 
