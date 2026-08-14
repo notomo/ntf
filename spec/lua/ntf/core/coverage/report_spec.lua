@@ -100,7 +100,7 @@ describe("ntf.core.coverage.report.summary", function()
     assert.match(total_pattern(lines), text)
   end)
 
-  it("lists a never-executed file at 0%", function()
+  it("lists a never-executed file at 0%, naming none of its lines, since every one of them is missed", function()
     --- @type SummaryLine[]
     local lines = {
       { code = "local function f()", hit = false, coverable = false },
@@ -112,6 +112,54 @@ describe("ntf.core.coverage.report.summary", function()
     local text = summary_of(lines)
 
     assert.match(file_pattern("mod.lua", lines), text)
+    assert.no.match("missed", text)
+  end)
+
+  it("names the lines a file missed, folding a consecutive run into one range", function()
+    --- @type SummaryLine[]
+    local lines = {
+      { code = "local M = {}", hit = true, coverable = true },
+      { code = "function M.f(x)", hit = false, coverable = false },
+      { code = "  print(x)", hit = false, coverable = true },
+      { code = "  if x then", hit = false, coverable = true },
+      { code = "    return 1", hit = false, coverable = true },
+      { code = "  end", hit = false, coverable = false },
+      { code = "  return 0", hit = false, coverable = true },
+      { code = "end", hit = false, coverable = false },
+      { code = "return M", hit = true, coverable = true },
+    }
+
+    local text = summary_of(lines)
+
+    assert.match(file_pattern("mod.lua", lines) .. "%s+missed: 3%-5,7", text)
+  end)
+
+  it("names the missed lines ascending, whatever order the keys come out of the table in", function()
+    local ascending = helper.unsorted_hash_order(function(salt)
+      local rows = {}
+      for i = 1, 6 do
+        rows[i] = 1 + (i - 1) * salt
+      end
+      return rows
+    end)
+
+    local codes = {}
+    for i = 1, ascending[#ascending] do
+      codes[i] = ""
+    end
+    for _, row in ipairs(ascending) do
+      codes[row] = "print(1)"
+    end
+    local src = helper.test_data:create_file("mod.lua", table.concat(codes, "\n"))
+    local merged = { [vim.fs.normalize(src)] = { max = 1, lines = { [1] = 1 } } }
+
+    local text = report.summary(merged, helper.test_data.full_path)
+
+    local missed = {}
+    for i = 2, #ascending do
+      missed[#missed + 1] = ascending[i]
+    end
+    assert.match("missed: " .. table.concat(missed, ","), text)
   end)
 
   it("lays each row out padded to the longest name, sorted, under the run total", function()
@@ -128,7 +176,7 @@ describe("ntf.core.coverage.report.summary", function()
       table.concat({
         "Coverage: 66.7% (2/3 lines)",
         "  a.lua   100.0% (1/1)",
-        "  bb.lua   50.0% (1/2)",
+        "  bb.lua   50.0% (1/2)  missed: 2",
         "",
       }, "\n"),
       text
