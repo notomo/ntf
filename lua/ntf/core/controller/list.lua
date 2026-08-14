@@ -32,18 +32,15 @@ local function annotation(entry)
 end
 
 --- @param entries NtfMutantListEntry[]
---- @return string # one "path:row:col: operator: original -> replacement (annotation)" line per mutant
+--- @return string # one "path:row:col:operator: original -> replacement (annotation)" line per mutant
 function M.mutants(entries)
   local lines = {}
   for _, entry in ipairs(entries) do
     local mutant = entry.mutant
     table.insert(
       lines,
-      ("%s:%d:%d: %s: %s -> %s (%s)"):format(
-        entry.relative_path,
-        mutant.row,
-        mutant.col,
-        mutant.operator,
+      ("%s: %s -> %s (%s)"):format(
+        report.locator(entry.relative_path, mutant),
         report.oneline(mutant.original),
         report.oneline(mutant.replacement),
         annotation(entry)

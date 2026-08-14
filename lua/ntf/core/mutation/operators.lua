@@ -9,7 +9,6 @@ local M = {}
 --- @field end_row integer 1-based end line
 --- @field end_col integer 0-based end column, exclusive
 --- @field anchor_rows integer[] 1-based rows where the hit lands when the site executes (see `lines.anchor_rows`)
---- @field shares_row boolean whether the row holds another site of the same operator, so that naming this one takes its col too
 
 --- @class NtfMutationOperator
 --- @field name string the site's `operator`, as reported and as written in a baseline entry
@@ -349,24 +348,6 @@ local function force_branch_sites(node, src, sites)
   end
 end
 
---- @param mutant_site NtfMutantSite
---- @return string # what makes two sites take the same name in a report and in a baseline request
-local function name_key(mutant_site)
-  return mutant_site.row .. "\0" .. mutant_site.operator
-end
-
---- @param sites NtfMutantSite[]
-local function mark_shared_rows(sites)
-  local counts = {} --- @type table<string, integer>
-  for _, mutant_site in ipairs(sites) do
-    local key = name_key(mutant_site)
-    counts[key] = (counts[key] or 0) + 1
-  end
-  for _, mutant_site in ipairs(sites) do
-    mutant_site.shares_row = counts[name_key(mutant_site)] > 1
-  end
-end
-
 --- @param src string the full source text
 --- @return NtfMutantSite[] # sorted by start byte
 function M.enumerate(src)
@@ -411,7 +392,6 @@ function M.enumerate(src)
     end
     return a.operator < b.operator
   end)
-  mark_shared_rows(sites)
   return sites
 end
 

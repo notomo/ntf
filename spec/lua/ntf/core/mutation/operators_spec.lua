@@ -471,27 +471,6 @@ local _ = a
     assert.equal("==", src:sub(site.start_byte + 1, site.end_byte))
   end)
 
-  it("marks a site whose row holds another of its own operator, which no row alone then names", function()
-    local sites = vim.tbl_map(
-      function(site)
-        return { operator = site.operator, row = site.row, col = site.col, shares_row = site.shares_row }
-      end,
-      operators.enumerate([[
-local _ = a < b < c
-local _ = a < b
-local _ = a < b and c
-]])
-    )
-
-    assert.same({
-      { operator = "swap-relational", row = 1, col = 12, shares_row = true },
-      { operator = "swap-relational", row = 1, col = 16, shares_row = true },
-      { operator = "swap-relational", row = 2, col = 12, shares_row = false },
-      { operator = "swap-relational", row = 3, col = 12, shares_row = false },
-      { operator = "swap-logical", row = 3, col = 16, shares_row = false },
-    }, sites)
-  end)
-
   it("sorts sites that start at one byte by operator name, so the order never rests on the walk", function()
     local sites = summarize([[local function f() return -a end]])
 

@@ -14,13 +14,14 @@ local MODES = {
 --- @return integer exit_code
 local function add_baseline(opts, config)
   local baseline = require("ntf.core.mutation.baseline")
-  local oneline = require("ntf.core.controller.report").oneline
+  local report = require("ntf.core.controller.report")
   local mutant = assert(opts.mutation_mutant)
   local entry = baseline.build({
     path = mutant.path,
     row = mutant.row,
+    col = mutant.col,
     operator = mutant.operator,
-    col = opts.mutation_col,
+    replacement = opts.mutation_replacement,
     rationale = assert(opts.mutation_rationale),
     invariant_spec = opts.mutation_invariant_spec,
   }, vim.fn.getcwd())
@@ -38,13 +39,11 @@ local function add_baseline(opts, config)
   config.baseline = entries
   require("ntf.core.mutation.config").write(opts.mutation_config, config)
   io.stdout:write(
-    ("added to %s: %s:%d:%s %s -> %s\n"):format(
+    ("added to %s: %s %s -> %s\n"):format(
       opts.mutation_config,
-      entry.path,
-      mutant.row,
-      entry.operator,
-      oneline(entry.original),
-      oneline(entry.replacement)
+      report.locator(entry.path, { row = mutant.row, col = entry.col, operator = entry.operator }),
+      report.oneline(entry.original),
+      report.oneline(entry.replacement)
     )
   )
   return 0

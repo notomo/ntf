@@ -148,13 +148,13 @@ run_ntf({
   "baseline",
   "add",
   "--config=spec/mutation.json",
-  "--mutant=lua/mymod.lua:3:perturb-number",
+  "--mutant=lua/mymod.lua:3:13:perturb-number",
   "--rationale=" .. rationale,
   "--invariant-spec=" .. invariant_spec,
 }, { cwd = project_dir })
 local mutation_baseline_add_command = table.concat({
   "ntf mutation baseline add --config=spec/mutation.json \\",
-  "  --mutant=lua/mymod.lua:3:perturb-number \\",
+  "  --mutant=lua/mymod.lua:3:13:perturb-number \\",
   ("  --rationale='%s' \\"):format(rationale),
   ("  --invariant-spec='%s'"):format(invariant_spec),
 }, "\n")
@@ -460,18 +460,19 @@ file — running no test, since what it writes is the claim that no test can tel
 the difference:]],
           util.help_code_block(mutation_baseline_add_command, { language = "sh" }),
           [[
-A report spells every mutant it lists as `PATH:ROW:OPERATOR`, which is what
-`--mutant` takes, so naming one is a copy rather than a translation. `--col` is
-only needed when one line holds more than one of that operator's mutants, and
-the report is what says so: it prints the `--col` to pass on those lines and on
-no others. Without it, such a line is answered with the columns to choose from
-rather than guessed at. The `baseline` entry shown above is what that command
-wrote, and the file stays a plain document written in one shape, so editing it
-by hand remains first-class. An entry names its mutant by the line's text
-rather than its number: it keeps matching while the code merely moves, and when
-the marked line itself changes the run fails, listing the entry as LOST — the
-judgement has to be made again, by fixing the entry or deleting it. The
-`rationale` is required; it is what that later judgement starts from.
+A report spells every mutant it lists as `PATH:ROW:COL:OPERATOR`, the same name
+`ntf mutation list` prints and the one `--mutant` takes, so naming one is a copy
+rather than a translation. `--replacement` is only needed where a single
+position holds more than one of that operator's mutants, which is the forced
+branch that has a mutant per outcome; such a position is answered with the
+replacements to choose from rather than guessed at. The `baseline` entry shown
+above is what that command wrote, and the file stays a plain document written in
+one shape, so editing it by hand remains first-class. An entry names its mutant
+by the line's text rather than its number: it keeps matching while the code
+merely moves, and when the marked line itself changes the run fails, listing the
+entry as LOST — the judgement has to be made again, by fixing the entry or
+deleting it. The `rationale` is required; it is what that later judgement starts
+from.
 
 A rationale usually rests on a fact from somewhere else — what the callers pass,
 what shape another module hands over, what the runtime does with a value. That

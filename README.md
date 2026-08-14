@@ -122,12 +122,12 @@ Usage: ntf mutation baseline add [options]
 write the entry for one mutant into the baseline, leaving the tests unrun
 
 Options:
-  --config=FILE               the mutation policy file to write the entry into, under its baseline
-  --mutant=PATH:ROW:OPERATOR  the mutant to write a baseline entry for, spelled as a report prints it
-  --col=N                     the mutant's 0-based start column, needed only when its line holds more than one of the operator's mutants
-  --rationale=TEXT            why no test can detect the mutant, which is what a later judgement starts from
-  --invariant-spec=NAME       full name of the test that fails once the rationale stops holding
-  -h, --help                  show this help
+  --config=FILE                   the mutation policy file to write the entry into, under its baseline
+  --mutant=PATH:ROW:COL:OPERATOR  the mutant to write a baseline entry for, spelled as a report prints it
+  --replacement=TEXT              what the mutant puts in place of the original, needed only when its position holds more than one of the operator's mutants
+  --rationale=TEXT                why no test can detect the mutant, which is what a later judgement starts from
+  --invariant-spec=NAME           full name of the test that fails once the rationale stops holding
+  -h, --help                      show this help
 ```
 
 ## Writing specs

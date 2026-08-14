@@ -29,7 +29,6 @@ local function record(path, row, status, mutant)
       end_byte = 1,
       original = "<",
       replacement = "<=",
-      shares_row = false,
     }, mutant or {}),
     status = status,
   }
@@ -62,7 +61,7 @@ describe("ntf.core.mutation.report.summary", function()
 
     assert.match("Mutation: 50%.0%% %(2/4 mutants detected%), 52%.0s elapsed\n", text)
     assert.match("1 killed  1 timeout  1 survived  1 no coverage\n", text)
-    assert.match("SURVIVED lua/a%.lua:3:swap%-relational < %-> <=", text)
+    assert.match("SURVIVED lua/a%.lua:3:0:swap%-relational < %-> <=", text)
     assert.match("NO COVERAGE lua/b%.lua:4", text)
     local detected_mutant = "lua/a%.lua:1"
     assert.no.match(detected_mutant, text)
@@ -93,11 +92,11 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("SURVIVED /other/b%.lua:2", text)
   end)
 
-  it("names a mutant by its column too when its row holds another of the operator", function()
+  it("tells two mutants of one row apart by their columns", function()
     local summary = {
       records = {
-        record(abs("lua/a.lua"), 1, "survived", { col = 12, shares_row = true }),
-        record(abs("lua/a.lua"), 2, "survived", { col = 4 }),
+        record(abs("lua/a.lua"), 1, "survived", { col = 12 }),
+        record(abs("lua/a.lua"), 1, "survived", { col = 4 }),
       },
       counts = {
         killed = 0,
@@ -115,9 +114,8 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
-    assert.match(vim.pesc("SURVIVED lua/a.lua:1:swap-relational --col=12 < -> <="), text)
-    local unshared_row_naming_no_column = vim.pesc("SURVIVED lua/a.lua:2:swap-relational < -> <=")
-    assert.match(unshared_row_naming_no_column, text)
+    assert.match(vim.pesc("SURVIVED lua/a.lua:1:12:swap-relational < -> <="), text)
+    assert.match(vim.pesc("SURVIVED lua/a.lua:1:4:swap-relational < -> <="), text)
   end)
 
   it("lists a mutant whose source spans lines on one line, cut to a readable width", function()
@@ -156,15 +154,15 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
-    assert.match(vim.pesc("SURVIVED lua/a.lua:1:delete-call f( a ) -> do end\n"), text)
+    assert.match(vim.pesc("SURVIVED lua/a.lua:1:0:delete-call f( a ) -> do end\n"), text)
     assert.match(
       vim.pesc(
-        "SURVIVED lua/a.lua:2:delete-call vim.iter(collected_items):each(function(item) print(item.na… -> do end\n"
+        "SURVIVED lua/a.lua:2:0:delete-call vim.iter(collected_items):each(function(item) print(item.na… -> do end\n"
       ),
       text
     )
     local text_the_width_leaves_whole =
-      vim.pesc(("SURVIVED lua/a.lua:3:delete-call %s -> do end\n"):format(sixty_characters))
+      vim.pesc(("SURVIVED lua/a.lua:3:0:delete-call %s -> do end\n"):format(sixty_characters))
     assert.match(text_the_width_leaves_whole, text)
   end)
 
@@ -339,7 +337,7 @@ describe("ntf.core.mutation.report.summary", function()
 
     assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
     assert.match("1 baseline killable", text)
-    assert.match("BASELINE KILLABLE lua/a%.lua:2:swap%-relational < %-> <=", text)
+    assert.match("BASELINE KILLABLE lua/a%.lua:2:0:swap%-relational < %-> <=", text)
   end)
 
   it("names the test that killed a baseline entry, since every covering trial ran", function()
@@ -364,7 +362,7 @@ describe("ntf.core.mutation.report.summary", function()
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
 
     assert.match(
-      'BASELINE KILLABLE lua/a%.lua:2:swap%-relational < %-> <= killed by "ntf%.core%.mod keeps a and b apart"',
+      'BASELINE KILLABLE lua/a%.lua:2:0:swap%-relational < %-> <= killed by "ntf%.core%.mod keeps a and b apart"',
       text
     )
   end)
@@ -393,7 +391,7 @@ describe("ntf.core.mutation.report.summary", function()
     local text = report.summary(summary, root, { color = false, elapsed = 12.34 })
 
     assert.match("Baseline: 2/3 entries re%-run, 12%.3s elapsed\n", text)
-    assert.match("BASELINE KILLABLE lua/a%.lua:3:swap%-relational < %-> <=", text)
+    assert.match("BASELINE KILLABLE lua/a%.lua:3:0:swap%-relational < %-> <=", text)
     local score_line = "Mutation:"
     assert.no.match(score_line, text)
   end)

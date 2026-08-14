@@ -2,6 +2,7 @@ local controller_report = require("ntf.core.controller.report")
 local painter = controller_report.painter
 local duration = controller_report.duration
 local oneline = controller_report.oneline
+local locator = controller_report.locator
 
 local M = {}
 
@@ -71,22 +72,15 @@ function M.summary(summary, cwd, opts)
     local listed = LISTED[record.status]
     if listed then
       local mutant = record.mutant
-      local col = ""
-      if mutant.shares_row then
-        col = (" --col=%d"):format(mutant.col)
-      end
       local killer = ""
       if record.killed_by then
         killer = (" killed by %q"):format(record.killed_by)
       end
       table.insert(
         lines,
-        ("%s %s:%d:%s%s %s -> %s%s"):format(
+        ("%s %s %s -> %s%s"):format(
           paint(listed.color, listed.label),
-          relative(mutant.path, cwd),
-          mutant.row,
-          mutant.operator,
-          col,
+          locator(relative(mutant.path, cwd), mutant),
           oneline(mutant.original),
           oneline(mutant.replacement),
           killer

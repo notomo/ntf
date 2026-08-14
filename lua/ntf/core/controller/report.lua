@@ -135,6 +135,13 @@ function M.oneline(text)
   return vim.fn.strcharpart(single, 0, TEXT_LIMIT - 1) .. "…"
 end
 
+--- @param relative_path string working-directory-relative path of the mutated file
+--- @param mutant { row: integer, col: integer, operator: string }
+--- @return string # the name every listing prints a mutant under, which is also what `--mutant` spells
+function M.locator(relative_path, mutant)
+  return ("%s:%d:%d:%s"):format(relative_path, mutant.row, mutant.col, mutant.operator)
+end
+
 --- @param seconds number
 --- @return string # ms below a second, where one decimal of seconds is all zeroes
 function M.duration(seconds)

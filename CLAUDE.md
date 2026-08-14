@@ -20,9 +20,10 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
   undetectable — add a `baseline` entry with its rationale to `spec/mutation.json`,
   the one mutation policy file (`--config`), with
-  `$(NTF) mutation baseline add --config=spec/mutation.json --mutant=PATH:ROW:OPERATOR --rationale=...`,
+  `$(NTF) mutation baseline add --config=spec/mutation.json --mutant=PATH:ROW:COL:OPERATOR --rationale=...`,
   which writes the entry from the mutant the report names and runs no test
-  (add `--col` only when the line holds more than one of that operator's mutants).
+  (add `--replacement` only when that position holds more than one of the
+  operator's mutants, as a forced branch does).
   When that rationale rests on a fact from another module or from the runtime,
   pass `--invariant-spec` naming the test that pins the fact — the run fails as
   UNPINNED BASELINE once no test of that name passes.

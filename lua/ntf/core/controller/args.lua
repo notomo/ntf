@@ -21,8 +21,8 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
 --- @field mutation_results string mutation results output path (JSON)
---- @field mutation_mutant { path: string, row: integer, operator: string }? the mutant a baseline entry is written for
---- @field mutation_col integer? 0-based start column, naming one of several mutants a row holds
+--- @field mutation_mutant { path: string, row: integer, col: integer, operator: string }? the mutant a baseline entry is written for
+--- @field mutation_replacement string? what the mutant puts in place of the original, naming one of several mutants a position holds
 --- @field mutation_rationale string? why no test can detect the mutant the entry is written for
 --- @field mutation_invariant_spec string? full name of the test that fails once that rationale stops holding
 --- @field help boolean show usage and exit
@@ -211,29 +211,30 @@ local results = {
 --- @type NtfFlag
 local mutant = {
   name = "--mutant",
-  value = "PATH:ROW:OPERATOR",
+  value = "PATH:ROW:COL:OPERATOR",
   description = "the mutant to write a baseline entry for, spelled as a report prints it",
   set = function(opts, value)
     --- @cast value string
-    local path, row, operator = value:match("^(.+):(%d+):([%w-]+)$")
+    local path, row, col, operator = value:match("^(.+):(%d+):(%d+):([%w-]+)$")
     if not path then
-      return "invalid --mutant value (expected PATH:ROW:OPERATOR)"
+      return "invalid --mutant value (expected PATH:ROW:COL:OPERATOR)"
     end
-    opts.mutation_mutant = { path = path, row = assert(tonumber(row)), operator = operator }
+    opts.mutation_mutant = {
+      path = path,
+      row = assert(tonumber(row)),
+      col = assert(tonumber(col)),
+      operator = operator,
+    }
   end,
 }
 
 --- @type NtfFlag
-local col = {
-  name = "--col",
-  value = "N",
-  description = "the mutant's 0-based start column, needed only when its line holds more than one of the operator's mutants",
+local replacement = {
+  name = "--replacement",
+  value = "TEXT",
+  description = "what the mutant puts in place of the original, needed only when its position holds more than one of the operator's mutants",
   set = function(opts, value)
-    local n = tonumber(value)
-    if n == nil or n < 0 then
-      return "invalid --col value (expected a column >= 0)"
-    end
-    opts.mutation_col = n
+    opts.mutation_replacement = value
   end,
 }
 
@@ -356,13 +357,13 @@ local mutation_baseline_add_command = {
   name = "add",
   description = "write the entry for one mutant into the baseline, leaving the tests unrun",
   id = "mutation.baseline.add",
-  flags = command_flags({ written_config, mutant, col, rationale, invariant_spec }),
+  flags = command_flags({ written_config, mutant, replacement, rationale, invariant_spec }),
   validate = function(opts)
     if not opts.mutation_config then
       return "baseline add requires --config, which is the file the entry is written into"
     end
     if not opts.mutation_mutant then
-      return "baseline add requires --mutant=PATH:ROW:OPERATOR, which names the mutant the entry answers for"
+      return "baseline add requires --mutant=PATH:ROW:COL:OPERATOR, which names the mutant the entry answers for"
     end
     if not opts.mutation_rationale then
       return "baseline add requires --rationale, which is what a later judgement starts from"
@@ -607,7 +608,7 @@ function M.parse(argv)
     mutation_verify_baseline_only = false,
     mutation_results = "ntf-mutation.json",
     mutation_mutant = nil,
-    mutation_col = nil,
+    mutation_replacement = nil,
     mutation_rationale = nil,
     mutation_invariant_spec = nil,
     help = false,

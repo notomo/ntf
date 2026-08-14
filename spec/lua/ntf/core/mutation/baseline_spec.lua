@@ -89,6 +89,7 @@ describe("ntf.core.mutation.baseline.build", function()
     return vim.tbl_extend("force", {
       path = "lua/mod.lua",
       row = 3,
+      col = 7,
       operator = "swap-relational",
       rationale = "min(1, 2) is 1 either way",
     }, overrides or {})
@@ -101,7 +102,7 @@ describe("ntf.core.mutation.baseline.build", function()
     return helper.test_data.full_path
   end
 
-  it("writes the mutant the row holds as an entry", function()
+  it("writes the mutant the position holds as an entry", function()
     local cwd = project()
 
     local built = baseline.build(request(), cwd)
@@ -160,13 +161,13 @@ describe("ntf.core.mutation.baseline.build", function()
     assert.equal("cannot read lua/missing.lua", err)
   end)
 
-  it("rejects a row holding no mutant of the operator, listing what it does hold", function()
+  it("rejects a position holding no mutant of the operator, listing what the row does hold", function()
     local cwd = project()
 
     local err = baseline.build(request({ operator = "perturb-number" }), cwd)
 
-    assert.match("lua/mod%.lua:3 has no perturb%-number mutant", err)
-    assert.match("\n  %-%-col=7 swap%-relational < %-> <=", err)
+    assert.match("lua/mod%.lua:3:7:perturb%-number names no mutant", err)
+    assert.match("\n  lua/mod%.lua:3:7:swap%-relational < %-> <=", err)
   end)
 
   it("lists nothing for a row holding no mutant at all", function()
@@ -174,16 +175,7 @@ describe("ntf.core.mutation.baseline.build", function()
 
     local err = baseline.build(request({ row = 1 }), cwd)
 
-    assert.equal("lua/mod.lua:1 has no swap-relational mutant", err)
-  end)
-
-  it("rejects a row holding several of the operator's mutants, listing them with the column to name one by", function()
-    local cwd = project()
-
-    local err = baseline.build(request({ row = 9 }), cwd)
-
-    assert.match("lua/mod%.lua:9 has 2 swap%-relational mutants; name one with %-%-col", err)
-    assert.match("\n  %-%-col=11 swap%-relational < %-> <=\n  %-%-col=21 swap%-relational < %-> <=", err)
+    assert.equal("lua/mod.lua:1:7:swap-relational names no mutant", err)
   end)
 
   it("takes the mutant the col names out of the several a row holds", function()
@@ -195,13 +187,34 @@ describe("ntf.core.mutation.baseline.build", function()
     assert.equal("  return a < b and c < d", built.line)
   end)
 
-  it("rejects a col holding no mutant of the operator, listing the ones the row does hold", function()
+  it("rejects a position holding several mutants, listing them with the replacement to take one by", function()
     local cwd = project()
 
-    local err = baseline.build(request({ row = 9, col = 12 }), cwd)
+    local err = baseline.build(request({ col = 5, operator = "force-branch" }), cwd)
 
-    assert.match("lua/mod%.lua:9 has no swap%-relational mutant at col 12", err)
-    assert.match("\n  %-%-col=11 swap%-relational < %-> <=", err)
+    assert.match("lua/mod%.lua:3:5:force%-branch names 2 mutants; take one with %-%-replacement", err)
+    assert.match(
+      "\n  lua/mod%.lua:3:5:force%-branch a < b %-> false\n  lua/mod%.lua:3:5:force%-branch a < b %-> true",
+      err
+    )
+  end)
+
+  it("takes the mutant the replacement names out of the several a position holds", function()
+    local cwd = project()
+
+    local built = baseline.build(request({ col = 5, operator = "force-branch", replacement = "true" }), cwd)
+
+    assert.equal("true", built.replacement)
+    assert.equal("a < b", built.original)
+  end)
+
+  it("rejects a replacement no mutant at the position puts in, listing the ones it does", function()
+    local cwd = project()
+
+    local err = baseline.build(request({ col = 5, operator = "force-branch", replacement = "nil" }), cwd)
+
+    assert.match("lua/mod%.lua:3:5:force%-branch puts nothing like nil in place of the original", err)
+    assert.match("\n  lua/mod%.lua:3:5:force%-branch a < b %-> false", err)
   end)
 
   it("holds the built entry to what the config accepts", function()

@@ -1,6 +1,8 @@
 local tree = require("ntf.core.tree")
 local operators = require("ntf.core.mutation.operators")
-local oneline = require("ntf.core.controller.report").oneline
+local controller_report = require("ntf.core.controller.report")
+local oneline = controller_report.oneline
+local locator = controller_report.locator
 
 local M = {}
 
@@ -52,22 +54,19 @@ end
 --- @class NtfMutationBaselineRequest what names the mutant an entry is written for
 --- @field path string the file it is in, in any form a command line spells
 --- @field row integer 1-based line it starts on
+--- @field col integer 0-based start column
 --- @field operator string
---- @field col integer? 0-based start column, naming one of several mutants the row holds
+--- @field replacement string? what it puts in place of the original, naming one of several mutants the position holds
 --- @field rationale string why no test can detect it
 --- @field invariant_spec string? full name of the test that fails once the rationale stops holding
 
+--- @param relative string working-directory-relative path every site is in
 --- @param sites NtfMutantSite[]
 --- @return string # each site on its own indented line, so a message can end with the candidates it rejected
-local function listed(sites)
+local function listed(relative, sites)
   return table.concat(
     vim.tbl_map(function(site)
-      return ("\n  --col=%d %s %s -> %s"):format(
-        site.col,
-        site.operator,
-        oneline(site.original),
-        oneline(site.replacement)
-      )
+      return ("\n  %s %s -> %s"):format(locator(relative, site), oneline(site.original), oneline(site.replacement))
     end, sites),
     ""
   )
@@ -94,35 +93,31 @@ function M.build(request, cwd)
   local on_row = vim.tbl_filter(function(site)
     return site.row == request.row
   end, operators.enumerate(src))
-  local of_operator = vim.tbl_filter(function(site)
-    return site.operator == request.operator
+  local at_position = vim.tbl_filter(function(site)
+    return site.col == request.col and site.operator == request.operator
   end, on_row)
-  if #of_operator == 0 then
-    return ("%s:%d has no %s mutant%s"):format(relative, request.row, request.operator, listed(on_row))
+  if #at_position == 0 then
+    return ("%s names no mutant%s"):format(locator(relative, request), listed(relative, on_row))
   end
 
-  local candidates = of_operator
-  if request.col then
+  local candidates = at_position
+  if request.replacement then
     candidates = vim.tbl_filter(function(site)
-      return site.col == request.col
-    end, of_operator)
+      return site.replacement == request.replacement
+    end, at_position)
     if #candidates == 0 then
-      return ("%s:%d has no %s mutant at col %d%s"):format(
-        relative,
-        request.row,
-        request.operator,
-        request.col,
-        listed(of_operator)
+      return ("%s puts nothing like %s in place of the original%s"):format(
+        locator(relative, request),
+        oneline(request.replacement),
+        listed(relative, at_position)
       )
     end
   end
   if #candidates > 1 then
-    return ("%s:%d has %d %s mutants; name one with --col%s"):format(
-      relative,
-      request.row,
+    return ("%s names %d mutants; take one with --replacement%s"):format(
+      locator(relative, request),
       #candidates,
-      request.operator,
-      listed(candidates)
+      listed(relative, candidates)
     )
   end
 

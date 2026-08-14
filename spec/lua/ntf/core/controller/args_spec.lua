@@ -470,7 +470,7 @@ describe("ntf.core.controller.args.parse", function()
         "baseline",
         "add",
         "--config=" .. config,
-        "--mutant=" .. mutated .. ":1:perturb-number",
+        "--mutant=" .. mutated .. ":1:7:perturb-number",
         "--rationale=nothing depends on the exact value",
       }, extra or {})
     end
@@ -481,26 +481,34 @@ describe("ntf.core.controller.args.parse", function()
       assert.equal("mutation.baseline.add", opts.command)
       assert.match("lua/mod%.lua$", opts.mutation_mutant.path)
       assert.equal(1, opts.mutation_mutant.row)
+      assert.equal(7, opts.mutation_mutant.col)
       assert.equal("perturb-number", opts.mutation_mutant.operator)
       assert.equal("nothing depends on the exact value", opts.mutation_rationale)
       assert.same({}, opts.paths)
     end)
 
-    it("leaves the col unnamed without --col", function()
-      assert.is_nil(args.parse(argv()).mutation_col)
-    end)
-
-    it("takes the col naming one of several mutants a line holds", function()
-      assert.equal(7, args.parse(argv({ "--col=7" })).mutation_col)
-    end)
-
     it("takes the first column of a line, which is column zero", function()
-      assert.equal(0, args.parse(argv({ "--col=0" })).mutation_col)
+      local config = helper.test_data:create_file("mutation.json", "{}")
+      local mutated = helper.test_data:create_file("lua/mod.lua", "return 1")
+
+      local opts = args.parse({
+        "mutation",
+        "baseline",
+        "add",
+        "--config=" .. config,
+        "--mutant=" .. mutated .. ":1:0:perturb-number",
+        "--rationale=x",
+      })
+
+      assert.equal(0, opts.mutation_mutant.col)
     end)
 
-    it("rejects a col that is not a column", function()
-      assert.match("invalid %-%-col value", args.parse(argv({ "--col=here" })))
-      assert.match("invalid %-%-col value", args.parse(argv({ "--col=-1" })))
+    it("leaves the replacement unnamed without --replacement", function()
+      assert.is_nil(args.parse(argv()).mutation_replacement)
+    end)
+
+    it("takes the replacement naming one of several mutants a position holds", function()
+      assert.equal("false", args.parse(argv({ "--replacement=false" })).mutation_replacement)
     end)
 
     it("takes the test the rationale rests on", function()
@@ -513,10 +521,10 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_nil(args.parse(argv()).mutation_invariant_spec)
     end)
 
-    it("rejects a --mutant that does not name a row and an operator", function()
+    it("rejects a --mutant that does not name a position and an operator", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
-      local err = args.parse({ "mutation", "baseline", "add", "--config=" .. file, "--mutant=lua/mod.lua" })
+      local err = args.parse({ "mutation", "baseline", "add", "--config=" .. file, "--mutant=lua/mod.lua:1" })
 
       assert.match("invalid %-%-mutant value", err)
     end)
@@ -530,7 +538,7 @@ describe("ntf.core.controller.args.parse", function()
         "baseline",
         "add",
         "--config=" .. file,
-        "--mutant=" .. mutated .. ":1:perturb-numbers",
+        "--mutant=" .. mutated .. ":1:7:perturb-numbers",
         "--rationale=x",
       })
 
@@ -545,7 +553,7 @@ describe("ntf.core.controller.args.parse", function()
         "baseline",
         "add",
         "--config=" .. file,
-        "--mutant=/no/such/mod.lua:1:perturb-number",
+        "--mutant=/no/such/mod.lua:1:7:perturb-number",
         "--rationale=x",
       })
 
@@ -559,7 +567,7 @@ describe("ntf.core.controller.args.parse", function()
         "mutation",
         "baseline",
         "add",
-        "--mutant=" .. mutated .. ":1:perturb-number",
+        "--mutant=" .. mutated .. ":1:7:perturb-number",
         "--rationale=x",
       })
 
@@ -583,7 +591,7 @@ describe("ntf.core.controller.args.parse", function()
         "baseline",
         "add",
         "--config=" .. file,
-        "--mutant=" .. mutated .. ":1:perturb-number",
+        "--mutant=" .. mutated .. ":1:7:perturb-number",
       })
 
       assert.match("baseline add requires %-%-rationale", err)
