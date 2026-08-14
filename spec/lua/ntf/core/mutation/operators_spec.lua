@@ -10,6 +10,7 @@ local function f(a, b)
   end
   g(#a)
   h.x = a
+  while a do end
   return a < b or false
 end
 return f
@@ -186,7 +187,7 @@ end
     local sites = summarize([[while a < b do end]])
 
     assert.same({
-      { operator = "force-branch", row = 1, original = "a < b", replacement = "false" },
+      { operator = "force-loop", row = 1, original = "a < b", replacement = "false" },
       { operator = "swap-relational", row = 1, original = "<", replacement = "<=" },
     }, sites)
   end)
@@ -195,7 +196,7 @@ end
     local sites = summarize([[repeat until a < b]])
 
     assert.same({
-      { operator = "force-branch", row = 1, original = "a < b", replacement = "true" },
+      { operator = "force-loop", row = 1, original = "a < b", replacement = "true" },
       { operator = "swap-relational", row = 1, original = "<", replacement = "<=" },
     }, sites)
   end)
@@ -209,13 +210,13 @@ for x in f do end
 ]])
 
     assert.same({
-      { operator = "force-branch", row = 1, original = "i = 1, n", replacement = "_ = 1, 0" },
+      { operator = "force-loop", row = 1, original = "i = 1, n", replacement = "_ = 1, 0" },
       { operator = "perturb-number", row = 1, original = "1", replacement = "2" },
-      { operator = "force-branch", row = 2, original = "i = 1, n, 2", replacement = "_ = 1, 0" },
+      { operator = "force-loop", row = 2, original = "i = 1, n, 2", replacement = "_ = 1, 0" },
       { operator = "perturb-number", row = 2, original = "1", replacement = "2" },
       { operator = "perturb-number", row = 2, original = "2", replacement = "3" },
-      { operator = "force-branch", row = 3, original = "k, v in pairs(t)", replacement = "_ in pairs({})" },
-      { operator = "force-branch", row = 4, original = "x in f", replacement = "_ in pairs({})" },
+      { operator = "force-loop", row = 3, original = "k, v in pairs(t)", replacement = "_ in pairs({})" },
+      { operator = "force-loop", row = 4, original = "x in f", replacement = "_ in pairs({})" },
     }, sites)
   end)
 
@@ -224,7 +225,7 @@ for x in f do end
 
     local site = operators.enumerate(src)[1]
 
-    assert.equal("force-branch", site.operator)
+    assert.equal("force-loop", site.operator)
     assert.equal("for _ = 1, 0 do f(i) end", splice.apply(src, site))
   end)
 
@@ -494,7 +495,7 @@ local _ = a
 
   it("returns sites whose mutated source still compiles", function()
     local sites = operators.enumerate(EVERY_OPERATOR_SOURCE)
-    assert.equal(17, #sites)
+    assert.equal(18, #sites)
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(EVERY_OPERATOR_SOURCE, site))
       assert(loadstring(mutated), ("uncompilable mutant: %s"):format(site.operator))

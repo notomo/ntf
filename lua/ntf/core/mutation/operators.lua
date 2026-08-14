@@ -53,6 +53,10 @@ M.operators = {
     example = "if a then end",
   },
   {
+    name = "force-loop",
+    example = "while a do end",
+  },
+  {
     name = "drop-call",
     example = "f()",
   },
@@ -184,16 +188,15 @@ local RETURNING_FUNCTION = {
 -- WHY: forcing a decision to each outcome is the branch-coverage analogue a line
 -- hook cannot reach; a loop only gets the outcome that terminates it, since the
 -- other spins forever to prove nothing a coverage hit does not already, while
--- burning a whole trial timeout. `while` exits on false, `repeat` on true, and a
--- `for` by iterating none.
+-- burning a whole trial timeout. `while` exits on false and `repeat` on true.
 -- NOT: emitting both for a loop and leaning on the runner's trial timeout to
 -- bound the infinite one.
---- @type table<string, string[]> # the decision node types, and what their condition is forced to
-local FORCE_BRANCH = {
-  if_statement = { "false", "true" },
-  elseif_statement = { "false", "true" },
-  while_statement = { "false" },
-  repeat_statement = { "true" },
+--- @type table<string, { operator: string, forces: string[] }> # the decision node types, and what their condition is forced to
+local FORCED_CONDITION = {
+  if_statement = { operator = "force-branch", forces = { "false", "true" } },
+  elseif_statement = { operator = "force-branch", forces = { "false", "true" } },
+  while_statement = { operator = "force-loop", forces = { "false" } },
+  repeat_statement = { operator = "force-loop", forces = { "true" } },
 }
 
 --- @type table<string, string> # the `for` clause types, and the clause of theirs that iterates none
@@ -315,14 +318,14 @@ end
 --- @param node TSNode a decision node whose condition is forced to each outcome, or a `for` clause forced to iterate none
 --- @param src string the full source text
 --- @param sites NtfMutantSite[]
-local function force_branch_sites(node, src, sites)
+local function forced_sites(node, src, sites)
   local empty = FORCE_EMPTY_LOOP[node:type()]
   if empty then
-    table.insert(sites, site(node, "force-branch", vim.treesitter.get_node_text(node, src), empty))
+    table.insert(sites, site(node, "force-loop", vim.treesitter.get_node_text(node, src), empty))
     return
   end
-  local forces = FORCE_BRANCH[node:type()]
-  if not forces then
+  local forced = FORCED_CONDITION[node:type()]
+  if not forced then
     return
   end
   local cond = node:field("condition")[1]
@@ -330,8 +333,8 @@ local function force_branch_sites(node, src, sites)
     return
   end
   local text = vim.treesitter.get_node_text(cond, src)
-  for _, to in ipairs(forces) do
-    table.insert(sites, site(cond, "force-branch", text, to))
+  for _, to in ipairs(forced.forces) do
+    table.insert(sites, site(cond, forced.operator, text, to))
   end
 end
 
@@ -363,7 +366,7 @@ function M.enumerate(src)
       end
     end
 
-    force_branch_sites(node, src, sites)
+    forced_sites(node, src, sites)
 
     for child in node:iter_children() do
       if child:named() then

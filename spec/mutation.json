@@ -420,7 +420,7 @@
     {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 12,
-      "operator": "force-branch",
+      "operator": "force-loop",
       "original": "_, exclude in ipairs(excludes)",
       "replacement": "_ in pairs({})",
       "line": "        for _, exclude in ipairs(excludes) do",

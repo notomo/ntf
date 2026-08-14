@@ -315,7 +315,11 @@ local operator_descriptions = {
   { label = "drop-negation", description = "a test has to exercise a nonzero operand and depend on its sign" },
   { label = "perturb-number", description = "a test has to depend on the exact value, not on its being non-zero" },
   { label = "perturb-length", description = "a test has to depend on the exact count, not on its being non-zero" },
-  { label = "force-branch", description = "each side needs a test; a loop is only forced to the outcome that exits" },
+  { label = "force-branch", description = "each outcome needs a test that depends on which side ran" },
+  {
+    label = "force-loop",
+    description = "a test has to depend on the body running, which a repeat still does once",
+  },
   { label = "drop-call", description = "a test has to observe what the call does, not merely reach its line" },
   { label = "drop-assignment", description = "a test has to observe what the assignment stores, not merely reach it" },
   {

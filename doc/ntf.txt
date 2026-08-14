@@ -250,7 +250,10 @@ what a test has to do to detect it:
 
   force-branch      if a then end -> if false then end
                     if a then end -> if true then end
-      each side needs a test; a loop is only forced to the outcome that exits
+      each outcome needs a test that depends on which side ran
+
+  force-loop        while a do end -> while false do end
+      a test has to depend on the body running, which a repeat still does once
 
   drop-call         f() -> do end
       a test has to observe what the call does, not merely reach its line

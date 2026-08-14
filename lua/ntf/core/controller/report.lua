@@ -119,9 +119,9 @@ end
 local TEXT_LIMIT = 60
 
 -- WHY: a mutant whose node is a whole statement — every drop-call and
--- drop-assignment, and a force-branch over a wrapped condition — carries the
--- source's own newlines, which would spread one mutant over as many lines as it
--- spans and leave a list unreadable by line.
+-- drop-assignment, and a force-branch or force-loop over a wrapped condition or
+-- clause — carries the source's own newlines, which would spread one mutant over
+-- as many lines as it spans and leave a list unreadable by line.
 -- NOT: taking only the head of the node, which every operator would have to name
 -- a different part of; the text is here to recognize the mutant by, and the
 -- position in front of it is where it is read in full.
