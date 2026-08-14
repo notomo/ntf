@@ -12,69 +12,56 @@ local M = {}
 
 --- @class NtfMutationOperator
 --- @field name string the site's `operator`, as reported and as written in a baseline entry
---- @field description string what a test has to do to detect the mutant
 --- @field example string source whose every site is this operator's, mutated to show the change
 
 --- @type NtfMutationOperator[] # in the order the document lists them
 M.operators = {
   {
     name = "swap-relational",
-    description = "a test has to exercise the boundary value the two disagree on",
     example = "local _ = a <= b",
   },
   {
     name = "swap-logical",
-    description = "a test has to reach operands the two connectives disagree on",
     example = "local _ = a and b",
   },
   {
     name = "swap-arith",
-    description = "a test has to exercise a right operand the two disagree on",
     example = "local _ = a + b * c % d ^ e",
   },
   {
     name = "flip-boolean",
-    description = "a test has to depend on the value, not merely execute the line",
     example = "local _ = true",
   },
   {
     name = "drop-not",
-    description = "a test has to reach the branch the negation decides",
     example = "local _ = not a",
   },
   {
     name = "drop-neg",
-    description = "a test has to exercise a nonzero operand and depend on its sign",
     example = "local _ = -a",
   },
   {
     name = "perturb-number",
-    description = "a test has to depend on the exact value, not on its being non-zero",
     example = "local _ = 1",
   },
   {
     name = "perturb-length",
-    description = "a test has to depend on the exact count, not on its being non-zero",
     example = "local _ = #a",
   },
   {
     name = "force-branch",
-    description = "each side needs a test; a loop is only forced to the outcome that exits",
     example = "if a then end",
   },
   {
     name = "delete-call",
-    description = "a test has to observe what the call does, not merely reach its line",
     example = "f()",
   },
   {
     name = "delete-assign",
-    description = "a test has to observe what the assignment stores, not merely reach it",
     example = "a.b = c",
   },
   {
     name = "drop-return",
-    description = "a test has to depend on what the function answers, not merely reach it",
     example = "function f() return a end",
   },
 }

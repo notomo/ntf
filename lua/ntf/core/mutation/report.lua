@@ -6,14 +6,24 @@ local locator = controller_report.locator
 
 local M = {}
 
-local LISTED = {
+--- @type table<string, { label: string, color: string }> the statuses a record gets a line of its own under
+M.listed = {
   survived = { label = "SURVIVED", color = "red" },
   no_coverage = { label = "NO COVERAGE", color = "yellow" },
   not_applied = { label = "NOT APPLIED", color = "yellow" },
   baseline_killable = { label = "BASELINE KILLABLE", color = "red" },
 }
 
-local COUNT_LABELS = {
+--- @type table<string, string> the lines a config entry the run cannot stand behind is reported under
+M.entry_labels = {
+  unused_exclude = "UNUSED EXCLUDE",
+  unused_exclude_spec = "UNUSED EXCLUDE SPEC",
+  unpinned = "UNPINNED BASELINE",
+  lost = "LOST BASELINE",
+}
+
+--- @type { status: string, label: string, color: string }[] the statuses the count line tallies, in its order
+M.count_labels = {
   { status = "killed", label = "killed", color = "green" },
   { status = "timeout", label = "timeout", color = "green" },
   { status = "survived", label = "survived", color = "red" },
@@ -58,7 +68,7 @@ function M.summary(summary, cwd, opts)
     table.insert(lines, ("Mutation: %.1f%% (%d/%d mutants detected)"):format(summary.score, detected, scoreable))
 
     local parts = {}
-    for _, entry in ipairs(COUNT_LABELS) do
+    for _, entry in ipairs(M.count_labels) do
       local count = counts[entry.status]
       if count > 0 then
         table.insert(parts, paint(entry.color, ("%d %s"):format(count, entry.label)))
@@ -69,7 +79,7 @@ function M.summary(summary, cwd, opts)
   lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 
   for _, record in ipairs(summary.records) do
-    local listed = LISTED[record.status]
+    local listed = M.listed[record.status]
     if listed then
       local mutant = record.mutant
       local killer = ""
@@ -90,18 +100,18 @@ function M.summary(summary, cwd, opts)
   end
 
   for _, entry in ipairs(summary.unused_excludes or {}) do
-    table.insert(lines, ("%s %s"):format(paint("red", "UNUSED EXCLUDE"), entry.path))
+    table.insert(lines, ("%s %s"):format(paint("red", M.entry_labels.unused_exclude), entry.path))
   end
 
   for _, entry in ipairs(summary.unused_spec_excludes or {}) do
-    table.insert(lines, ("%s %s"):format(paint("red", "UNUSED EXCLUDE SPEC"), entry.path))
+    table.insert(lines, ("%s %s"):format(paint("red", M.entry_labels.unused_exclude_spec), entry.path))
   end
 
   for _, entry in ipairs(summary.unpinned or {}) do
     table.insert(
       lines,
       ("%s %s %s: %s -> %s wants a passing %q"):format(
-        paint("red", "UNPINNED BASELINE"),
+        paint("red", M.entry_labels.unpinned),
         entry.path,
         entry.operator,
         oneline(entry.original),
@@ -115,7 +125,7 @@ function M.summary(summary, cwd, opts)
     table.insert(
       lines,
       ("%s %s %s: %s -> %s at %q"):format(
-        paint("red", "LOST BASELINE"),
+        paint("red", M.entry_labels.lost),
         entry.path,
         entry.operator,
         oneline(entry.original),

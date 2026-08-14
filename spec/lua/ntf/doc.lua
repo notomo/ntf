@@ -5,6 +5,7 @@ local args = require("ntf.core.controller.args")
 local operators = require("ntf.core.mutation.operators")
 local splice = require("ntf.core.mutation.splice")
 local report = require("ntf.core.mutation.report")
+local config = require("ntf.core.mutation.config")
 local plugin_name = vim.env.PLUGIN_NAME
 
 --- @type string[] every leaf command, of which the docs show only the root's usage
@@ -268,8 +269,67 @@ local assert_keys = function(names, tbl, what)
   local want = vim.list_extend({}, names)
   table.sort(want)
   if not vim.deep_equal(want, got) then
-    error(("the %s the document spells are not the ones in use: %s"):format(what, vim.inspect(got)))
+    error(("the %s the example file carries are not the documented ones: %s"):format(what, vim.inspect(got)))
   end
+end
+
+-- WHY: an implementation that gains a name the document has never heard of is
+-- what a check against the document's own example cannot see, so the names come
+-- from the tables the code itself works from.
+-- NOT: listing the names twice and comparing the document to a copy of itself.
+--- @param names string[] the names the document spells out, in the order it lists them
+--- @param in_use string[] the names the implementation works from
+--- @param what string what the document calls them
+local assert_names = function(names, in_use, what)
+  if not vim.deep_equal(names, in_use) then
+    error(("the %s the document spells are not the ones in use: %s"):format(what, vim.inspect(in_use)))
+  end
+end
+
+--- @param names string[]
+--- @return string[] # a sorted copy, for names no order is meant to be read into
+local sorted = function(names)
+  local copy = vim.list_extend({}, names)
+  table.sort(copy)
+  return copy
+end
+
+--- @param entries { label: string, description: string }[]
+--- @return string[]
+local labels_of = function(entries)
+  return vim
+    .iter(entries)
+    :map(function(entry)
+      return entry.label
+    end)
+    :totable()
+end
+
+--- @type { label: string, description: string }[] what a test has to do to detect each operator's mutant, in the order the document lists them
+local operator_descriptions = {
+  { label = "swap-relational", description = "a test has to exercise the boundary value the two disagree on" },
+  { label = "swap-logical", description = "a test has to reach operands the two connectives disagree on" },
+  { label = "swap-arith", description = "a test has to exercise a right operand the two disagree on" },
+  { label = "flip-boolean", description = "a test has to depend on the value, not merely execute the line" },
+  { label = "drop-not", description = "a test has to reach the branch the negation decides" },
+  { label = "drop-neg", description = "a test has to exercise a nonzero operand and depend on its sign" },
+  { label = "perturb-number", description = "a test has to depend on the exact value, not on its being non-zero" },
+  { label = "perturb-length", description = "a test has to depend on the exact count, not on its being non-zero" },
+  { label = "force-branch", description = "each side needs a test; a loop is only forced to the outcome that exits" },
+  { label = "delete-call", description = "a test has to observe what the call does, not merely reach its line" },
+  { label = "delete-assign", description = "a test has to observe what the assignment stores, not merely reach it" },
+  { label = "drop-return", description = "a test has to depend on what the function answers, not merely reach it" },
+}
+assert_names(
+  labels_of(operator_descriptions),
+  vim.tbl_map(function(operator)
+    return operator.name
+  end, operators.operators),
+  "operator names"
+)
+local description_by_operator = {}
+for _, entry in ipairs(operator_descriptions) do
+  description_by_operator[entry.label] = entry.description
 end
 
 --- @param width integer the document width a line has to fit in
@@ -288,7 +348,7 @@ local operator_list = function(width)
       table.insert(lines, ("%-16s %s -> %s"):format(name, operator.example, mutated))
       name = ""
     end
-    table.insert(lines, "    " .. operator.description)
+    table.insert(lines, "    " .. description_by_operator[operator.name])
 
     local indent = 2
     for _, line in ipairs(lines) do
@@ -301,17 +361,6 @@ local operator_list = function(width)
   return table.concat(blocks, "\n\n")
 end
 
---- @param entries { label: string, description: string }[]
---- @return string[]
-local labels_of = function(entries)
-  return vim
-    .iter(entries)
-    :map(function(entry)
-      return entry.label
-    end)
-    :totable()
-end
-
 --- @type { label: string, description: string }[] the config file's sections
 local config_sections = {
   { label = "version", description = "the policy file format, currently 1 (required)" },
@@ -320,6 +369,20 @@ local config_sections = {
   { label = "exclude", description = "files whose mutants the run leaves out" },
   { label = "exclude_spec", description = "specs never picked as a mutant's trial" },
 }
+local sections_by_key = {}
+for _, section in ipairs(config.sections) do
+  sections_by_key[section.key] = section
+end
+assert_names(
+  labels_of(config_sections),
+  vim.list_extend(
+    { "version", "operators" },
+    vim.tbl_map(function(section)
+      return section.key
+    end, config.sections)
+  ),
+  "config sections"
+)
 assert_keys(labels_of(config_sections), documented, "config sections")
 
 --- @type { label: string, description: string }[] what a baseline entry names its mutant by
@@ -333,6 +396,7 @@ local baseline_fields = {
   { label = "rationale", description = "why no test can detect it (required)" },
   { label = "invariant_spec", description = "full name of the test the rationale rests on" },
 }
+assert_names(labels_of(baseline_fields), sections_by_key.baseline.fields, "baseline entry fields")
 assert_keys(labels_of(baseline_fields), documented.baseline[1], "baseline entry fields")
 
 --- @type { label: string, description: string }[] what an exclude entry answers for
@@ -341,6 +405,7 @@ local exclude_fields = {
   { label = "operators", description = '"all", or the operator names to leave out (required)' },
   { label = "rationale", description = "why its mutants are left out (required)" },
 }
+assert_names(labels_of(exclude_fields), sections_by_key.exclude.fields, "exclude entry fields")
 assert_keys(labels_of(exclude_fields), documented.exclude[1], "exclude entry fields")
 
 --- @type { label: string, description: string }[] what an exclude_spec entry answers for
@@ -348,6 +413,7 @@ local exclude_spec_fields = {
   { label = "path", description = "the spec the entry answers for" },
   { label = "rationale", description = "why it is never a trial (required)" },
 }
+assert_names(labels_of(exclude_spec_fields), sections_by_key.exclude_spec.fields, "exclude_spec entry fields")
 assert_keys(labels_of(exclude_spec_fields), documented.exclude_spec[1], "exclude_spec entry fields")
 
 --- @type { label: string, description: string }[] the lines a mutation run lists a judgement under
@@ -361,6 +427,11 @@ local report_labels = {
   { label = "UNUSED EXCLUDE", description = "an `exclude` entry covering no measurable file" },
   { label = "UNUSED EXCLUDE SPEC", description = "an `exclude_spec` entry covering no spec file" },
 }
+local listed_in_use = vim.tbl_values(report.entry_labels)
+for _, listed in pairs(report.listed) do
+  table.insert(listed_in_use, listed.label)
+end
+assert_names(sorted(labels_of(report_labels)), sorted(listed_in_use), "report labels")
 
 --- @type { label: string, description: string }[] the statuses the count line tallies
 local count_labels = {
@@ -374,6 +445,13 @@ local count_labels = {
   { label = "unadopted", description = "an operator `operators` does not take" },
   { label = "baseline killable", description = "a `baseline` entry a test killed" },
 }
+assert_names(
+  labels_of(count_labels),
+  vim.tbl_map(function(entry)
+    return entry.label
+  end, report.count_labels),
+  "count line labels"
+)
 
 --- @param row integer
 --- @param status string

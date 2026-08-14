@@ -79,7 +79,7 @@ end
 local INDENT = "  "
 
 --- @type { key: string, fields: string[] }[] the sections in the order the document carries them, each with the order its entries spell their fields in
-local SECTIONS = {
+M.sections = {
   {
     key = "baseline",
     fields = { "path", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
@@ -124,7 +124,7 @@ function M.format(config)
     ('%s"version": %d'):format(INDENT, VERSION),
     ('%s"operators": %s'):format(INDENT, encode(config.operators, INDENT)),
   }
-  for _, section in ipairs(SECTIONS) do
+  for _, section in ipairs(M.sections) do
     local entries = config[section.key]
     if #entries > 0 then
       local encoded = vim.tbl_map(function(entry)

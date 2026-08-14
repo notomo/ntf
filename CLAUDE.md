@@ -47,8 +47,13 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   (`ntf mutation --strict --verify-baseline`), so the suite is run once
   rather than once per target to map its coverage. Locally prefer the two
   narrower targets; run this only to reproduce a CI failure
-- `make doc` — only after changing the CLI or the test API; regenerates
-  `README.md` and `doc/ntf.txt`
+- `make doc` — after changing the CLI, the test API, or one of the enumerations
+  the documents spell out: the operators (`core/mutation/operators.lua`), the
+  report labels (`core/mutation/report.lua`), or the config sections and their
+  entry fields (`core/mutation/config.lua`). It regenerates `README.md` and
+  `doc/ntf.txt`, and fails once the names it spells and the ones the
+  implementation works from have parted ways. CI does not run it, so a name
+  added without it goes unanswered until the next regeneration
 
 ## Conventions
 
@@ -63,7 +68,17 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   does not (`mutation baseline add`), which then rejects a path instead of
   discovering specs it never runs; only leading tokens name a command.
 - `README.md` and `doc/ntf.txt` are generated from `spec/lua/ntf/doc.lua`. Edit
-  that, then `make doc`; never hand-edit the outputs.
+  that, then `make doc`; never hand-edit the outputs. Only the root command's
+  usage is shown — a dump of every command's is bulk rather than help — so what
+  the prose names is checked instead: every `--flag` in the outputs has to be one
+  the command tree takes.
+- A documented enumeration keeps its names in `lua/` and its prose in
+  `spec/lua/ntf/doc.lua`, which asserts the two name lists are equal — so a name
+  the implementation gains, not only one it loses, fails `make doc` until its
+  line is written. The engine layer carries no text written for a reader of the
+  manual; `operators.lua` keeps its `example` only because `operators_spec.lua`
+  runs the enumerator against it. Where the program itself prints the text — the
+  flag descriptions `usage()` writes — it stays in `lua/`.
 - `WORKFLOW_DIR` names the directory the shared makefile, its scripts and its
   configs are read from. It defaults to `spec/.shared/`, which `make` clones from
   notomo/workflow (gitignored) on first run, and can instead name a local
