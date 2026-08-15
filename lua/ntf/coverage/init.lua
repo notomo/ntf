@@ -1,5 +1,6 @@
 local stats = require("ntf.core.coverage.stats")
 local coverage_lines = require("ntf.core.coverage.lines")
+local cache_path = require("ntf.core.cache_path")
 local highlight_group = require("ntf.coverage.highlight_group")
 
 local M = {}
@@ -11,8 +12,8 @@ local SIGN = "▌"
 --- @class NtfCoverageDecorateOption
 --- @field enable boolean? when `false`, clear the decoration instead of drawing
 ---   it (default `true`).
---- @field path string? `luacov.stats.out` file to read (default
----   `"./luacov.stats.out"`).
+--- @field path string? `luacov.stats.out` file to read (default: the file
+---   `ntf --coverage` writes for the current directory).
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Decorate a buffer's sign column with per-line test coverage read from a
@@ -30,7 +31,7 @@ function M.decorate(opts)
     return
   end
 
-  local path = opts.path or "./luacov.stats.out"
+  local path = opts.path or cache_path.coverage_stats()
   if not vim.uv.fs_stat(path) then
     local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
     error(("[ntf] coverage file is not found: %s"):format(full_path), 0)

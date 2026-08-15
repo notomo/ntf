@@ -235,7 +235,7 @@ function M.run(root)
   local planned_items = items
 
   local schedule = require("ntf.core.controller.schedule")
-  local schedule_cache_path = schedule.default_path()
+  local schedule_cache_path = require("ntf.core.cache_path").schedule()
   local schedule_cache = schedule.load(schedule_cache_path)
   items = schedule.order(items, schedule_cache, vim.fn.getcwd())
 

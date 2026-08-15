@@ -1,3 +1,5 @@
+local cache_path = require("ntf.core.cache_path")
+
 local M = {}
 
 --- @type string[] the mutant statuses `--strict` can gate on; the bare flag selects all of them
@@ -125,7 +127,7 @@ local coverage = {
   name = "--coverage",
   value = "FILE",
   optional = true,
-  description = "measure line coverage; write luacov.stats.out (or FILE) and print a summary",
+  description = "measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary",
   set = function(opts, value)
     opts.coverage = true
     if value ~= nil then
@@ -201,7 +203,7 @@ local verify_baseline = {
 local results = {
   name = "--results",
   value = "FILE",
-  description = "mutation results output path (default: ntf-mutation.json)",
+  description = "mutation results output path (default: a cache file named for the working directory)",
   set = function(opts, value)
     --- @cast value string
     opts.mutation_results = value
@@ -600,13 +602,13 @@ function M.parse(argv)
     exclude_code = {},
     exclude_spec = {},
     coverage = false,
-    coverage_file = "luacov.stats.out",
+    coverage_file = cache_path.coverage_stats(),
     mutation_target = nil,
     mutation_strict = nil,
     mutation_config = nil,
     mutation_verify_baseline = false,
     mutation_verify_baseline_only = false,
-    mutation_results = "ntf-mutation.json",
+    mutation_results = cache_path.mutation_results(),
     mutation_mutant = nil,
     mutation_replacement = nil,
     mutation_rationale = nil,

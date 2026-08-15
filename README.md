@@ -37,7 +37,7 @@ Options:
   --timeout=MS         kill a worker after MS milliseconds (default: 60000; 0 disables)
   --jobs=N             max parallel nvim workers (default: cpu count)
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
-  --coverage[=FILE]    measure line coverage; write luacov.stats.out (or FILE) and print a summary
+  --coverage[=FILE]    measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary
   --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
   -h, --help           show this help
 

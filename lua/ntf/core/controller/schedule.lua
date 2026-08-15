@@ -1,4 +1,5 @@
 local tree = require("ntf.core.tree")
+local write = require("ntf.core.write")
 
 local M = {}
 
@@ -27,12 +28,6 @@ local function relative(file, cwd)
     return file:sub(#cwd + 2)
   end
   return file
-end
-
---- @return string
-function M.default_path()
-  local name = normalize(vim.fn.getcwd()):gsub("[/\\:]", "%%")
-  return vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "schedule", name .. ".json")
 end
 
 --- @param path string
@@ -99,12 +94,7 @@ function M.save(path, cache, results, cwd)
     end
   end
 
-  pcall(function()
-    vim.fn.mkdir(vim.fs.dirname(path), "p")
-    local f = assert(io.open(path, "w"))
-    f:write(vim.json.encode(cache))
-    f:close()
-  end)
+  pcall(write.file, path, vim.json.encode(cache))
 end
 
 return M

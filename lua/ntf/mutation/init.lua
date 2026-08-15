@@ -1,4 +1,5 @@
 local results = require("ntf.core.mutation.results")
+local cache_path = require("ntf.core.cache_path")
 local highlight_group = require("ntf.mutation.highlight_group")
 
 local M = {}
@@ -10,11 +11,11 @@ local SIGN = "▌"
 --- @class NtfMutationDecorateOption
 --- @field enable boolean? when `false`, clear the decoration instead of drawing
 ---   it (default `true`).
---- @field path string? mutation results file to read (default
----   `"./ntf-mutation.json"`).
+--- @field path string? mutation results file to read (default: the file
+---   `ntf mutation` writes for the current directory).
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
---- Mark a buffer's surviving mutants, read from an `ntf-mutation.json` (as
+--- Mark a buffer's surviving mutants, read from the results file (as
 --- written by `ntf mutation`): each line a mutant got away with is signed with
 --- the `NtfMutationSurvived` highlight and shows the change it survived as
 --- virtual text. Detected mutants are not drawn: they say nothing about the tests.
@@ -29,7 +30,7 @@ function M.decorate(opts)
     return
   end
 
-  local path = opts.path or "./ntf-mutation.json"
+  local path = opts.path or cache_path.mutation_results()
   local data = results.read(path)
   if not data then
     local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))

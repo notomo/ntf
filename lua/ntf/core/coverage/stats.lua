@@ -1,3 +1,5 @@
+local write = require("ntf.core.write")
+
 local M = {}
 
 --- @param path string output file path
@@ -7,21 +9,17 @@ function M.write(path, merged)
   table.sort(files)
 
   local out = {}
-  for _, file in ipairs(files) do
-    local entry = merged[file]
-    out[#out + 1] = ("%d:%s"):format(entry.max, file)
+  for _, name in ipairs(files) do
+    local entry = merged[name]
+    out[#out + 1] = ("%d:%s\n"):format(entry.max, name)
     local counts = {}
     for i = 1, entry.max do
       counts[i] = tostring(entry.lines[i] or 0)
     end
-    out[#out + 1] = table.concat(counts, " ")
+    out[#out + 1] = table.concat(counts, " ") .. "\n"
   end
 
-  local file = assert(io.open(path, "w"))
-  if #out > 0 then
-    file:write(table.concat(out, "\n"), "\n")
-  end
-  file:close()
+  write.file(path, table.concat(out))
 end
 
 --- @param path string stats file path

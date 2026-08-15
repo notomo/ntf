@@ -1,6 +1,7 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local coverage = require("ntf.coverage")
+local cache_path = require("ntf.core.cache_path")
 local helper = require("ntf.test.helper")
 
 local ns = vim.api.nvim_create_namespace("ntf.coverage")
@@ -211,17 +212,19 @@ describe("ntf.coverage.decorate", function()
     vim.cmd.edit(src)
     local bufnr = vim.api.nvim_get_current_buf()
     coverage.decorate({ path = stats, buffer = bufnr })
-    coverage.decorate({ enable = false, buffer = bufnr })
+    coverage.decorate({ enable = false, path = stats, buffer = bufnr })
 
     assert.same({}, signs(bufnr))
   end)
 
   it("reads the default stats path when called with no options at all", function()
+    helper.test_data:cd("")
+
     local ok, err = pcall(coverage.decorate)
 
     assert.is_false(ok)
     assert.equal(
-      "[ntf] coverage file is not found: " .. vim.fs.normalize(vim.fn.fnamemodify("./luacov.stats.out", ":p")),
+      "[ntf] coverage file is not found: " .. vim.fs.normalize(vim.fn.fnamemodify(cache_path.coverage_stats(), ":p")),
       err
     )
   end)
@@ -265,7 +268,7 @@ describe("ntf.coverage.is_decorated", function()
     coverage.decorate({ path = stats, buffer = bufnr })
     assert.is_true(coverage.is_decorated({ buffer = bufnr }))
 
-    coverage.decorate({ enable = false, buffer = bufnr })
+    coverage.decorate({ enable = false, path = stats, buffer = bufnr })
     assert.is_false(coverage.is_decorated({ buffer = bufnr }))
   end)
 

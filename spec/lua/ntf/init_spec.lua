@@ -640,7 +640,8 @@ return {
 
     assert.equal(0, obj.code)
     assert.match("1 passed", obj.stdout)
-    assert.equal(1, vim.fn.filereadable(vim.fs.joinpath(root, "luacov.stats.out")))
+    local stats_file = vim.fn.glob(helper.test_data:path("xdg_cache") .. "/**/ntf/coverage/*.out")
+    assert.equal(1, vim.fn.filereadable(stats_file))
   end)
 
   it("captures all of a worker's stdout, including native writes", function()
@@ -746,6 +747,17 @@ describe("ntf mutation", function()
     assert.equal(1, results.counts.survived)
     assert.equal(0, results.counts.not_applied)
     assert.equal(7, results.counts.killed)
+  end)
+
+  it("writes the results to the cache file for the working directory without --results", function()
+    local root = mutation_project()
+
+    local obj = helper.run_cli({ "mutation", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    local results_file = vim.fn.glob(helper.test_data:path("xdg_cache") .. "/**/ntf/mutation/*.json")
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.survived)
   end)
 
   it("reports a mutant no test reaches as uncovered", function()

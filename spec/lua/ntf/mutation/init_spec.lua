@@ -1,6 +1,7 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local mutation = require("ntf.mutation")
+local cache_path = require("ntf.core.cache_path")
 local helper = require("ntf.test.helper")
 
 local ns = vim.api.nvim_create_namespace("ntf.mutation")
@@ -142,11 +143,14 @@ describe("ntf.mutation.decorate", function()
   end)
 
   it("reads the default results path when called with no options at all", function()
+    helper.test_data:cd("")
+
     local ok, err = pcall(mutation.decorate)
 
     assert.is_false(ok)
     assert.equal(
-      "[ntf] mutation results file is not found: " .. vim.fs.normalize(vim.fn.fnamemodify("./ntf-mutation.json", ":p")),
+      "[ntf] mutation results file is not found: "
+        .. vim.fs.normalize(vim.fn.fnamemodify(cache_path.mutation_results(), ":p")),
       err
     )
   end)

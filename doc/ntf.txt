@@ -22,7 +22,7 @@ rejects the rest.
     --timeout=MS         kill a worker after MS milliseconds (default: 60000; 0 disables)
     --jobs=N             max parallel nvim workers (default: cpu count)
     --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
-    --coverage[=FILE]    measure line coverage; write luacov.stats.out (or FILE) and print a summary
+    --coverage[=FILE]    measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary
     --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
     -h, --help           show this help
 
@@ -134,11 +134,17 @@ COVERAGE                                                        *ntf-COVERAGE*
 
 `--coverage` measures line coverage of the code under test while the specs run.
 It needs no extra install: ntf sets a Lua line hook in each worker, merges the
-per-worker counts, prints a short summary, and writes a `luacov.stats.out`
-(override the path with `--coverage=FILE`):
+per-worker counts, prints a short summary, and writes the counts in the
+`luacov.stats.out` format:
 >sh
   ntf --coverage
 <
+The stats go to a cache file named for the working directory (under
+`stdpath("cache")/ntf/coverage/`), so that every project you run ntf in keeps
+its own instead of the runs overwriting one another, and
+|ntf.coverage.decorate()| reads that same file back with no path to configure.
+`--coverage=FILE` writes them where you name instead.
+
 What it measures:
 
 - every file under the working directory, except the test tree: any
@@ -156,10 +162,11 @@ file or directory out of the code under test; repeat it for each one. The
   ntf --coverage --exclude-code=lua/vendor --exclude-code=lua/mymod/test
 <
 The built-in summary is intentionally simple (its line classification is a
-heuristic). For an authoritative or HTML report, point LuaCov — which ntf does
-not depend on — at the same stats file:
+heuristic). For an authoritative or HTML report, hand the stats to LuaCov —
+which ntf does not depend on — by writing them where it looks:
 >sh
   luarocks install luacov
+  ntf --coverage=luacov.stats.out
   luacov          # reads luacov.stats.out -> luacov.report.out
 <
 A `--coverage` run is slower than a plain one: the line hook has to be reached
@@ -192,8 +199,10 @@ in the tests, and is reported with the change it got away with:
   is how you keep a run short: mutating everything means running the suite once
   per mutant.
 - The full result — every mutant, its position, and what it became — is written
-  to `ntf-mutation.json` (override with `--results=FILE`), which
-  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer.
+  to a cache file named for the working directory (under
+  `stdpath("cache")/ntf/mutation/`, as `--coverage` files its stats), which
+  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer with no
+  path to configure. `--results=FILE` writes it where you name instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor.
@@ -746,7 +755,7 @@ get_module_root({module_name})                  *ntf.helper.get_module_root()*
 Lua module: ntf.mutation                                    *ntf-ntf.mutation*
 
 decorate({opts})                                     *ntf.mutation.decorate()*
-  Mark a buffer's surviving mutants, read from an `ntf-mutation.json` (as
+  Mark a buffer's surviving mutants, read from the results file (as
   written by `ntf mutation`): each line a mutant got away with is signed with
   the `NtfMutationSurvived` highlight and shows the change it survived as
   virtual text. Detected mutants are not drawn: they say nothing about the tests.
@@ -777,8 +786,8 @@ NtfCoverageDecorateOption                          *NtfCoverageDecorateOption*
 
 - {enable} (boolean?) when `false`, clear the decoration instead of drawing
     it (default `true`).
-- {path} (string?) `luacov.stats.out` file to read (default
-    `"./luacov.stats.out"`).
+- {path} (string?) `luacov.stats.out` file to read (default: the file
+    `ntf --coverage` writes for the current directory).
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfCoverageIsDecoratedOption                    *NtfCoverageIsDecoratedOption*
@@ -789,8 +798,8 @@ NtfMutationDecorateOption                          *NtfMutationDecorateOption*
 
 - {enable} (boolean?) when `false`, clear the decoration instead of drawing
     it (default `true`).
-- {path} (string?) mutation results file to read (default
-    `"./ntf-mutation.json"`).
+- {path} (string?) mutation results file to read (default: the file
+    `ntf mutation` writes for the current directory).
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfMutationIsDecoratedOption                    *NtfMutationIsDecoratedOption*

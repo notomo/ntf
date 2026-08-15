@@ -1,3 +1,5 @@
+local write = require("ntf.core.write")
+
 local M = {}
 
 local VERSION = 1
@@ -52,14 +54,15 @@ function M.write(path, summary)
     end)
   end
 
-  local file = assert(io.open(path, "w"))
-  file:write(vim.json.encode({
-    version = VERSION,
-    score = summary.score,
-    counts = summary.counts,
-    files = next(files) and files or vim.empty_dict(),
-  }))
-  file:close()
+  write.file(
+    path,
+    vim.json.encode({
+      version = VERSION,
+      score = summary.score,
+      counts = summary.counts,
+      files = next(files) and files or vim.empty_dict(),
+    })
+  )
 end
 
 --- @param path string

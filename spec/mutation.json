@@ -71,26 +71,6 @@
       "invariant_spec": "ntf.core.coverage.collector.line_hook reports max as a number of at least one, recording a line before it ever creates the entry"
     },
     {
-      "path": "lua/ntf/core/coverage/stats.lua",
-      "col": 13,
-      "operator": "perturb-number",
-      "original": "0",
-      "replacement": "1",
-      "line": "  if #out > 0 then",
-      "rationale": "out grows by two lines per file, so its length is never 1",
-      "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
-    },
-    {
-      "path": "lua/ntf/core/coverage/stats.lua",
-      "col": 6,
-      "operator": "perturb-length",
-      "original": "#out",
-      "replacement": "(#out - 1)",
-      "line": "  if #out > 0 then",
-      "rationale": "out grows by two lines per file, so its length is never 1",
-      "invariant_spec": "ntf.core.coverage.stats.write writes two lines per measured file, so the output is never a single line"
-    },
-    {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 31,
       "operator": "swap-boolean",

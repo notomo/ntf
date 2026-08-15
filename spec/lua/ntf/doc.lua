@@ -107,11 +107,14 @@ vim.fn.writefile({
   "return M",
 }, vim.fs.joinpath(project_dir, "lua/launcher.lua"))
 
-run_ntf({ "--coverage=" .. vim.fn.tempname(), "spec" }, { cwd = project_dir })
+run_ntf({ "--coverage", "spec" }, { cwd = project_dir })
 local coverage_command = "ntf --coverage"
 
+run_ntf({ "--coverage=luacov.stats.out", "spec" }, { cwd = project_dir })
+local coverage_stats_file_command = "ntf --coverage=luacov.stats.out"
+
 run_ntf({
-  "--coverage=" .. vim.fn.tempname(),
+  "--coverage",
   "--exclude-code=lua/vendor",
   "spec",
 }, { cwd = project_dir })
@@ -123,7 +126,6 @@ local list_command = "ntf list"
 run_ntf({
   "mutation",
   "--target=lua/mymod.lua",
-  "--results=" .. vim.fn.tempname(),
   "spec",
 }, { cwd = project_dir })
 local mutation_command = "ntf mutation"
@@ -140,7 +142,6 @@ vim.fn.writefile(vim.fn.readfile(mutation_operators_path), vim.fs.joinpath(proje
 run_ntf({
   "mutation",
   "--target=lua/mymod.lua",
-  "--results=" .. vim.fn.tempname(),
   "--config=spec/operators.json",
   "spec",
 }, { cwd = project_dir })
@@ -176,7 +177,6 @@ vim.fn.writefile(vim.fn.readfile(mutation_config_path), project_config_path)
 run_ntf({
   "mutation",
   "--target=lua/mymod.lua",
-  "--results=" .. vim.fn.tempname(),
   "--config=spec/mutation.json",
   "--strict",
   "spec",
@@ -196,7 +196,6 @@ local mutation_verify_baseline_command = "ntf mutation baseline verify --config=
 run_ntf({
   "mutation",
   "--target=lua/mymod.lua",
-  "--results=" .. vim.fn.tempname(),
   "--config=spec/mutation.json",
   "--strict",
   "--verify-baseline",
@@ -207,7 +206,6 @@ local mutation_verify_baseline_with_score_command =
 
 run_ntf({
   "mutation",
-  "--results=" .. vim.fn.tempname(),
   "--config=spec/mutation.json",
   "spec",
 }, { cwd = project_dir })
@@ -217,6 +215,7 @@ for _, command in ipairs({
   global_hook_command,
   debug_command,
   coverage_command,
+  coverage_stats_file_command,
   exclude_code_command,
   list_command,
   mutation_command,
@@ -681,10 +680,16 @@ your module.]],
           [[
 `--coverage` measures line coverage of the code under test while the specs run.
 It needs no extra install: ntf sets a Lua line hook in each worker, merges the
-per-worker counts, prints a short summary, and writes a `luacov.stats.out`
-(override the path with `--coverage=FILE`):]],
+per-worker counts, prints a short summary, and writes the counts in the
+`luacov.stats.out` format:]],
           util.help_code_block(coverage_command, { language = "sh" }),
           [[
+The stats go to a cache file named for the working directory (under
+`stdpath("cache")/ntf/coverage/`), so that every project you run ntf in keeps
+its own instead of the runs overwriting one another, and
+|ntf.coverage.decorate()| reads that same file back with no path to configure.
+`--coverage=FILE` writes them where you name instead.
+
 What it measures:
 
 - every file under the working directory, except the test tree: any
@@ -701,12 +706,17 @@ file or directory out of the code under test; repeat it for each one. The
           util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
 The built-in summary is intentionally simple (its line classification is a
-heuristic). For an authoritative or HTML report, point LuaCov — which ntf does
-not depend on — at the same stats file:
->sh
-  luarocks install luacov
-  luacov          # reads luacov.stats.out -> luacov.report.out
-<
+heuristic). For an authoritative or HTML report, hand the stats to LuaCov —
+which ntf does not depend on — by writing them where it looks:]],
+          util.help_code_block(
+            table.concat({
+              "luarocks install luacov",
+              coverage_stats_file_command,
+              "luacov          # reads luacov.stats.out -> luacov.report.out",
+            }, "\n"),
+            { language = "sh" }
+          ),
+          [[
 A `--coverage` run is slower than a plain one: the line hook has to be reached
 on every line.]],
         }, "\n")
@@ -740,8 +750,10 @@ in the tests, and is reported with the change it got away with:]],
   is how you keep a run short: mutating everything means running the suite once
   per mutant.
 - The full result — every mutant, its position, and what it became — is written
-  to `ntf-mutation.json` (override with `--results=FILE`), which
-  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer.
+  to a cache file named for the working directory (under
+  `stdpath("cache")/ntf/mutation/`, as `--coverage` files its stats), which
+  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer with no
+  path to configure. `--results=FILE` writes it where you name instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor.

@@ -1,6 +1,7 @@
 local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local args = require("ntf.core.controller.args")
+local cache_path = require("ntf.core.cache_path")
 local helper = require("ntf.test.helper")
 
 --- @param argv string[]
@@ -175,7 +176,7 @@ describe("ntf.core.controller.args.parse", function()
     local opts = args.parse({ "--coverage", "spec" })
 
     assert.equal(true, opts.coverage)
-    assert.equal("luacov.stats.out", opts.coverage_file)
+    assert.equal(cache_path.coverage_stats(), opts.coverage_file)
     assert.equal("spec", opts.paths[1])
   end)
 
@@ -190,7 +191,7 @@ describe("ntf.core.controller.args.parse", function()
     local opts = args.parse({ "--coverage", "spec" })
 
     assert.equal(true, opts.coverage)
-    assert.equal("luacov.stats.out", opts.coverage_file)
+    assert.equal(cache_path.coverage_stats(), opts.coverage_file)
     assert.equal("spec", opts.paths[1])
   end)
 
@@ -331,7 +332,7 @@ describe("ntf.core.controller.args.parse", function()
     it("writes to the default results file", function()
       local opts = args.parse({ "mutation", "spec" })
 
-      assert.equal("ntf-mutation.json", opts.mutation_results)
+      assert.equal(cache_path.mutation_results(), opts.mutation_results)
     end)
 
     it("reads the results file", function()

@@ -29,15 +29,6 @@ describe("ntf.core.controller.schedule", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
-  it("defaults the cache to a file named for the working directory, under the cache directory", function()
-    local path = schedule.default_path()
-
-    assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "schedule"), vim.fs.dirname(path))
-
-    local escaped = table.concat(vim.split(vim.fs.normalize(vim.fn.getcwd()), "[/\\:]"), "%")
-    assert.equal(escaped .. ".json", vim.fs.basename(path))
-  end)
-
   it("orders the slowest test first", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
