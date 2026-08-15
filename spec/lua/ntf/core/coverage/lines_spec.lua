@@ -78,6 +78,45 @@ describe("ntf.core.coverage.lines.coverable", function()
     assert.is_true(lines.coverable(src)[1])
   end)
 
+  it("does not count a return whose call chain opens its first arguments on a later line", function()
+    local src = table.concat({
+      "local function f(names)",
+      "  return vim",
+      "    .iter(names)",
+      "    :totable()",
+      "end",
+    }, "\n")
+
+    local coverable = lines.coverable(src)
+    assert.is_nil(coverable[2])
+    assert.is_true(coverable[3])
+  end)
+
+  it("counts a return whose call chain opens its first arguments on its own line", function()
+    local src = table.concat({
+      "local function f(names)",
+      "  return vim.iter(names)",
+      "    :totable()",
+      "end",
+    }, "\n")
+
+    assert.is_true(lines.coverable(src)[2])
+  end)
+
+  it("does not count an assignment whose binary expression calls on a later line", function()
+    local src = table.concat({
+      "local function f(t)",
+      "  local x = t.a",
+      "    + vim.fn.strlen(t.b)",
+      "  return x",
+      "end",
+    }, "\n")
+
+    local coverable = lines.coverable(src)
+    assert.is_nil(coverable[2])
+    assert.is_true(coverable[3])
+  end)
+
   it("counts an assignment whose closure is parenthesized", function()
     local src = table.concat({
       "local x = (function()",

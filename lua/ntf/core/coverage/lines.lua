@@ -9,17 +9,26 @@ local EXEC_STMT = {
   goto_statement = true,
 }
 
+--- @param node TSNode a `function_call`
+--- @return integer # 0-based row of the `(` that opens its arguments
+local function call_hit_row(node)
+  return (node:field("arguments")[1]:start())
+end
+
 --- @param node TSNode a value expression
---- @return integer? # 0-based row of the closing `end`, nil when not closure-dominated
-local function closure_hit_row(node)
+--- @return integer? # 0-based row the value's own hit lands on, nil when it lands on the statement's line
+local function value_hit_row(node)
   local kind = node:type()
   if kind == "function_definition" then
     return (node:end_())
   end
+  if kind == "function_call" then
+    return call_hit_row(node)
+  end
   if kind == "binary_expression" then
     for child in node:iter_children() do
       if child:named() then
-        local row = closure_hit_row(child)
+        local row = value_hit_row(child)
         if row then
           return row
         end
@@ -31,13 +40,13 @@ end
 
 --- @param node TSNode an `assignment_statement` or `return_statement`
 --- @return integer[]? # 0-based rows, nil when any value receives its hit on the statement's own line
-local function only_closure_rows(node)
+local function value_rows(node)
   for child in node:iter_children() do
     if child:type() == "expression_list" then
       local rows = {}
       for value in child:iter_children() do
         if value:named() then
-          local row = closure_hit_row(value)
+          local row = value_hit_row(value)
           if not row then
             return nil
           end
@@ -56,10 +65,10 @@ end
 local function hit_row(node)
   local kind = node:type()
   if kind == "function_call" then
-    return (node:field("arguments")[1]:start())
+    return call_hit_row(node)
   end
   if kind == "assignment_statement" or kind == "return_statement" then
-    if only_closure_rows(node) then
+    if value_rows(node) then
       return nil
     end
     return (node:start())
@@ -103,7 +112,7 @@ function M.anchor_rows(node)
     if kind == "assignment_statement" or kind == "return_statement" then
       return vim.tbl_map(function(end_row)
         return end_row + 1
-      end, only_closure_rows(current) or {})
+      end, value_rows(current) or {})
     end
     current = current:parent()
   end
