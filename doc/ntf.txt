@@ -710,6 +710,17 @@ register_same({name}, {get_actual})               *ntf.assert.register_same()*
 ==============================================================================
 Lua module: ntf.coverage                                    *ntf-ntf.coverage*
 
+stats_path({opts})                                 *ntf.coverage.stats_path()*
+  The `luacov.stats.out` file `ntf --coverage` writes for a directory, which
+  is what `decorate` reads when it is given no path. Resolve it yourself to
+  decorate a buffer against a project other than the current directory.
+
+  Parameters: ~
+    {opts} (NtfCoverageStatsPathOption?) |NtfCoverageStatsPathOption|
+
+  Return: ~
+    (string) 
+
 decorate({opts})                                     *ntf.coverage.decorate()*
   Decorate a buffer's sign column with per-line test coverage read from a
   `luacov.stats.out` file (as written by `ntf --coverage`): covered lines are
@@ -754,6 +765,17 @@ get_module_root({module_name})                  *ntf.helper.get_module_root()*
 ==============================================================================
 Lua module: ntf.mutation                                    *ntf-ntf.mutation*
 
+results_path({opts})                             *ntf.mutation.results_path()*
+  The results file `ntf mutation` writes for a directory, which is what
+  `decorate` reads when it is given no path. Resolve it yourself to decorate a
+  buffer against a project other than the current directory.
+
+  Parameters: ~
+    {opts} (NtfMutationResultsPathOption?) |NtfMutationResultsPathOption|
+
+  Return: ~
+    (string) 
+
 decorate({opts})                                     *ntf.mutation.decorate()*
   Mark a buffer's surviving mutants, read from the results file (as
   written by `ntf mutation`): each line a mutant got away with is signed with
@@ -782,24 +804,34 @@ NtfItOption                                                      *NtfItOption*
     `--timeout` default; an exceeded worker is killed and reported as an
     error.
 
+NtfCoverageStatsPathOption                        *NtfCoverageStatsPathOption*
+
+- {working_dir} (string?) the directory the run was made from (default:
+    the current one).
+
 NtfCoverageDecorateOption                          *NtfCoverageDecorateOption*
 
 - {enable} (boolean?) when `false`, clear the decoration instead of drawing
     it (default `true`).
-- {path} (string?) `luacov.stats.out` file to read (default: the file
-    `ntf --coverage` writes for the current directory).
+- {path} (string?) `luacov.stats.out` file to read
+    (default: |ntf.coverage.stats_path()|).
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfCoverageIsDecoratedOption                    *NtfCoverageIsDecoratedOption*
 
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
+NtfMutationResultsPathOption                    *NtfMutationResultsPathOption*
+
+- {working_dir} (string?) the directory the run was made from (default:
+    the current one).
+
 NtfMutationDecorateOption                          *NtfMutationDecorateOption*
 
 - {enable} (boolean?) when `false`, clear the decoration instead of drawing
     it (default `true`).
-- {path} (string?) mutation results file to read (default: the file
-    `ntf mutation` writes for the current directory).
+- {path} (string?) mutation results file to read
+    (default: |ntf.mutation.results_path()|).
 - {buffer} (integer?) target buffer (default `0`, the current buffer).
 
 NtfMutationIsDecoratedOption                    *NtfMutationIsDecoratedOption*

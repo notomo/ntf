@@ -9,11 +9,25 @@ local ns = vim.api.nvim_create_namespace("ntf.coverage")
 
 local SIGN = "▌"
 
+--- @class NtfCoverageStatsPathOption
+--- @field working_dir string? the directory the run was made from (default:
+---   the current one).
+
+--- The `luacov.stats.out` file `ntf --coverage` writes for a directory, which
+--- is what `decorate` reads when it is given no path. Resolve it yourself to
+--- decorate a buffer against a project other than the current directory.
+--- @param opts NtfCoverageStatsPathOption?: |NtfCoverageStatsPathOption|
+--- @return string
+function M.stats_path(opts)
+  opts = opts or {}
+  return cache_path.coverage_stats(opts.working_dir)
+end
+
 --- @class NtfCoverageDecorateOption
 --- @field enable boolean? when `false`, clear the decoration instead of drawing
 ---   it (default `true`).
---- @field path string? `luacov.stats.out` file to read (default: the file
----   `ntf --coverage` writes for the current directory).
+--- @field path string? `luacov.stats.out` file to read
+---   (default: |ntf.coverage.stats_path()|).
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Decorate a buffer's sign column with per-line test coverage read from a
@@ -31,7 +45,7 @@ function M.decorate(opts)
     return
   end
 
-  local path = opts.path or cache_path.coverage_stats()
+  local path = opts.path or M.stats_path()
   if not vim.uv.fs_stat(path) then
     local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
     error(("[ntf] coverage file is not found: %s"):format(full_path), 0)

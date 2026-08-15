@@ -217,3 +217,15 @@ describe("ntf.mutation.is_decorated", function()
     assert.is_false(mutation.is_decorated({ buffer = bufnr }))
   end)
 end)
+
+describe("ntf.mutation.results_path", function()
+  it("is the file a run in the current directory writes", function()
+    assert.equal(cache_path.mutation_results(), mutation.results_path())
+  end)
+
+  it("takes the directory the run was made from", function()
+    local dir = vim.fs.dirname(vim.fn.getcwd())
+
+    assert.equal(cache_path.mutation_results(dir), mutation.results_path({ working_dir = dir }))
+  end)
+end)

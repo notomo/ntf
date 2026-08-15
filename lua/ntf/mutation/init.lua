@@ -8,11 +8,25 @@ local ns = vim.api.nvim_create_namespace("ntf.mutation")
 
 local SIGN = "▌"
 
+--- @class NtfMutationResultsPathOption
+--- @field working_dir string? the directory the run was made from (default:
+---   the current one).
+
+--- The results file `ntf mutation` writes for a directory, which is what
+--- `decorate` reads when it is given no path. Resolve it yourself to decorate a
+--- buffer against a project other than the current directory.
+--- @param opts NtfMutationResultsPathOption?: |NtfMutationResultsPathOption|
+--- @return string
+function M.results_path(opts)
+  opts = opts or {}
+  return cache_path.mutation_results(opts.working_dir)
+end
+
 --- @class NtfMutationDecorateOption
 --- @field enable boolean? when `false`, clear the decoration instead of drawing
 ---   it (default `true`).
---- @field path string? mutation results file to read (default: the file
----   `ntf mutation` writes for the current directory).
+--- @field path string? mutation results file to read
+---   (default: |ntf.mutation.results_path()|).
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Mark a buffer's surviving mutants, read from the results file (as
@@ -30,7 +44,7 @@ function M.decorate(opts)
     return
   end
 
-  local path = opts.path or cache_path.mutation_results()
+  local path = opts.path or M.results_path()
   local data = results.read(path)
   if not data then
     local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))

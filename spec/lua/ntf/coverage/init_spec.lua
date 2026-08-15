@@ -314,3 +314,15 @@ describe("ntf.coverage.is_decorated", function()
     assert.is_false(coverage.is_decorated({ buffer = other }))
   end)
 end)
+
+describe("ntf.coverage.stats_path", function()
+  it("is the file a run in the current directory writes", function()
+    assert.equal(cache_path.coverage_stats(), coverage.stats_path())
+  end)
+
+  it("takes the directory the run was made from", function()
+    local dir = vim.fs.dirname(vim.fn.getcwd())
+
+    assert.equal(cache_path.coverage_stats(dir), coverage.stats_path({ working_dir = dir }))
+  end)
+end)
