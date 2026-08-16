@@ -21,11 +21,10 @@ local running = {}
 
 --- @param item NtfWorkItem
 --- @param obj { code: integer, stdout: string?, stderr: string? } vim.system result
+--- @param decoded NtfWorkerResult? the block the worker emitted, if it emitted one
 --- @param timed_out_ms integer? the timeout the worker was killed for exceeding
 --- @return NtfResult[]
-local function results_of(item, obj, timed_out_ms)
-  local decoded = protocol.parse(obj.stdout)
-
+local function results_of(item, obj, decoded, timed_out_ms)
   if decoded and decoded.results and #decoded.results > 0 then
     for _, result in ipairs(decoded.results) do
       result.file = item.file
@@ -78,6 +77,7 @@ function M.payload(item, opts)
     mutation = opts.mutation,
     cwd = opts.cwd,
     watchdog_ms = watchdog_ms,
+    nonce = protocol.nonce(),
   },
     timeout
 end
@@ -133,15 +133,15 @@ function M.launch(item, opts, on_done)
       timer:close()
       timer = nil
     end
-    local decoded = protocol.parse(obj.stdout)
+    local decoded = protocol.parse(obj.stdout, payload.nonce)
     local outcome = {
-      results = results_of(item, obj, timed_out and timeout or nil),
+      results = results_of(item, obj, decoded, timed_out and timeout or nil),
       coverage = decoded and decoded.coverage or nil,
       timed_out = timed_out or nil,
       mutation_applied = decoded and decoded.mutation_applied,
     }
     if decoded then
-      local blob = protocol.captured_output(obj.stdout, obj.stderr)
+      local blob = protocol.captured_output(obj.stdout, obj.stderr, payload.nonce)
       if blob ~= "" then
         outcome.output = { file = item.file, name = tree.full_name(item.names), output = blob }
       end

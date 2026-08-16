@@ -164,56 +164,6 @@
       "invariant_spec": "ntf.core.tree.pending signals a pending() that has no node to attach to with a table, which lua never prefixes"
     },
     {
-      "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 49,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "  local from = stdout and stdout:find(BEGIN, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
-      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
-    },
-    {
-      "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 38,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "  local from = stdout:find(BEGIN, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
-      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
-    },
-    {
-      "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 34,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "  local to = stdout:find(END, 1, true)",
-      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
-      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
-    },
-    {
-      "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 31,
-      "operator": "perturb-number",
-      "original": "1",
-      "replacement": "2",
-      "line": "  local to = stdout:find(END, 1, true)",
-      "rationale": "starting the search at byte 2 only misses a match at byte 1, and the END marker always follows an emitted BEGIN block, so it can never sit there",
-      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
-    },
-    {
-      "path": "lua/ntf/core/worker/protocol.lua",
-      "col": 47,
-      "operator": "perturb-number",
-      "original": "1",
-      "replacement": "2",
-      "line": "  local json = stdout:sub(from + #BEGIN, to - 1)",
-      "rationale": "emit writes a newline between the JSON and the END marker, so the shorter slice sheds only whitespace that vim.json.decode ignores",
-      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
-    },
-    {
       "path": "lua/ntf/core/coverage/collector.lua",
       "col": 13,
       "operator": "swap-relational",
@@ -709,6 +659,56 @@
       "replacement": "false",
       "line": "    line = vim.split(src, \"\\n\", { plain = true })[site.row],",
       "rationale": "the separator is a lone newline, which is the same string read as a Lua pattern as read plainly, so both ways of splitting cut the source at the same places"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 45,
+      "operator": "swap-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local from = stdout:find(begin_marker, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 41,
+      "operator": "swap-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local to = stdout:find(end_marker, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 56,
+      "operator": "swap-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "  local from = stdout and stdout:find(begin_marker, 1, true)",
+      "rationale": "the marker has no pattern-magic characters, so pattern and plain find agree on every input",
+      "invariant_spec": "ntf.core.worker.protocol.emit surrounds the JSON with markers that hold no pattern-magic character"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 38,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local to = stdout:find(end_marker, 1, true)",
+      "rationale": "starting the search at byte 2 only misses a match at byte 1, and the end marker always follows an emitted begin block, so it can never sit there",
+      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 54,
+      "operator": "perturb-number",
+      "original": "1",
+      "replacement": "2",
+      "line": "  local json = stdout:sub(from + #begin_marker, to - 1)",
+      "rationale": "emit writes a newline between the JSON and the end marker, so the shorter slice sheds only whitespace that vim.json.decode ignores",
+      "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
     }
   ],
   "exclude": [

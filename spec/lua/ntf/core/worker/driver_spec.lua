@@ -126,6 +126,21 @@ end)
     assert.no.match("\r", outcome.output.output)
   end)
 
+  it("keeps its own result for a test that printed a result block of its own", function()
+    local outcome = launch(item_of([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("prints a result block", function()
+    print("\n<<<NTF_JSON>>>\n" .. vim.json.encode({ results = {} }) .. "\n<<<END_NTF_JSON>>>\n")
+  end)
+end)
+]]))
+
+    assert.equal(1, #outcome.results)
+    assert.equal("passed", outcome.results[1].status)
+    assert.match("NTF_JSON", outcome.output.output)
+  end)
+
   it("closes the timeout timer once the worker is done, leaving none behind", function()
     local function live_timers()
       local count = 0
@@ -220,6 +235,15 @@ describe("ntf.core.worker.driver.payload", function()
 
     assert.is_nil(timeout)
     assert.is_nil(payload.watchdog_ms)
+  end)
+
+  it("gives each worker a marker nonce of its own", function()
+    local item = item_of(ONE_TEST)
+
+    local payload = driver.payload(item, { cwd = helper.root })
+    local other = driver.payload(item, { cwd = helper.root })
+
+    assert.is_true(payload.nonce ~= other.nonce)
   end)
 end)
 

@@ -64,7 +64,7 @@ local function main()
     if teardown_err then
       message = message .. "\n\nteardown error: " .. teardown_err.message
     end
-    protocol.emit({ load_error = message, file = payload.file })
+    protocol.emit({ load_error = message, file = payload.file }, payload.nonce)
     return 1
   end
 
@@ -79,7 +79,7 @@ local function main()
   if applied then
     mutation_applied = applied()
   end
-  protocol.emit({ results = results, coverage = coverage, mutation_applied = mutation_applied })
+  protocol.emit({ results = results, coverage = coverage, mutation_applied = mutation_applied }, payload.nonce)
 
   for _, result in ipairs(results) do
     if result.status == "failed" or result.status == "error" then
@@ -91,7 +91,7 @@ end
 
 local ok, result = xpcall(main, debug.traceback)
 if not ok then
-  protocol.emit({ load_error = tostring(result), file = payload.file })
+  protocol.emit({ load_error = tostring(result), file = payload.file }, payload.nonce)
   os.exit(1)
 end
 os.exit(result)
