@@ -14,11 +14,13 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
 - `make comment_lint` — enforces the comment form below over `lua/` (the doc
   sources listed in `spec/doc_config.json` are exempt for their `---` prose)
 - `make mutation` — after changing `lua/`: must exit 0. It passes
-  `--strict`, so any SURVIVED or NO COVERAGE mutant already fails the
-  exit code — kill each survivor with a spec, and reach each no-coverage mutant
-  with one (restructuring so the code is callable from a spec if need be, as
-  `coverage/collector.lua`'s `line_hook` was split out); or — only when genuinely
-  undetectable — add a `baseline` entry with its rationale to `spec/mutation.json`,
+  `--strict`, so any SURVIVED, NO COVERAGE or NOT APPLIED mutant already fails
+  the exit code — kill each survivor with a spec, and reach each no-coverage
+  mutant with one (restructuring so the code is callable from a spec if need be,
+  as `coverage/collector.lua`'s `line_hook` was split out); a NOT APPLIED mutant
+  is one no spec `require`d the module for, so make the spec reach it that way;
+  or — only when genuinely undetectable — add a `baseline` entry with its
+  rationale to `spec/mutation.json`,
   the one mutation policy file (`--config`), with
   `$(NTF) mutation baseline add --config=spec/mutation.json --mutant=PATH:ROW:COL:OPERATOR --rationale=...`,
   which writes the entry from the mutant the report names and runs no test

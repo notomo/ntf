@@ -721,6 +721,10 @@ local MUTATION_SPEC = table.concat({
   "end)",
 }, "\n")
 
+local MUTATION_DOFILE_SPEC = (
+  MUTATION_SPEC:gsub('require%("mod"%)', 'dofile(vim.fs.joinpath(vim.fn.getcwd(), "lua/mod.lua"))')
+)
+
 --- @return string root, string results_file
 local function mutation_project()
   local root = helper.test_data.full_path
@@ -841,6 +845,22 @@ describe("ntf mutation", function()
 
     assert.equal(1, obj.code)
     assert.match("mutation gate failed: 1 survived", obj.stderr)
+  end)
+
+  it("exits non-zero when --strict finds a mutant no spec ever loaded", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/mod_spec.lua", MUTATION_DOFILE_SPEC)
+
+    local obj = helper.run_cli({ "mutation", "--strict", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("Mutation: n/a %(no mutant scored%)", obj.stdout)
+    assert.match("8 not applied", obj.stdout)
+    assert.match("NOT APPLIED lua/mod%.lua:", obj.stdout)
+    assert.match("mutation gate failed: 8 not applied", obj.stderr)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(8, results.counts.not_applied)
   end)
 
   it("exits zero when --strict gates only no_coverage, which the fixture leaves empty", function()

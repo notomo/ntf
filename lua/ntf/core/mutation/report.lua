@@ -60,12 +60,16 @@ function M.summary(summary, cwd, opts)
       lines,
       ("Baseline: %d/%d entries re-run"):format(summary.verified, counts.equivalent + counts.baseline_killable)
     )
-  elseif not summary.score then
-    table.insert(lines, "Mutation: n/a (no mutants)")
   else
-    local detected = counts.killed + counts.timeout
-    local scoreable = detected + counts.survived + counts.no_coverage
-    table.insert(lines, ("Mutation: %.1f%% (%d/%d mutants detected)"):format(summary.score, detected, scoreable))
+    if summary.score then
+      local detected = counts.killed + counts.timeout
+      local scoreable = detected + counts.survived + counts.no_coverage
+      table.insert(lines, ("Mutation: %.1f%% (%d/%d mutants detected)"):format(summary.score, detected, scoreable))
+    elseif #summary.records == 0 then
+      table.insert(lines, "Mutation: n/a (no mutants)")
+    else
+      table.insert(lines, "Mutation: n/a (no mutant scored)")
+    end
 
     local parts = {}
     for _, entry in ipairs(M.count_labels) do
@@ -74,7 +78,9 @@ function M.summary(summary, cwd, opts)
         table.insert(parts, paint(entry.color, ("%d %s"):format(count, entry.label)))
       end
     end
-    table.insert(lines, "  " .. table.concat(parts, "  "))
+    if #parts > 0 then
+      table.insert(lines, "  " .. table.concat(parts, "  "))
+    end
   end
   lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 

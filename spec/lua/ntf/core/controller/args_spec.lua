@@ -400,18 +400,19 @@ describe("ntf.core.controller.args.parse", function()
     it("gates on every category for bare --strict", function()
       local opts = args.parse({ "mutation", "--strict", "spec" })
 
-      assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
+      assert.same({ survived = true, no_coverage = true, not_applied = true }, opts.mutation_strict)
     end)
 
     it("treats --strict= with an empty value as bare --strict", function()
       local opts = args.parse({ "mutation", "--strict=", "spec" })
 
-      assert.same({ survived = true, no_coverage = true }, opts.mutation_strict)
+      assert.same({ survived = true, no_coverage = true, not_applied = true }, opts.mutation_strict)
     end)
 
     it("restricts the gate to the listed categories", function()
       assert.same({ survived = true }, args.parse({ "mutation", "--strict=survived", "spec" }).mutation_strict)
       assert.same({ no_coverage = true }, args.parse({ "mutation", "--strict=no_coverage", "spec" }).mutation_strict)
+      assert.same({ not_applied = true }, args.parse({ "mutation", "--strict=not_applied", "spec" }).mutation_strict)
       assert.same(
         { survived = true, no_coverage = true },
         args.parse({ "mutation", "--strict=survived,no_coverage", "spec" }).mutation_strict
@@ -421,7 +422,7 @@ describe("ntf.core.controller.args.parse", function()
     it("errors on an unknown --strict category", function()
       local err = args.parse({ "mutation", "--strict=killed", "spec" })
 
-      assert.match("invalid %-%-strict category: killed", err)
+      assert.match("invalid %-%-strict category: killed %(expected survived, no_coverage, not_applied%)", err)
     end)
 
     it("leaves the gate disabled without --strict", function()

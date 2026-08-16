@@ -461,6 +461,35 @@ describe("ntf.core.mutation.report.summary", function()
       score = nil,
     }
 
-    assert.match("Mutation: n/a", report.summary(summary, root, { color = false, elapsed = 0 }))
+    assert.equal(
+      "Mutation: n/a (no mutants), 0ms elapsed\n",
+      report.summary(summary, root, { color = false, elapsed = 0 })
+    )
+  end)
+
+  it("counts the mutants that left the score even though none of them was scored", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "not_applied") },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 1,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = nil,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.equal(table.concat({
+      "Mutation: n/a (no mutant scored), 0ms elapsed",
+      "  1 not applied",
+      "NOT APPLIED lua/a.lua:1:1:swap-relational < -> <=",
+    }, "\n") .. "\n", text)
   end)
 end)

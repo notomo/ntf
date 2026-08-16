@@ -135,12 +135,9 @@ function M.mutate(opts, ctx)
   end
   if opts.mutation_strict then
     local parts = {}
-    for _, status in ipairs({ "survived", "no_coverage" }) do
+    for _, status in ipairs(require("ntf.core.controller.args").strict_categories) do
       if opts.mutation_strict[status] and summary.counts[status] > 0 then
-        table.insert(
-          parts,
-          ("%d %s"):format(summary.counts[status], status == "no_coverage" and "no coverage" or "survived")
-        )
+        table.insert(parts, ("%d %s"):format(summary.counts[status], (status:gsub("_", " "))))
       end
     end
     if #parts > 0 then

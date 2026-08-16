@@ -3,7 +3,7 @@ local cache_path = require("ntf.core.cache_path")
 local M = {}
 
 --- @type string[] the mutant statuses `--strict` can gate on; the bare flag selects all of them
-local STRICT_CATEGORIES = { "survived", "no_coverage" }
+M.strict_categories = { "survived", "no_coverage", "not_applied" }
 
 --- @class NtfOptions
 --- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify or mutation.baseline.add
@@ -18,7 +18,7 @@ local STRICT_CATEGORIES = { "survived", "no_coverage" }
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
 --- @field mutation_target string? restrict the mutated files to this file or directory
---- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage); nil disables the gate
+--- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage/not_applied); nil disables the gate
 --- @field mutation_config string? mutation policy file (JSON): the known-equivalent mutants and the unmutated paths
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
@@ -155,18 +155,22 @@ local strict = {
   name = "--strict",
   value = "LIST",
   optional = true,
-  description = "exit non-zero when any mutant is survived or no-coverage (LIST restricts the gate to a comma-separated subset)",
+  description = "exit non-zero when any mutant is survived, no-coverage or not-applied (LIST restricts the gate to a comma-separated subset)",
   set = function(opts, value)
     opts.mutation_strict = {}
     if value == nil then
-      for _, status in ipairs(STRICT_CATEGORIES) do
+      for _, status in ipairs(M.strict_categories) do
         opts.mutation_strict[status] = true
       end
       return
     end
     for status in value:gmatch("[^,]+") do
-      if not vim.tbl_contains(STRICT_CATEGORIES, status) then
-        return "invalid --strict category: " .. status .. " (expected " .. table.concat(STRICT_CATEGORIES, ", ") .. ")"
+      if not vim.tbl_contains(M.strict_categories, status) then
+        return "invalid --strict category: "
+          .. status
+          .. " (expected "
+          .. table.concat(M.strict_categories, ", ")
+          .. ")"
       end
       opts.mutation_strict[status] = true
     end

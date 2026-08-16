@@ -659,11 +659,13 @@ in the tests, and is reported with the change it got away with:]],
   path to configure. `--results=FILE` writes it where you name instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
-  NOT APPLIED — never as a survivor.
+  NOT APPLIED — never as a survivor. It leaves the score instead of passing it,
+  so a run that reached no code at all scores nothing rather than scoring well.
 
 `--strict` turns the score into a gate, exiting non-zero when any mutant
-survived or was left uncovered. `--strict=survived` (or `=no_coverage`) gates
-only that category, so the bar can be raised in steps:]],
+survived, was left uncovered, or never landed. `--strict=survived` (or
+`=no_coverage`, `=not_applied`) gates only that category, so the bar can be
+raised in steps:]],
           util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
 To see what a run would cover before paying for it, `ntf mutation list` runs
@@ -858,9 +860,11 @@ The count line above them tallies every mutant, including the ones that leave
 the score:]],
           table_block(count_labels, ctx.width),
           [[
-`--strict` gates on the two undetected statuses. Everything else that fails a
-run — a stale baseline entry, an exclude entry covering nothing — fails it on
-its own, with or without the gate.]],
+`--strict` gates on the three undetected statuses: survived, no coverage and
+not applied. A run that scored no mutant at all says so — `Mutation: n/a (no
+mutant scored)` — instead of reading as a run with nothing to do. Everything
+else that fails a run — a stale baseline entry, an exclude entry covering
+nothing — fails it on its own, with or without the gate.]],
         }, "\n")
       end,
     },
