@@ -1,4 +1,5 @@
 local driver = require("ntf.core.worker.driver")
+local wait = require("ntf.core.worker.wait")
 local collector = require("ntf.core.coverage.collector")
 
 local M = {}
@@ -27,8 +28,7 @@ function M.run(items, opts)
   end, items)
   local coverage_excludes = opts.coverage_excludes or collector.exclude_roots(spec_files, cwd)
   local started = 0
-  local finished = 0
-  local fatal
+  local state = { finished = 0 } --- @type NtfRunState
 
   local function spawn_next()
     if started >= total then
@@ -64,9 +64,9 @@ function M.run(items, opts)
         end
       end, debug.traceback)
       if not ok then
-        fatal = fatal or err
+        state.fatal = state.fatal or err
       end
-      finished = finished + 1
+      state.finished = state.finished + 1
       vim.schedule(spawn_next)
     end)
   end
@@ -75,14 +75,7 @@ function M.run(items, opts)
     spawn_next()
   end
 
-  vim.wait(10 * 60 * 1000, function()
-    return finished >= total or fatal ~= nil
-  end, 20)
-  driver.kill_all()
-
-  if fatal then
-    error(fatal, 0)
-  end
+  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = "tests" })
 
   if opts.coverage then
     for _, path in ipairs(collector.measurable_files(cwd, coverage_excludes)) do

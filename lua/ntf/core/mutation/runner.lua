@@ -1,4 +1,5 @@
 local driver = require("ntf.core.worker.driver")
+local wait = require("ntf.core.worker.wait")
 local verdict = require("ntf.core.mutation.verdict")
 local order = require("ntf.core.mutation.order")
 
@@ -40,8 +41,7 @@ function M.run(tasks, opts)
 
   local outcomes = {}
   local started = 0
-  local finished = 0
-  local fatal
+  local state = { finished = 0 } --- @type NtfRunState
 
   local spawn_next
 
@@ -52,7 +52,7 @@ function M.run(tasks, opts)
     if opts.on_task then
       opts.on_task(outcome)
     end
-    finished = finished + 1
+    state.finished = state.finished + 1
     vim.schedule(spawn_next)
   end
 
@@ -91,8 +91,8 @@ function M.run(tasks, opts)
         run_trial(task_index, trial_index + 1, next_progress)
       end, debug.traceback)
       if not ok then
-        fatal = fatal or err
-        finished = finished + 1
+        state.fatal = state.fatal or err
+        state.finished = state.finished + 1
       end
     end)
   end
@@ -110,14 +110,7 @@ function M.run(tasks, opts)
   end
 
   local budget = math.max(10 * 60 * 1000, total * 10 * 1000)
-  vim.wait(budget, function()
-    return finished >= total or fatal ~= nil
-  end, 20)
-  driver.kill_all()
-
-  if fatal then
-    error(fatal, 0)
-  end
+  wait.settle(state, { budget = budget, total = total, unit = "mutants" })
 
   return outcomes
 end

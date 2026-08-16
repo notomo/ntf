@@ -599,39 +599,30 @@
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 12,
+      "col": 33,
       "operator": "perturb-number",
       "original": "10",
       "replacement": "11",
-      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
       "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 17,
+      "col": 38,
       "operator": "perturb-number",
       "original": "60",
       "replacement": "61",
-      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
       "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",
-      "col": 22,
+      "col": 43,
       "operator": "perturb-number",
       "original": "1000",
       "replacement": "1001",
-      "line": "  vim.wait(10 * 60 * 1000, function()",
+      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
       "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 8,
-      "operator": "perturb-number",
-      "original": "20",
-      "replacement": "21",
-      "line": "  end, 20)",
-      "rationale": "the poll interval only sets how often the wait re-checks a predicate that is already true by then"
     },
     {
       "path": "lua/ntf/core/worker/driver.lua",
@@ -709,6 +700,15 @@
       "line": "  local json = stdout:sub(from + #begin_marker, to - 1)",
       "rationale": "emit writes a newline between the JSON and the end marker, so the shorter slice sheds only whitespace that vim.json.decode ignores",
       "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
+    },
+    {
+      "path": "lua/ntf/core/worker/wait.lua",
+      "col": 8,
+      "operator": "perturb-number",
+      "original": "20",
+      "replacement": "21",
+      "line": "  end, 20)",
+      "rationale": "the poll interval only sets how often the wait re-checks a predicate that is already true by then"
     }
   ],
   "exclude": [
