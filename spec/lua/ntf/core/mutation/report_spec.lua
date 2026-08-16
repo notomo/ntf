@@ -69,6 +69,30 @@ describe("ntf.core.mutation.report.summary", function()
     assert.no.match(status_nothing_landed_in, text)
   end)
 
+  it("lists a mutant that never landed apart from the undetected ones", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "not_applied") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 1,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
+    assert.match("1 killed  1 not applied\n", text)
+    assert.match("NOT APPLIED lua/a%.lua:2:1:swap%-relational < %-> <=", text)
+  end)
+
   it("shows a path relative to the working directory, leaving a path outside it whole", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "survived"), record("/other/b.lua", 2, "survived") },
@@ -201,6 +225,30 @@ describe("ntf.core.mutation.report.summary", function()
     local settled_equivalent_mutant = "lua/a%.lua:2"
     assert.no.match(settled_equivalent_mutant, text)
     assert.match('LOST BASELINE lua/b%.lua swap%-boolean: true %-> false at "  local x = true"', text)
+  end)
+
+  it("counts the mutants an exclude entry's operator left out", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/b.lua"), 2, "excluded") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 1,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("1 killed  1 excluded\n", text)
+    local settled_excluded_mutant = "lua/b%.lua:2"
+    assert.no.match(settled_excluded_mutant, text)
   end)
 
   it("counts the mutants of an operator the config did not adopt", function()

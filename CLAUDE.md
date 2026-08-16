@@ -97,7 +97,11 @@ Dependency-free neovim test CLI. Self-hosted: ntf runs its own specs.
   its own module vs part of operators. Outside that rule's `lua/` scope, keep the
   comments genvdoc extracts (e.g. `coverage/highlight_group.lua`) and the ones in
   the snippets `spec/lua/ntf/doc.lua` renders.
-- Every code/command element in the generated docs must be backed by something
-  `spec/lua/ntf/doc.lua` executes during `make doc` (runnable snippet files in
-  `spec/lua/ntf/doc/`, commands assembled from verified runs); no unverified
-  snippets.
+- Every file the generated docs show is one `spec/lua/ntf/doc.lua` runs during
+  `make doc` — the snippets in `spec/lua/ntf/doc/` are loaded, and the sample
+  project is really mutated under the `mutation.json` the docs print; no
+  unverified snippets. A command line the prose shows is checked against the
+  command tree instead (every `--flag` in the outputs has to be one the command
+  it names takes), since what those commands do is asserted, output and all, by
+  the end-to-end tests of `spec/lua/ntf/init_spec.lua`; a documented flag that no
+  test drives belongs there, not in a run of its own in `doc.lua`.

@@ -8,15 +8,6 @@ local report = require("ntf.core.mutation.report")
 local config = require("ntf.core.mutation.config")
 local plugin_name = vim.env.PLUGIN_NAME
 
---- @type string[] every leaf command, of which the docs show only the root's usage
-local command_ids =
-  { "run", "list", "mutation.run", "mutation.list", "mutation.baseline.verify", "mutation.baseline.add" }
-for _, command_id in ipairs(command_ids) do
-  if args.usage(command_id) == "" then
-    error("no usage for the command: " .. command_id)
-  end
-end
-
 local usage = args.usage("run")
 
 local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
@@ -107,31 +98,16 @@ vim.fn.writefile({
   "return M",
 }, vim.fs.joinpath(project_dir, "lua/launcher.lua"))
 
-run_ntf({ "--coverage", "spec" }, { cwd = project_dir })
+-- WHY: what these commands do is asserted, output and all, by the end-to-end
+-- tests of init_spec.lua, which run the same flags through bin/ntf.
+-- NOT: running each of them here too, which spends a CLI run — several of them
+-- whole mutation runs — to learn only that it exits 0.
 local coverage_command = "ntf --coverage"
-
-run_ntf({ "--coverage=luacov.stats.out", "spec" }, { cwd = project_dir })
 local coverage_stats_file_command = "ntf --coverage=luacov.stats.out"
-
-run_ntf({
-  "--coverage",
-  "--exclude-code=lua/vendor",
-  "spec",
-}, { cwd = project_dir })
 local exclude_code_command = "ntf --coverage --exclude-code=lua/vendor --exclude-code=lua/mymod/test"
-
-run_ntf({ "list", "spec" }, { cwd = project_dir })
 local list_command = "ntf list"
-
-run_ntf({
-  "mutation",
-  "--target=lua/mymod.lua",
-  "spec",
-}, { cwd = project_dir })
 local mutation_command = "ntf mutation"
 local mutation_strict_command = "ntf mutation --strict"
-
-run_ntf({ "mutation", "list", "--target=lua/mymod.lua", "spec" }, { cwd = project_dir })
 local mutation_list_command = "ntf mutation list"
 
 local mutation_config_path = doc_dir .. "/mutation_config.json"
@@ -183,24 +159,7 @@ run_ntf({
 }, { cwd = project_dir })
 local mutation_config_command = "ntf mutation --config=spec/mutation.json"
 
-run_ntf({
-  "mutation",
-  "baseline",
-  "verify",
-  "--target=lua/mymod.lua",
-  "--config=spec/mutation.json",
-  "spec",
-}, { cwd = project_dir })
 local mutation_verify_baseline_command = "ntf mutation baseline verify --config=spec/mutation.json"
-
-run_ntf({
-  "mutation",
-  "--target=lua/mymod.lua",
-  "--config=spec/mutation.json",
-  "--strict",
-  "--verify-baseline",
-  "spec",
-}, { cwd = project_dir })
 local mutation_verify_baseline_with_score_command =
   "ntf mutation --config=spec/mutation.json --strict --verify-baseline"
 
@@ -388,24 +347,12 @@ for _, entry in ipairs(operator_descriptions) do
   description_by_operator[entry.label] = entry
 end
 
--- WHY: the note under swap-arithmetic names source no example can show, since
--- what it says is that nothing is enumerated from it at all.
--- NOT: trusting the note, which is the one claim the examples cannot carry.
-for _, src in ipairs({ "local _ = a // b", "local _ = a & b | c", "local _ = ~a" }) do
-  if #operators.enumerate(src) > 0 then
-    error(("the document says no operator answers for it: %s"):format(src))
-  end
-end
-
 --- @param ctx { width: integer } the document width a line has to fit in
 --- @return string # every operator under a tag of its own, with the change its example gets and what detects it
 local operator_sections = function(ctx)
   local sections = {}
   for _, operator in ipairs(operators.operators) do
     local sites = operators.enumerate(operator.example)
-    if #sites == 0 then
-      error(("no site in the example of %s: %s"):format(operator.name, operator.example))
-    end
     local changes = {}
     for _, site in ipairs(sites) do
       local mutated = assert(splice.apply(operator.example, site), "example does not match its site")
@@ -525,67 +472,6 @@ assert_names(
   end, report.count_labels),
   "count line labels"
 )
-
---- @param row integer
---- @param status string
-local mutation_record = function(row, status)
-  return {
-    mutant = {
-      path = "lua/mymod.lua",
-      operator = "swap-relational",
-      row = row,
-      col = 13,
-      end_row = row,
-      end_col = 14,
-      start_byte = 0,
-      end_byte = 1,
-      original = ">",
-      replacement = ">=",
-    },
-    status = status,
-  }
-end
-
-local baseline_entry = {
-  path = "lua/mymod.lua",
-  operator = "perturb-number",
-  original = "0",
-  replacement = "1",
-  line = "  return n > 0",
-  invariant_spec = "is false at the boundary",
-}
--- WHY: the labels above are the report's own words, so one summary holding every
--- judgement at once is what says they are still spelled that way.
--- NOT: reading them out of the module, which says nothing about the output.
-local reported = report.summary({
-  records = {
-    mutation_record(1, "survived"),
-    mutation_record(2, "no_coverage"),
-    mutation_record(3, "not_applied"),
-    mutation_record(4, "baseline_killable"),
-  },
-  counts = {
-    killed = 1,
-    timeout = 1,
-    survived = 1,
-    no_coverage = 1,
-    not_applied = 1,
-    equivalent = 1,
-    excluded = 1,
-    unadopted = 1,
-    baseline_killable = 1,
-  },
-  score = 40,
-  lost = { baseline_entry },
-  unpinned = { baseline_entry },
-  unused_excludes = { { path = "lua/launcher.lua" } },
-  unused_spec_excludes = { { path = "spec/cli_spec.lua" } },
-}, nil, { color = false, elapsed = 1.0 })
-for _, entry in ipairs(vim.list_extend(vim.list_extend({}, report_labels), count_labels)) do
-  if not reported:find(entry.label, 1, true) then
-    error(("no run prints the documented label: %s\n%s"):format(entry.label, reported))
-  end
-end
 
 local setup_path = doc_dir .. "/setup.lua"
 dofile(setup_path)

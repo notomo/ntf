@@ -719,6 +719,22 @@ describe("ntf.core.controller.args.usage", function()
     assert.is_true(vim.tbl_contains(lines, ("  %s  %s"):format(args.flag_label(longest), longest.description)))
   end)
 
+  -- WHY: the documents show only the root's usage, so a leaf whose own usage
+  -- `ntf CMD --help` cannot print is what nothing else answers for.
+  -- NOT: naming the leaves, which is the list a new command is forgotten in.
+  it("gives every leaf command a usage of its own", function()
+    local commands = { args.root }
+    while #commands > 0 do
+      local command = table.remove(commands)
+      if not command.subcommands then
+        assert.match("^Usage: ntf", args.usage(command.id))
+      end
+      for _, sub in ipairs(command.subcommands or {}) do
+        table.insert(commands, sub)
+      end
+    end
+  end)
+
   it("renders every label longer than one character, so the width seed never survives math.max", function()
     local commands = { args.root }
     while #commands > 0 do
