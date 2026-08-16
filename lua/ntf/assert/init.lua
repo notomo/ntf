@@ -28,7 +28,7 @@ function Assert.register(self, fn)
 end
 
 --- Register a custom assertion onto ntf's assert object.
---- Available afterwards as `assert.{name}(...)` and `assert.is_not.{name}(...)`.
+--- Available afterwards as `assert.{name}(...)` and `assert.no.{name}(...)`.
 --- @param name string: assertion name
 --- @param fn function: factory `function(self) return function(_, args) ... end end` returning the predicate
 function M.register(name, fn)

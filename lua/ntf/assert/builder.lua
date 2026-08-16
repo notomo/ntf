@@ -7,7 +7,8 @@ local M = {}
 --- @field positive string? message key used when expected positive
 --- @field negative string? message key used when negated
 
-local negations = {
+--- @type table<string, true> modifier names that flip the expectation
+M.negations = {
   ["no"] = true,
 }
 
@@ -46,7 +47,7 @@ local function new_state(registry, positive)
           }
         end
       end
-      if negations[key] then
+      if M.negations[key] then
         return new_state(registry, not positive)
       end
       local entry = registry[key]

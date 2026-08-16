@@ -2,6 +2,7 @@ vim.opt.runtimepath:prepend(vim.fn.getcwd())
 
 local util = require("genvdoc.util")
 local args = require("ntf.core.controller.args")
+local builder = require("ntf.assert.builder")
 local operators = require("ntf.core.mutation.operators")
 local splice = require("ntf.core.mutation.splice")
 local report = require("ntf.core.mutation.report")
@@ -971,9 +972,20 @@ collect_flags(args.root)
 -- what says a flag they name in prose is still one the tree takes.
 -- NOT: dumping the usage of every command, which the documents are shorter for.
 for _, path in ipairs({ ("./doc/%s.txt"):format(plugin_name), "./README.md" }) do
-  for token in util.read_all(path):gmatch("%-%-[%w-]+") do
+  local content = util.read_all(path)
+  for token in content:gmatch("%-%-[%w-]+") do
     if not known_flags[token] then
       error(("%s names a flag no command takes: %s"):format(path, token))
+    end
+  end
+  -- WHY: a modifier is prose inside a doc source, not a name list the
+  -- enumeration check can compare, so this is what says `assert.X.y` names a
+  -- modifier the DSL answers to.
+  -- NOT: trusting review, which let the documents offer `assert.is_not` long
+  -- after `no` was the only modifier.
+  for modifier in content:gmatch("assert%.([%a_][%w_]*)%.") do
+    if not builder.negations[modifier] then
+      error(("%s names an assert modifier the DSL does not have: %s"):format(path, modifier))
     end
   end
 end

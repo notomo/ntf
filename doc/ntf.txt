@@ -687,7 +687,7 @@ match({pattern}, {got})                                   *ntf.assert.match()*
 
 register({name}, {fn})                                 *ntf.assert.register()*
   Register a custom assertion onto ntf's assert object.
-  Available afterwards as `assert.{name}(...)` and `assert.is_not.{name}(...)`.
+  Available afterwards as `assert.{name}(...)` and `assert.no.{name}(...)`.
 
   Parameters: ~
     {name} (string) assertion name
