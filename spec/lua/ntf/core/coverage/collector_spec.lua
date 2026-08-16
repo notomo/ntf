@@ -96,6 +96,15 @@ describe("ntf.core.coverage.collector.line_hook", function()
     assert.same({}, data)
   end)
 
+  it("records nothing for a relative source, as a neovim builtin module's `@vim/fs` is", function()
+    local cwd = vim.fn.getcwd()
+    local hook, data = collector.line_hook({ cwd = cwd })
+
+    run_hook(hook, "@vim/fs", { 3 })
+
+    assert.same({}, data)
+  end)
+
   it("records nothing for non-file chunks, spec files, excluded and outside paths", function()
     local hook, data = collector.line_hook({
       cwd = helper.test_data.full_path,

@@ -49,12 +49,11 @@ function M.exclude_paths(paths)
   return prefixes
 end
 
---- @param path string file path (any form)
+--- @param path string normalized path, absolute unless it comes from a chunk source that names no file
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
---- @return string|false normalized absolute path to record under, or false
+--- @return string|false the path to record under, or false
 local function measured_path(path, cwd, excludes)
-  path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
   local under_cwd = path == cwd or path:sub(1, #cwd + 1) == cwd .. "/"
   if not under_cwd or path:match("_spec%.lua$") then
     return false
@@ -79,7 +78,7 @@ local function make_resolver(cwd, excludes)
     end
 
     local path = source:match("^@(.*)$")
-    local result = path and measured_path(path, cwd, excludes) or false
+    local result = path and measured_path(vim.fs.normalize(path), cwd, excludes) or false
 
     decided[source] = result
     return result
