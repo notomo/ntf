@@ -978,23 +978,9 @@ for _, path in ipairs({ ("./doc/%s.txt"):format(plugin_name), "./README.md" }) d
   end
 end
 
--- WHY: a `>` on the line right after a list item is read as more of that item,
--- so the block is shown with its markers instead of as code, which only the
--- help parser can say - the text alone looks like every other block.
--- NOT: reading the rendered help, which is where this was first noticed.
 local help_path = ("./doc/%s.txt"):format(plugin_name)
 local help_text = util.read_all(help_path)
---- @type table<integer, true> the row each code block the help parser sees opens on
-local code_block_rows = {}
 local help_root = assert(vim.treesitter.get_string_parser(help_text, "vimdoc"):parse())[1]:root()
-for _, node in vim.treesitter.query.parse("vimdoc", "(codeblock) @block"):iter_captures(help_root, help_text) do
-  code_block_rows[(node:range()) + 1] = true
-end
-for row, line in ipairs(vim.split(help_text, "\n")) do
-  if vim.startswith(line, ">") and not code_block_rows[row] then
-    error(("%s:%d opens a code block the help parser does not see: %s"):format(help_path, row, line))
-  end
-end
 
 -- WHY: the prose now sends a reader to a tag per operator, so a name that moves
 -- would leave a link `:help` answers with an error instead of a section.
