@@ -198,7 +198,12 @@ for _, command in ipairs({
   end
 end
 
---- @param entries { label: string, description: string }[]
+--- @class NtfDocEntry
+--- @field label string the name the document lists, as the implementation spells it
+--- @field description string what the document says it is
+--- @field note string? what its own section adds, where it has one
+
+--- @param entries NtfDocEntry[]
 --- @param width integer the document width a line has to fit in
 --- @return string # a two-column list, the descriptions aligned past the widest label
 local table_block = function(entries, width)
@@ -218,32 +223,6 @@ local table_block = function(entries, width)
   return util.help_code_block(table.concat(lines, "\n"))
 end
 
---- @param names string[] the keys the document spells out
---- @param tbl table the value they have to be exactly the keys of
---- @param what string what the document calls them
-local assert_keys = function(names, tbl, what)
-  local got = vim.tbl_keys(tbl)
-  table.sort(got)
-  local want = vim.list_extend({}, names)
-  table.sort(want)
-  if not vim.deep_equal(want, got) then
-    error(("the %s the example file carries are not the documented ones: %s"):format(what, vim.inspect(got)))
-  end
-end
-
--- WHY: an implementation that gains a name the document has never heard of is
--- what a check against the document's own example cannot see, so the names come
--- from the tables the code itself works from.
--- NOT: listing the names twice and comparing the document to a copy of itself.
---- @param names string[] the names the document spells out, in the order it lists them
---- @param in_use string[] the names the implementation works from
---- @param what string what the document calls them
-local assert_names = function(names, in_use, what)
-  if not vim.deep_equal(names, in_use) then
-    error(("the %s the document spells are not the ones in use: %s"):format(what, vim.inspect(in_use)))
-  end
-end
-
 --- @param names string[]
 --- @return string[] # a sorted copy, for names no order is meant to be read into
 local sorted = function(names)
@@ -252,96 +231,120 @@ local sorted = function(names)
   return copy
 end
 
---- @param entries { label: string, description: string }[]
---- @return string[]
-local labels_of = function(entries)
-  return vim
-    .iter(entries)
-    :map(function(entry)
-      return entry.label
-    end)
-    :totable()
+--- @class NtfDocEnumeration
+--- @field what string what the document calls the names
+--- @field entries NtfDocEntry[] the names the document spells, in the order it lists them
+--- @field in_use string[] the names the implementation works from
+--- @field keys_of table? a documented example the names have to be exactly the keys of
+--- @field unordered boolean? for names no order is meant to be read into
+
+-- WHY: an implementation that gains a name the document has never heard of is
+-- what a check against the document's own example cannot see, so the names come
+-- from the tables the code itself works from.
+-- NOT: listing the names twice and comparing the document to a copy of itself.
+--- @param opts NtfDocEnumeration
+--- @return NtfDocEntry[] # the entries, once they are the names in use
+local enumeration = function(opts)
+  local names = vim.tbl_map(function(entry)
+    return entry.label
+  end, opts.entries)
+
+  local spelled, in_use = names, opts.in_use
+  if opts.unordered then
+    spelled, in_use = sorted(spelled), sorted(in_use)
+  end
+  if not vim.deep_equal(spelled, in_use) then
+    error(("the %s the document spells are not the ones in use: %s"):format(opts.what, vim.inspect(opts.in_use)))
+  end
+
+  if opts.keys_of then
+    local carried = sorted(vim.tbl_keys(opts.keys_of))
+    if not vim.deep_equal(sorted(names), carried) then
+      error(("the %s the example file carries are not the documented ones: %s"):format(opts.what, vim.inspect(carried)))
+    end
+  end
+
+  return opts.entries
 end
 
---- @type { label: string, description: string, note: string? }[] what a test has to do to detect each operator's mutant, and what its own section adds, in the order the document lists them
-local operator_descriptions = {
-  { label = "swap-relational", description = "a test has to exercise the boundary value the two disagree on" },
-  { label = "swap-logical", description = "a test has to reach operands the two connectives disagree on" },
-  {
-    label = "swap-arithmetic",
-    description = "a test has to exercise a right operand the two disagree on",
-    note = [[
+--- @type NtfDocEntry[] what a test has to do to detect each operator's mutant, and what its own section adds, in the order the document lists them
+local operator_descriptions = enumeration({
+  what = "operator names",
+  in_use = vim.tbl_map(function(operator)
+    return operator.name
+  end, operators.operators),
+  entries = {
+    { label = "swap-relational", description = "a test has to exercise the boundary value the two disagree on" },
+    { label = "swap-logical", description = "a test has to reach operands the two connectives disagree on" },
+    {
+      label = "swap-arithmetic",
+      description = "a test has to exercise a right operand the two disagree on",
+      note = [[
 The bitwise operators have no site of this operator, and neither does
 `//`, which the runtime a mutant is loaded in cannot compile.]],
-  },
-  {
-    label = "swap-boolean",
-    description = "a test has to depend on the value, not merely execute the line",
-    note = [[
+    },
+    {
+      label = "swap-boolean",
+      description = "a test has to depend on the value, not merely execute the line",
+      note = [[
 A condition spelled as a bare `true` or `false` is a site of this operator
 rather than of |ntf-force-branch|, so it is changed once instead of forced
 to each outcome it already names.]],
-  },
-  { label = "drop-not", description = "a test has to reach the branch the negation decides" },
-  { label = "drop-negation", description = "a test has to exercise a nonzero operand and depend on its sign" },
-  {
-    label = "perturb-number",
-    description = "a test has to depend on the exact value, not on its being non-zero",
-    note = "A hexadecimal literal is shifted into decimal, so `0x10` becomes `17`.",
-  },
-  {
-    label = "perturb-length",
-    description = "a test has to depend on the exact count, not on its being non-zero",
-    note = [[
+    },
+    { label = "drop-not", description = "a test has to reach the branch the negation decides" },
+    { label = "drop-negation", description = "a test has to exercise a nonzero operand and depend on its sign" },
+    {
+      label = "perturb-number",
+      description = "a test has to depend on the exact value, not on its being non-zero",
+      note = "A hexadecimal literal is shifted into decimal, so `0x10` becomes `17`.",
+    },
+    {
+      label = "perturb-length",
+      description = "a test has to depend on the exact count, not on its being non-zero",
+      note = [[
 The shifted count is parenthesized, so whatever the expression sits under
 still takes all of it.]],
-  },
-  {
-    label = "force-branch",
-    description = "each outcome needs a test that depends on which side ran",
-    note = [[
+    },
+    {
+      label = "force-branch",
+      description = "each outcome needs a test that depends on which side ran",
+      note = [[
 Only the condition is rewritten, so each mutant keeps the body it decides
 over.]],
-  },
-  {
-    label = "force-loop",
-    description = "a test has to depend on the body running, which a repeat still does once",
-    note = [[
+    },
+    {
+      label = "force-loop",
+      description = "a test has to depend on the body running, which a repeat still does once",
+      note = [[
 A `while` is pinned to false and a `repeat` to true — the outcome that
 leaves the loop, since the other spins forever to prove nothing a coverage
 hit does not already. A `for` is rewritten to the clause of its own kind
 that iterates none, so its body never runs.]],
-  },
-  {
-    label = "drop-call",
-    description = "a test has to observe what the call does, not merely reach its line",
-    note = [[
+    },
+    {
+      label = "drop-call",
+      description = "a test has to observe what the call does, not merely reach its line",
+      note = [[
 Only a call standing as a statement of its own: deleting one whose value
 is used would take the expression around it too.]],
-  },
-  {
-    label = "drop-assignment",
-    description = "a test has to observe what the assignment stores, not merely reach it",
-    note = [[
+    },
+    {
+      label = "drop-assignment",
+      description = "a test has to observe what the assignment stores, not merely reach it",
+      note = [[
 A `local` declaration is left alone, since deleting it would rewrite the
 scope every later mention of the name is read through, and not the store.]],
-  },
-  {
-    label = "drop-return-value",
-    description = "a test has to depend on what the function answers, not merely reach it",
-    note = [[
+    },
+    {
+      label = "drop-return-value",
+      description = "a test has to depend on what the function answers, not merely reach it",
+      note = [[
 Only a return that answers for a function: the one a chunk answers with is
 the module itself. A return of a single literal is left to that literal's
 own operator, which already owns the change.]],
+    },
   },
-}
-assert_names(
-  labels_of(operator_descriptions),
-  vim.tbl_map(function(operator)
-    return operator.name
-  end, operators.operators),
-  "operator names"
-)
+})
 local description_by_operator = {}
 for _, entry in ipairs(operator_descriptions) do
   description_by_operator[entry.label] = entry
@@ -381,97 +384,110 @@ local operator_sections = function(ctx)
   return table.concat(sections, "\n\n")
 end
 
---- @type { label: string, description: string }[] the config file's sections
-local config_sections = {
-  { label = "version", description = "the policy file format, currently 1 (required)" },
-  { label = "operators", description = "which operators produce mutants at all (required)" },
-  { label = "baseline", description = "the mutants judged impossible to kill" },
-  { label = "exclude", description = "files whose mutants the run leaves out" },
-  { label = "exclude_spec", description = "specs never picked as a mutant's trial" },
-}
 local sections_by_key = {}
 for _, section in ipairs(config.sections) do
   sections_by_key[section.key] = section
 end
-assert_names(
-  labels_of(config_sections),
-  vim.list_extend(
+
+--- @type NtfDocEntry[] the config file's sections
+local config_sections = enumeration({
+  what = "config sections",
+  in_use = vim.list_extend(
     { "version", "operators" },
     vim.tbl_map(function(section)
       return section.key
     end, config.sections)
   ),
-  "config sections"
-)
-assert_keys(labels_of(config_sections), documented, "config sections")
+  keys_of = documented,
+  entries = {
+    { label = "version", description = "the policy file format, currently 1 (required)" },
+    { label = "operators", description = "which operators produce mutants at all (required)" },
+    { label = "baseline", description = "the mutants judged impossible to kill" },
+    { label = "exclude", description = "files whose mutants the run leaves out" },
+    { label = "exclude_spec", description = "specs never picked as a mutant's trial" },
+  },
+})
 
---- @type { label: string, description: string }[] what a baseline entry names its mutant by
-local baseline_fields = {
-  { label = "path", description = "the mutated file, relative to the working directory" },
-  { label = "col", description = "the 1-based column the mutant starts at" },
-  { label = "operator", description = "the change, named as the report names it" },
-  { label = "original", description = "what the mutant replaces" },
-  { label = "replacement", description = "what it puts there" },
-  { label = "line", description = "the text of the line, matched instead of a row" },
-  { label = "rationale", description = "why no test can detect it (required)" },
-  { label = "invariant_spec", description = "full name of the test the rationale rests on" },
-}
-assert_names(labels_of(baseline_fields), sections_by_key.baseline.fields, "baseline entry fields")
-assert_keys(labels_of(baseline_fields), documented.baseline[1], "baseline entry fields")
+--- @type NtfDocEntry[] what a baseline entry names its mutant by
+local baseline_fields = enumeration({
+  what = "baseline entry fields",
+  in_use = sections_by_key.baseline.fields,
+  keys_of = documented.baseline[1],
+  entries = {
+    { label = "path", description = "the mutated file, relative to the working directory" },
+    { label = "col", description = "the 1-based column the mutant starts at" },
+    { label = "operator", description = "the change, named as the report names it" },
+    { label = "original", description = "what the mutant replaces" },
+    { label = "replacement", description = "what it puts there" },
+    { label = "line", description = "the text of the line, matched instead of a row" },
+    { label = "rationale", description = "why no test can detect it (required)" },
+    { label = "invariant_spec", description = "full name of the test the rationale rests on" },
+  },
+})
 
---- @type { label: string, description: string }[] what an exclude entry answers for
-local exclude_fields = {
-  { label = "path", description = "the file the entry answers for" },
-  { label = "operators", description = '"all", or the operator names to leave out (required)' },
-  { label = "rationale", description = "why its mutants are left out (required)" },
-}
-assert_names(labels_of(exclude_fields), sections_by_key.exclude.fields, "exclude entry fields")
-assert_keys(labels_of(exclude_fields), documented.exclude[1], "exclude entry fields")
+--- @type NtfDocEntry[] what an exclude entry answers for
+local exclude_fields = enumeration({
+  what = "exclude entry fields",
+  in_use = sections_by_key.exclude.fields,
+  keys_of = documented.exclude[1],
+  entries = {
+    { label = "path", description = "the file the entry answers for" },
+    { label = "operators", description = '"all", or the operator names to leave out (required)' },
+    { label = "rationale", description = "why its mutants are left out (required)" },
+  },
+})
 
---- @type { label: string, description: string }[] what an exclude_spec entry answers for
-local exclude_spec_fields = {
-  { label = "path", description = "the spec the entry answers for" },
-  { label = "rationale", description = "why it is never a trial (required)" },
-}
-assert_names(labels_of(exclude_spec_fields), sections_by_key.exclude_spec.fields, "exclude_spec entry fields")
-assert_keys(labels_of(exclude_spec_fields), documented.exclude_spec[1], "exclude_spec entry fields")
+--- @type NtfDocEntry[] what an exclude_spec entry answers for
+local exclude_spec_fields = enumeration({
+  what = "exclude_spec entry fields",
+  in_use = sections_by_key.exclude_spec.fields,
+  keys_of = documented.exclude_spec[1],
+  entries = {
+    { label = "path", description = "the spec the entry answers for" },
+    { label = "rationale", description = "why it is never a trial (required)" },
+  },
+})
 
---- @type { label: string, description: string }[] the lines a mutation run lists a judgement under
-local report_labels = {
-  { label = "SURVIVED", description = "no test noticed the change" },
-  { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
-  { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
-  { label = "BASELINE KILLABLE", description = "a baseline entry a test kills, named with the test" },
-  { label = "LOST BASELINE", description = "a baseline entry whose `line` is no longer there" },
-  { label = "UNPINNED BASELINE", description = "its `invariant_spec` names no test that passed" },
-  { label = "UNUSED EXCLUDE", description = "an `exclude` entry covering no measurable file" },
-  { label = "UNUSED EXCLUDE SPEC", description = "an `exclude_spec` entry covering no spec file" },
-}
 local listed_in_use = vim.tbl_values(report.entry_labels)
 for _, listed in pairs(report.listed) do
   table.insert(listed_in_use, listed.label)
 end
-assert_names(sorted(labels_of(report_labels)), sorted(listed_in_use), "report labels")
 
---- @type { label: string, description: string }[] the statuses the count line tallies
-local count_labels = {
-  { label = "killed", description = "detected: a test failed on the mutant" },
-  { label = "timeout", description = "detected: a test hung and its worker was killed" },
-  { label = "survived", description = "undetected: the tests stayed green" },
-  { label = "no coverage", description = "undetected: no test reached the line" },
-  { label = "not applied", description = "the mutant never landed, so it says nothing" },
-  { label = "equivalent", description = "a `baseline` entry, left out of the score" },
-  { label = "excluded", description = "an `exclude` entry's operator, out of the score" },
-  { label = "unadopted", description = "an operator `operators` does not take" },
-  { label = "baseline killable", description = "a `baseline` entry a test killed" },
-}
-assert_names(
-  labels_of(count_labels),
-  vim.tbl_map(function(entry)
+--- @type NtfDocEntry[] the lines a mutation run lists a judgement under
+local report_labels = enumeration({
+  what = "report labels",
+  in_use = listed_in_use,
+  unordered = true,
+  entries = {
+    { label = "SURVIVED", description = "no test noticed the change" },
+    { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
+    { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
+    { label = "BASELINE KILLABLE", description = "a baseline entry a test kills, named with the test" },
+    { label = "LOST BASELINE", description = "a baseline entry whose `line` is no longer there" },
+    { label = "UNPINNED BASELINE", description = "its `invariant_spec` names no test that passed" },
+    { label = "UNUSED EXCLUDE", description = "an `exclude` entry covering no measurable file" },
+    { label = "UNUSED EXCLUDE SPEC", description = "an `exclude_spec` entry covering no spec file" },
+  },
+})
+
+--- @type NtfDocEntry[] the statuses the count line tallies
+local count_labels = enumeration({
+  what = "count line labels",
+  in_use = vim.tbl_map(function(entry)
     return entry.label
   end, report.count_labels),
-  "count line labels"
-)
+  entries = {
+    { label = "killed", description = "detected: a test failed on the mutant" },
+    { label = "timeout", description = "detected: a test hung and its worker was killed" },
+    { label = "survived", description = "undetected: the tests stayed green" },
+    { label = "no coverage", description = "undetected: no test reached the line" },
+    { label = "not applied", description = "the mutant never landed, so it says nothing" },
+    { label = "equivalent", description = "a `baseline` entry, left out of the score" },
+    { label = "excluded", description = "an `exclude` entry's operator, out of the score" },
+    { label = "unadopted", description = "an operator `operators` does not take" },
+    { label = "baseline killable", description = "a `baseline` entry a test killed" },
+  },
+})
 
 local setup_path = doc_dir .. "/setup.lua"
 dofile(setup_path)
