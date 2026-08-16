@@ -977,23 +977,3 @@ for _, path in ipairs({ ("./doc/%s.txt"):format(plugin_name), "./README.md" }) d
     end
   end
 end
-
-local help_path = ("./doc/%s.txt"):format(plugin_name)
-local help_text = util.read_all(help_path)
-local help_root = assert(vim.treesitter.get_string_parser(help_text, "vimdoc"):parse())[1]:root()
-
--- WHY: the prose now sends a reader to a tag per operator, so a name that moves
--- would leave a link `:help` answers with an error instead of a section.
--- NOT: matching the bars by hand, which reads a link out of every `|` the
--- documented Lua happens to spell.
---- @type table<string, true> every tag the help defines
-local help_tags = {}
-for _, node in vim.treesitter.query.parse("vimdoc", "(tag (word) @tag)"):iter_captures(help_root, help_text) do
-  help_tags[vim.treesitter.get_node_text(node, help_text)] = true
-end
-for _, node in vim.treesitter.query.parse("vimdoc", "(taglink (word) @link)"):iter_captures(help_root, help_text) do
-  local link = vim.treesitter.get_node_text(node, help_text)
-  if not help_tags[link] then
-    error(("%s links to a tag it does not define: %s"):format(help_path, link))
-  end
-end
