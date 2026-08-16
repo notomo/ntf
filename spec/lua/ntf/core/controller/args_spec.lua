@@ -166,6 +166,42 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("invalid %-%-timeout value", err)
   end)
 
+  it("leaves opts.jobs nil when --jobs is absent, which is the cpu count", function()
+    local opts = args.parse({ "spec" })
+
+    assert.equal(nil, opts.jobs)
+  end)
+
+  it("accepts --jobs=1, the single worker a debug run asks for", function()
+    local opts = args.parse({ "--jobs=1", "spec" })
+
+    assert.equal(1, opts.jobs)
+  end)
+
+  it("rejects a non-numeric --jobs instead of silently falling back to the cpu count", function()
+    local err = args.parse({ "--jobs=abc", "spec" })
+
+    assert.match("invalid %-%-jobs value", err)
+  end)
+
+  it("rejects --jobs=0, which would start no worker at all", function()
+    local err = args.parse({ "--jobs=0", "spec" })
+
+    assert.match("invalid %-%-jobs value", err)
+  end)
+
+  it("rejects a negative --jobs", function()
+    local err = args.parse({ "--jobs=-1", "spec" })
+
+    assert.match("invalid %-%-jobs value", err)
+  end)
+
+  it("rejects a fractional --jobs", function()
+    local err = args.parse({ "--jobs=1.5", "spec" })
+
+    assert.match("invalid %-%-jobs value", err)
+  end)
+
   it("leaves coverage off by default", function()
     local opts = args.parse({ "spec" })
 

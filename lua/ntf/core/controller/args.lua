@@ -78,7 +78,11 @@ local jobs = {
   value = "N",
   description = "max parallel nvim workers (default: cpu count)",
   set = function(opts, value)
-    opts.jobs = tonumber(value)
+    local n = tonumber(value)
+    if n == nil or n < 1 or n % 1 ~= 0 then
+      return "invalid --jobs value (expected an integer >= 1)"
+    end
+    opts.jobs = n
   end,
 }
 
