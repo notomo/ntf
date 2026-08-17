@@ -3,7 +3,32 @@ local M = {}
 --- @param path string
 --- @return string # normalized absolute path
 local function absolute(path)
-  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+  return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"), { plain = true })
+end
+
+--- @param path string
+--- @return boolean # whether the path's last component is dot-prefixed
+local function is_hidden(path)
+  return vim.startswith(vim.fs.basename(path), ".")
+end
+
+--- @param dir string normalized absolute directory
+--- @param add fun(path: string) takes each spec file found
+local function collect(dir, add)
+  for name in
+    vim.fs.dir(dir, {
+      depth = math.huge,
+      plain = true,
+      skip = function(relative_dir)
+        return not is_hidden(relative_dir)
+      end,
+    })
+  do
+    local file = vim.fs.joinpath(dir, name)
+    if name:match("_spec%.lua$") and not is_hidden(name) and vim.fn.filereadable(file) == 1 then
+      add(file)
+    end
+  end
 end
 
 --- @param paths string[] CLI paths (spec files or directories)
@@ -36,9 +61,7 @@ function M.specs(paths, exclude)
 
   for _, path in ipairs(paths) do
     if vim.fn.isdirectory(path) == 1 then
-      for _, file in ipairs(vim.fn.glob(path .. "/**/*_spec.lua", true, true)) do
-        add(file)
-      end
+      collect(absolute(path), add)
     elseif vim.fn.filereadable(path) == 1 then
       if not path:match("_spec%.lua$") then
         error("not a *_spec.lua file: " .. path, 0)

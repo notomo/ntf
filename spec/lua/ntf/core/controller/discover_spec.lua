@@ -47,7 +47,7 @@ describe("ntf.core.controller.discover.specs", function()
     assert.match("a_spec%.lua$", files[1])
   end)
 
-  it("keeps globbing the specs a wildignore would otherwise hide", function()
+  it("keeps collecting the specs a wildignore would otherwise hide", function()
     local saved = vim.o.wildignore
     finally(function()
       vim.o.wildignore = saved
@@ -60,7 +60,7 @@ describe("ntf.core.controller.discover.specs", function()
     assert.equal(1, #files)
   end)
 
-  it("does not descend into a dot-prefixed directory while globbing", function()
+  it("does not descend into a dot-prefixed directory", function()
     helper.test_data:create_file("dir/a_spec.lua", "")
     helper.test_data:create_file("dir/.hidden/b_spec.lua", "")
 
@@ -70,13 +70,66 @@ describe("ntf.core.controller.discover.specs", function()
     assert.match("a_spec%.lua$", files[1])
   end)
 
-  it("collects the specs under a dot-prefixed directory named as a path, which a glob would have skipped", function()
+  it("does not descend into a dot-prefixed directory nested under another directory", function()
+    helper.test_data:create_file("dir/nested/a_spec.lua", "")
+    helper.test_data:create_file("dir/nested/.hidden/b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("does not collect a dot-prefixed spec file", function()
+    helper.test_data:create_file("dir/a_spec.lua", "")
+    helper.test_data:create_file("dir/.b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir") })
+
+    assert.equal(1, #files)
+    assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("does not collect a directory named like a spec file", function()
+    helper.test_data:create_dir("dir/looks_like_spec.lua")
+
+    local files = discover.specs({ helper.test_data:path("dir") })
+
+    assert.same({}, files)
+  end)
+
+  it("collects the specs under a dot-prefixed directory named as a path, which discovery would have skipped", function()
     helper.test_data:create_file(".hidden/a_spec.lua", "")
 
     local files = discover.specs({ helper.test_data:path(".hidden") })
 
     assert.equal(1, #files)
     assert.match("a_spec%.lua$", files[1])
+  end)
+
+  it("collects the specs under a bracketed directory, not the ones the brackets would have matched", function()
+    local file = helper.test_data:create_file("pr[o]j/a_spec.lua", "")
+    helper.test_data:create_file("proj/b_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("pr[o]j") })
+
+    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
+  end)
+
+  it("collects the specs under a braced directory", function()
+    local file = helper.test_data:create_file("a{b}/a_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("a{b}") })
+
+    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
+  end)
+
+  it("collects the specs under a directory named after an environment variable", function()
+    local file = helper.test_data:create_file("$HOME/a_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("$HOME") })
+
+    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
   end)
 
   it("errors, unprefixed, on a readable file that is not a spec", function()
