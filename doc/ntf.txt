@@ -548,6 +548,7 @@ MUTATION REPORT                                          *ntf-MUTATION-REPORT*
 A mutation run prints one line per judgement it wants answered, each naming the
 mutant as `PATH:ROW:COL:OPERATOR` or the config entry as its path:
 >
+  TIMEOUT              a hung test detected it, which a busy machine can fake
   SURVIVED             no test noticed the change
   NO COVERAGE          no test reaches the line, so it was never run
   NOT APPLIED          the file was not `require`d, so nothing changed

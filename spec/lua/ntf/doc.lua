@@ -460,6 +460,7 @@ local report_labels = enumeration({
   in_use = listed_in_use,
   unordered = true,
   entries = {
+    { label = "TIMEOUT", description = "a hung test detected it, which a busy machine can fake" },
     { label = "SURVIVED", description = "no test noticed the change" },
     { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
     { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },

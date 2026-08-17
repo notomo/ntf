@@ -35,7 +35,7 @@ local function record(path, row, status, mutant)
 end
 
 describe("ntf.core.mutation.report.summary", function()
-  it("scores the detected mutants and lists the undetected ones", function()
+  it("scores the detected mutants and lists every one a test did not plainly fail on", function()
     local summary = {
       records = {
         record(abs("lua/a.lua"), 1, "killed"),
@@ -61,10 +61,11 @@ describe("ntf.core.mutation.report.summary", function()
 
     assert.match("Mutation: 50%.0%% %(2/4 mutants detected%), 52%.0s elapsed\n", text)
     assert.match("1 killed  1 timeout  1 survived  1 no coverage\n", text)
+    assert.match("TIMEOUT lua/a%.lua:2:1:swap%-relational < %-> <=", text)
     assert.match("SURVIVED lua/a%.lua:3:1:swap%-relational < %-> <=", text)
     assert.match("NO COVERAGE lua/b%.lua:4", text)
-    local detected_mutant = "lua/a%.lua:1"
-    assert.no.match(detected_mutant, text)
+    local killed_mutant = "lua/a%.lua:1"
+    assert.no.match(killed_mutant, text)
     local status_nothing_landed_in = "not applied"
     assert.no.match(status_nothing_landed_in, text)
   end)

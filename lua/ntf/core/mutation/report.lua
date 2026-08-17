@@ -8,6 +8,7 @@ local M = {}
 
 --- @type table<string, { label: string, color: string }> the statuses a record gets a line of its own under
 M.listed = {
+  timeout = { label = "TIMEOUT", color = "yellow" },
   survived = { label = "SURVIVED", color = "red" },
   no_coverage = { label = "NO COVERAGE", color = "yellow" },
   not_applied = { label = "NOT APPLIED", color = "yellow" },
