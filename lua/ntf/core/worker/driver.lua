@@ -34,7 +34,9 @@ local function results_of(item, obj, decoded, timed_out_ms)
 
   local detail
   if timed_out_ms then
-    detail = ("worker timed out after %dms"):format(timed_out_ms)
+    detail = ("worker timed out after %dms and was killed, so after_each, finally and --test-hook teardown did not run"):format(
+      timed_out_ms
+    )
   else
     detail = (obj.stderr ~= "" and obj.stderr)
       or (decoded and decoded.load_error)

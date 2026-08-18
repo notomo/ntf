@@ -194,12 +194,15 @@ end)
     assert.match("temp_spec%.lua", outcome.results[1].message)
   end)
 
-  it("kills a worker that will not finish and reports how long it was given", function()
+  it("kills a worker that will not finish and reports its budget and the cleanup the kill skipped", function()
     local outcome = launch(item_of(SPINS), { timeout = 1000 }, 10000)
 
     assert.is_true(outcome.timed_out)
     assert.equal("error", outcome.results[1].status)
-    assert.equal("worker timed out after 1000ms", outcome.results[1].message)
+    assert.equal(
+      "worker timed out after 1000ms and was killed, so after_each, finally and --test-hook teardown did not run",
+      outcome.results[1].message
+    )
   end)
 
   it("gives a worker the item's own timeout ahead of the run's", function()
@@ -208,7 +211,10 @@ end)
 
     local outcome = launch(item, { timeout = 20000 }, 10000)
 
-    assert.equal("worker timed out after 500ms", outcome.results[1].message)
+    assert.equal(
+      "worker timed out after 500ms and was killed, so after_each, finally and --test-hook teardown did not run",
+      outcome.results[1].message
+    )
   end)
 
   it("lets a worker run untimed when the timeout is zero", function()
