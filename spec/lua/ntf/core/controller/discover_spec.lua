@@ -124,10 +124,15 @@ describe("ntf.core.controller.discover.specs", function()
     assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
   end)
 
-  it("collects the specs under a directory named after an environment variable", function()
-    local file = helper.test_data:create_file("$HOME/a_spec.lua", "")
+  it("collects the specs under a directory named after an environment variable, not the ones it names", function()
+    vim.env.NTF_TEST_DIR = "expanded"
+    finally(function()
+      vim.env.NTF_TEST_DIR = nil
+    end)
+    local file = helper.test_data:create_file("$NTF_TEST_DIR/a_spec.lua", "")
+    helper.test_data:create_file("expanded/b_spec.lua", "")
 
-    local files = discover.specs({ helper.test_data:path("$HOME") })
+    local files = discover.specs({ helper.test_data:path("$NTF_TEST_DIR") })
 
     assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
   end)
