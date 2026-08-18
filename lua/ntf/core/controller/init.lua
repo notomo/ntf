@@ -214,6 +214,16 @@ function M.run(root)
     os.exit(1)
   end
 
+  --- @param code integer what the run has come to, before its teardown had a say
+  local function finish(code)
+    local teardown_err = teardown_error(global_hook.teardown)
+    if teardown_err then
+      io.stderr:write("--global-hook teardown error: " .. teardown_err .. "\n")
+      code = code ~= 0 and code or 1
+    end
+    os.exit(code)
+  end
+
   local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
   if mode.list and not mode.mutation then
@@ -221,13 +231,7 @@ function M.run(root)
     io.stdout:write(list.tests(items))
     io.stderr:write(list.load_errors(load_errors))
 
-    local code = #load_errors > 0 and 1 or 0
-    local list_teardown_err = teardown_error(global_hook.teardown)
-    if list_teardown_err then
-      io.stderr:write("--global-hook teardown error: " .. list_teardown_err .. "\n")
-      code = code ~= 0 and code or 1
-    end
-    os.exit(code)
+    finish(#load_errors > 0 and 1 or 0)
   end
   local planned_items = items
 
@@ -283,8 +287,6 @@ function M.run(root)
 
   schedule.save(schedule_cache_path, schedule_cache, results, cwd)
 
-  local teardown_err = teardown_error(global_hook.teardown)
-
   local text, code = report.build(results, load_errors, { color = color })
   if not mode.list then
     io.stdout:write(text)
@@ -303,7 +305,7 @@ function M.run(root)
       end
       io.stdout:flush()
       io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(mode.list and "list" or "run"))
-      os.exit(code)
+      finish(code)
     end
     if mode.list then
       local list = require("ntf.core.controller.list")
@@ -335,12 +337,7 @@ function M.run(root)
     end
   end
 
-  if teardown_err then
-    io.stderr:write("--global-hook teardown error: " .. teardown_err .. "\n")
-    code = code ~= 0 and code or 1
-  end
-
-  os.exit(code)
+  finish(code)
 end
 
 return M

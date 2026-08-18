@@ -838,6 +838,30 @@ describe("ntf mutation", function()
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
   end)
 
+  it("tears the --global-hook down after the mutation trials, so it sweeps what they left behind", function()
+    local root = helper.test_data.full_path
+    local leftovers = vim.fs.joinpath(root, "leftovers")
+    helper.test_data:create_file("lua/mod.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        ('vim.fn.mkdir(%q, "p")'):format(leftovers),
+        ("vim.fn.writefile({}, vim.fs.joinpath(%q, tostring(vim.uv.os_getpid())))"):format(leftovers),
+        MUTATION_SPEC,
+      }, "\n")
+    )
+    local hook = helper.test_data:create_file(
+      "hook/global.lua",
+      ('return { teardown = function() vim.fn.delete(%q, "rf") end }'):format(leftovers)
+    )
+
+    local obj = helper.run_cli({ "mutation", "--target=lua/mod.lua", "--global-hook=" .. hook, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Mutation: %d+%.%d%%", obj.stdout)
+    assert.equal(0, vim.fn.isdirectory(leftovers))
+  end)
+
   it("exits non-zero and reports the categories when --strict finds a survivor", function()
     local root, results_file = mutation_project()
 
