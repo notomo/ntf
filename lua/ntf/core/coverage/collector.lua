@@ -1,7 +1,12 @@
 local M = {}
 
---- @type table<string, { max: integer, lines: table<string, integer> }>
-local active = {}
+--- @class NtfCoverageMeasurement one measurement in progress
+--- @field hook function the line hook it installed
+--- @field data table<string, { max: integer, lines: table<string, integer> }> the counts its hook records into
+--- @field previous { hook: function?, mask: string, count: integer } the debug hook that was installed when it began
+
+--- @type NtfCoverageMeasurement[] the measurements in progress, innermost last
+local measurements = {}
 
 --- @param cwd string any form of the working directory
 --- @return string normalized absolute path with no trailing slash
@@ -162,17 +167,33 @@ end
 --- @param opts { cwd: string, excludes?: string[] }
 function M.start(opts)
   local hook, data = M.line_hook(opts)
-  require("jit").off()
+  local previous_hook, previous_mask, previous_count = debug.gethook()
+  local jit = require("jit")
+  jit.off()
+  jit.flush()
   debug.sethook(hook, "l")
-  active = data
+  table.insert(measurements, {
+    hook = hook,
+    data = data,
+    previous = { hook = previous_hook, mask = previous_mask, count = previous_count },
+  })
 end
 
---- @return table<string, { max: integer, lines: table<string, integer> }>
+--- @param measurement NtfCoverageMeasurement
+--- @return string? # why the counts it recorded are partial: the single `debug.sethook` slot was taken over while it ran
+function M.release(measurement)
+  if debug.gethook() ~= measurement.hook then
+    return "the debug hook coverage counts lines with was replaced while the test ran, so the counts stop where the replacement began"
+  end
+  local previous = measurement.previous
+  debug.sethook(previous.hook, previous.mask, previous.count)
+end
+
+--- @return table<string, { max: integer, lines: table<string, integer> }> # the counts recorded, which the message below reports as partial
+--- @return string? # why the counts are partial, from `M.release`
 function M.stop()
-  debug.sethook()
-  local data = active
-  active = {}
-  return data
+  local measurement = table.remove(measurements)
+  return measurement.data, M.release(measurement)
 end
 
 --- @param into table accumulator (same shape as `M.stop`'s return)

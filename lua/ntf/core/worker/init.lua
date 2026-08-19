@@ -28,6 +28,18 @@ local function main()
     return captured
   end
 
+  --- @param message string
+  local function coverage_result(message)
+    return {
+      id = "<coverage>",
+      name = "coverage",
+      names = { "coverage" },
+      trace = { source = "@" .. payload.file },
+      status = "error",
+      message = message,
+    }
+  end
+
   --- @param err { message: string, traceback: string? }
   local function teardown_result(err)
     return {
@@ -47,9 +59,15 @@ local function main()
   end
 
   local collector
+  local coverage_problem
   if payload.coverage then
-    collector = require("ntf.core.coverage.collector")
-    collector.start({ cwd = payload.cwd, excludes = payload.coverage_excludes })
+    if debug.gethook() then
+      coverage_problem =
+        "coverage was not measured: the single debug.sethook slot was already taken when the test started, so measuring it would have silently disabled the hook that holds it"
+    else
+      collector = require("ntf.core.coverage.collector")
+      collector.start({ cwd = payload.cwd, excludes = payload.coverage_excludes })
+    end
   end
 
   local tree = require("ntf.core.tree")
@@ -70,7 +88,13 @@ local function main()
 
   local results = require("ntf.core.worker.executor").run(root_node, { [payload.node_id] = true })
 
-  local coverage = collector and collector.stop() or nil
+  local coverage
+  if collector then
+    coverage, coverage_problem = collector.stop()
+  end
+  if coverage_problem then
+    table.insert(results, coverage_result(coverage_problem))
+  end
   local teardown_err = teardown()
   if teardown_err then
     table.insert(results, teardown_result(teardown_err))

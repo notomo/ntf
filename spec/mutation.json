@@ -289,36 +289,6 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 3,
-      "operator": "drop-call",
-      "original": "require(\"jit\").off()",
-      "replacement": "do end",
-      "line": "  require(\"jit\").off()",
-      "rationale": "the line hook installed on the next line takes over the accumulator this line was recorded into, so every test that reaches it reports its coverage without it",
-      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 3,
-      "operator": "drop-call",
-      "original": "debug.sethook(hook, \"l\")",
-      "replacement": "do end",
-      "line": "  debug.sethook(hook, \"l\")",
-      "rationale": "this line installs the hook that takes over the accumulator recording it, so no run reports coverage for it",
-      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 10,
-      "operator": "drop-return-value",
-      "original": "data",
-      "replacement": "nil",
-      "line": "  return data",
-      "rationale": "stop turns its own line hook off on the line above, so the return that hands the counts back is the one line no run can record",
-      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
       "col": 5,
       "operator": "drop-assignment",
       "original": "decided[source] = result",
@@ -326,26 +296,6 @@
       "line": "    decided[source] = result",
       "rationale": "the decided cache only memoizes measured_path, a pure function of source, so never storing the result recomputes the identical one",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 3,
-      "operator": "drop-assignment",
-      "original": "active = data",
-      "replacement": "do end",
-      "line": "  active = data",
-      "rationale": "the hook installed on the line above is live by the time this line runs, so every test covers it and every one of them is a trial, but nothing a trial runs reads what stop hands back: the specs that do are this file's own start/stop ones, whose stop hands the worker's accumulator over and clears it, leaving them with no coverage of their own to be picked from",
-      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 3,
-      "operator": "drop-assignment",
-      "original": "active = {}",
-      "replacement": "do end",
-      "line": "  active = {}",
-      "rationale": "stop turns its own line hook off on the line above, so the lines that hand the counts back and clear the accumulator are the ones no run can record",
-      "invariant_spec": "ntf.core.coverage.collector.start/stop counts executed lines of a measured file under cwd"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -366,6 +316,16 @@
       "line": "          if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+    },
+    {
+      "path": "lua/ntf/core/coverage/collector.lua",
+      "col": 3,
+      "operator": "drop-call",
+      "original": "jit.off()",
+      "replacement": "do end",
+      "line": "  jit.off()",
+      "rationale": "LuaJIT records no new trace while a line hook is installed, so with the hook in place turning the compiler off changes no count; what the counts rest on is the flush of the traces compiled before it went in",
+      "invariant_spec": "ntf.core.coverage.collector.line_hook counts every iteration of a loop hot enough to compile, since a line hook stops the JIT recording traces"
     },
     {
       "path": "lua/ntf/core/controller/list.lua",

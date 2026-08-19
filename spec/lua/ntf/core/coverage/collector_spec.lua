@@ -4,6 +4,40 @@ local describe, before_each, after_each, it, finally, assert =
 local collector = require("ntf.core.coverage.collector")
 local helper = require("ntf.test.helper")
 
+--- @return fun() # puts the debug hook installed now back, which the end of the test does too
+local function keep_debug_hook()
+  local hook, mask, count = debug.gethook()
+  local restore = function()
+    debug.sethook(hook, mask, count)
+  end
+  finally(restore)
+  return restore
+end
+
+local LOOP_BODY_LINE = "4"
+
+--- @param name string file name under the test data dir
+--- @return fun(n: integer) # a function whose loop the JIT compiles once it is called with enough iterations
+--- @return string # the normalized path it was loaded from
+local function loop_function(name)
+  local path = helper.test_data:create_file(
+    name,
+    table.concat({
+      "local function total(n)",
+      "  local sum = 0",
+      "  for i = 1, n do",
+      "    sum = sum + i",
+      "  end",
+      "  return sum",
+      "end",
+      "return total",
+    }, "\n")
+  )
+  return assert(loadfile(path))(), vim.fs.normalize(path)
+end
+
+local HOT_ENOUGH_TO_COMPILE = 1000
+
 describe("ntf.core.coverage.collector.merge", function()
   it("sums per-line hits across workers and tracks the max line", function()
     local into = {}
@@ -118,6 +152,22 @@ describe("ntf.core.coverage.collector.line_hook", function()
 
     assert.same({}, data)
   end)
+
+  it(
+    "counts every iteration of a loop hot enough to compile, since a line hook stops the JIT recording traces",
+    function()
+      local total, measured = loop_function("loop.lua")
+      keep_debug_hook()
+      local hook, data = collector.line_hook({ cwd = helper.test_data.full_path })
+      require("jit").on()
+
+      debug.sethook(hook, "l")
+      total(HOT_ENOUGH_TO_COMPILE)
+      debug.sethook()
+
+      assert.equal(HOT_ENOUGH_TO_COMPILE, data[measured].lines[LOOP_BODY_LINE])
+    end
+  )
 end)
 
 describe("ntf.core.coverage.collector.start/stop", function()
@@ -146,15 +196,42 @@ describe("ntf.core.coverage.collector.start/stop", function()
     assert.same(body_line_hits, data[vim.fs.normalize(measured)].lines)
   end)
 
-  it("leaves no hook behind, so nothing keeps recording into the data it handed back", function()
-    local measured_cwd = vim.fn.getcwd()
-    collector.start({ cwd = measured_cwd })
-    collector.stop()
-    finally(function()
-      collector.start({ cwd = measured_cwd })
-    end)
+  it("puts back the debug hook that was installed before it started", function()
+    local outer_hook = function() end
+    keep_debug_hook()
+    debug.sethook(outer_hook, "l")
 
-    assert.is_nil(debug.gethook())
+    collector.start({ cwd = helper.test_data.full_path })
+    collector.stop()
+
+    assert.equal(outer_hook, debug.gethook())
+  end)
+
+  it("reports partial counts and leaves the replacement alone when something takes the hook slot over", function()
+    keep_debug_hook()
+    local replacement = function() end
+
+    collector.start({ cwd = helper.test_data.full_path })
+    debug.sethook(replacement, "l")
+    local _, problem = collector.stop()
+
+    assert.equal(replacement, debug.gethook())
+    assert.match("was replaced while the test ran", problem)
+  end)
+
+  it("counts the lines of a function the JIT had already compiled before it started", function()
+    local total, measured = loop_function("hot.lua")
+    local restore_hook = keep_debug_hook()
+    debug.sethook()
+    require("jit").on()
+    total(HOT_ENOUGH_TO_COMPILE)
+    restore_hook()
+
+    collector.start({ cwd = helper.test_data.full_path })
+    total(1)
+    local data = collector.stop()
+
+    assert.equal(1, data[measured].lines[LOOP_BODY_LINE])
   end)
 
   it("does not measure files outside cwd", function()
@@ -185,6 +262,30 @@ describe("ntf.core.coverage.collector.start/stop", function()
     local data = collector.stop()
 
     assert.same({}, data)
+  end)
+end)
+
+describe("ntf.core.coverage.collector.release", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("says the counts are partial when its hook is no longer the one in place", function()
+    local problem = collector.release({ hook = function() end, data = {}, previous = { mask = "", count = 0 } })
+
+    assert.match("was replaced while the test ran", problem)
+  end)
+
+  it("puts the previous hook back when its own hook is still in place", function()
+    keep_debug_hook()
+    local installed = function() end
+    local previous = function() end
+    debug.sethook(installed, "l")
+
+    local problem =
+      collector.release({ hook = installed, data = {}, previous = { hook = previous, mask = "l", count = 0 } })
+
+    assert.is_nil(problem)
+    assert.equal(previous, debug.gethook())
   end)
 end)
 
