@@ -8,6 +8,7 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @class NtfOptions
 --- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify or mutation.baseline.add
 --- @field paths string[] spec files or directories
+--- @field whole_suite boolean the run takes every test the project has: no paths were named, no filter kept only some and no spec was excluded
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
@@ -671,10 +672,12 @@ function M.parse(argv)
     i = i + 1
   end
 
+  local paths_given = #opts.paths > 0
+  opts.whole_suite = not paths_given and not opts.filter and #opts.exclude_spec == 0
   if opts.help then
     return opts
   end
-  if command.positional and #opts.paths == 0 then
+  if command.positional and not paths_given then
     if vim.fn.isdirectory("spec") == 1 then
       opts.paths = { "spec" }
     else

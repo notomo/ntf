@@ -23,10 +23,18 @@ describe("ntf.core.write", function()
     assert.same({ "new" }, vim.fn.readfile(path))
   end)
 
-  it("closes the file it wrote", function()
-    local path = helper.test_data:path("out.json")
+  it("leaves no temporary file beside the one it wrote", function()
+    local dir = helper.test_data:path("cache")
+    write.file(vim.fs.joinpath(dir, "out.json"), "written")
 
-    assert.is_false(helper.leaves_file_open(path, function()
+    assert.same({ "out.json" }, vim.fn.readdir(dir))
+  end)
+
+  it("closes the temporary file it wrote before renaming it into place", function()
+    local path = helper.test_data:path("out.json")
+    local tmp = ("%s.%d.tmp"):format(path, vim.uv.os_getpid())
+
+    assert.is_false(helper.leaves_file_open(tmp, function()
       write.file(path, "written")
     end))
   end)

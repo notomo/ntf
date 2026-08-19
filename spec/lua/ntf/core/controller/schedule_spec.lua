@@ -32,7 +32,7 @@ describe("ntf.core.controller.schedule", function()
   it("orders the slowest test first", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), {
+    schedule.save(path, {
       result(root, "spec/a_spec.lua", "fast", 0.01),
       result(root, "spec/a_spec.lua", "slow", 2.0),
       result(root, "spec/b_spec.lua", "medium", 0.5),
@@ -54,7 +54,7 @@ describe("ntf.core.controller.schedule", function()
   it("orders by a cache key it normalizes, so an odd spelling of a path still finds its entry", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), {
+    schedule.save(path, {
       result(root, "spec/a_spec.lua", "fast", 0.01),
       result(root, "spec/a_spec.lua", "slow", 2.0),
     }, root)
@@ -71,7 +71,7 @@ describe("ntf.core.controller.schedule", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
 
-    schedule.save(path, schedule.load(path), { result(root, "spec/./a_spec.lua", "one", 0.25) }, root .. "/")
+    schedule.save(path, { result(root, "spec/./a_spec.lua", "one", 0.25) }, root .. "/")
 
     assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
   end)
@@ -79,7 +79,7 @@ describe("ntf.core.controller.schedule", function()
   it("treats a test the cache does not know as the slowest", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "known", 2.0) }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "known", 2.0) }, root)
 
     local ordered = schedule.order({
       item(root, "spec/a_spec.lua", "known"),
@@ -113,7 +113,7 @@ describe("ntf.core.controller.schedule", function()
     local path = helper.test_data:path("schedule.json")
     local outside = "/elsewhere/x_spec.lua"
 
-    schedule.save(path, schedule.load(path), {
+    schedule.save(path, {
       { id = "1.1", names = { "group", "one" }, file = outside, status = "passed", duration = 1.0 },
     }, root)
 
@@ -124,7 +124,7 @@ describe("ntf.core.controller.schedule", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
 
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 0.25, "failed") }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", 0.25, "failed") }, root)
 
     local entry = schedule.load(path).files["spec/a_spec.lua"]["group one"]
     assert.equal(250, entry.ms)
@@ -135,7 +135,7 @@ describe("ntf.core.controller.schedule", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("cache/ntf/schedule.json")
 
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
 
     assert.equal(250, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
   end)
@@ -143,7 +143,7 @@ describe("ntf.core.controller.schedule", function()
   it("closes the cache file it read", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", 0.25) }, root)
 
     assert.is_false(helper.leaves_file_open(path, function()
       schedule.load(path)
@@ -153,24 +153,49 @@ describe("ntf.core.controller.schedule", function()
   it("merges into the existing cache instead of replacing it", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), {
+    schedule.save(path, {
       result(root, "spec/a_spec.lua", "kept", 1.0),
       result(root, "spec/a_spec.lua", "updated", 1.0),
     }, root)
 
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "updated", 2.0) }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "updated", 2.0) }, root)
 
     local by_name = schedule.load(path).files["spec/a_spec.lua"]
     assert.equal(1000, by_name["group kept"].ms)
     assert.equal(2000, by_name["group updated"].ms)
   end)
 
+  it("drops the tests a run over the whole suite did not report, since they are gone", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+    schedule.save(path, {
+      result(root, "spec/a_spec.lua", "renamed", 1.0),
+      result(root, "spec/b_spec.lua", "deleted", 1.0),
+    }, root)
+
+    schedule.save(path, { result(root, "spec/a_spec.lua", "kept", 2.0) }, root, true)
+
+    local files = schedule.load(path).files
+    assert.same({ ["group kept"] = { ms = 2000, status = "passed" } }, files["spec/a_spec.lua"])
+    assert.is_nil(files["spec/b_spec.lua"])
+  end)
+
+  it("keeps the tests a run over part of the suite did not report", function()
+    local root = helper.test_data.full_path
+    local path = helper.test_data:path("schedule.json")
+    schedule.save(path, { result(root, "spec/b_spec.lua", "elsewhere", 1.0) }, root)
+
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", 2.0) }, root, false)
+
+    assert.equal(1000, schedule.load(path).files["spec/b_spec.lua"]["group elsewhere"].ms)
+  end)
+
   it("keeps the old duration for a result without one", function()
     local root = helper.test_data.full_path
     local path = helper.test_data:path("schedule.json")
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", 1.0) }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", 1.0) }, root)
 
-    schedule.save(path, schedule.load(path), { result(root, "spec/a_spec.lua", "one", nil, "pending") }, root)
+    schedule.save(path, { result(root, "spec/a_spec.lua", "one", nil, "pending") }, root)
 
     assert.equal(1000, schedule.load(path).files["spec/a_spec.lua"]["group one"].ms)
   end)
@@ -206,7 +231,6 @@ describe("ntf.core.controller.schedule", function()
 
     schedule.save(
       vim.fs.joinpath(blocker, "sub", "schedule.json"),
-      schedule.load(helper.test_data:path("nope.json")),
       { result(root, "spec/a_spec.lua", "one", 1.0) },
       root
     )

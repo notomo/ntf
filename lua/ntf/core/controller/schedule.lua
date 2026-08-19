@@ -80,11 +80,18 @@ function M.order(items, cache, cwd)
 end
 
 --- @param path string
---- @param cache NtfScheduleCache
 --- @param results NtfResult[]
 --- @param cwd string working directory
-function M.save(path, cache, results, cwd)
+--- @param whole_suite boolean? the run ran every test the project has, so the entries it does not report are of tests that are gone
+function M.save(path, results, cwd, whole_suite)
   cwd = normalize(cwd)
+
+  -- WHY: the cache is read again here, rather than the run writing back the one
+  -- it ordered its items from, so that a run which saved while this one was
+  -- still testing keeps the entries it saved.
+  -- NOT: passing that ordering cache in, which carries the file as it stood
+  -- before this run started and puts it back over the other run's.
+  local cache = whole_suite and { version = VERSION, files = {} } or M.load(path)
   for _, result in ipairs(results) do
     if result.duration and result.file then
       local key = relative(result.file, cwd)

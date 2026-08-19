@@ -252,6 +252,36 @@ describe("ntf.core.controller.args.parse", function()
     assert.same({ "given/path" }, args.parse({ "given/path" }).paths)
   end)
 
+  describe("whole_suite", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    --- @param arguments string[]
+    local function parse_in_project(arguments)
+      helper.test_data:create_dir("spec")
+      helper.test_data:cd("")
+      return args.parse(arguments)
+    end
+
+    it("marks a run with no paths, no filter and no excluded spec as taking the whole suite", function()
+      assert.is_true(parse_in_project({}).whole_suite)
+    end)
+
+    it("marks a run with given paths as taking part of the suite", function()
+      assert.is_false(parse_in_project({ "given/path" }).whole_suite)
+    end)
+
+    it("marks a filtered run as taking part of the suite", function()
+      assert.is_false(parse_in_project({ "--filter=pattern" }).whole_suite)
+    end)
+
+    it("marks a run with an excluded spec as taking part of the suite", function()
+      local excluded = helper.test_data:create_file("spec/other_spec.lua", "")
+
+      assert.is_false(parse_in_project({ "--exclude-spec=" .. excluded }).whole_suite)
+    end)
+  end)
+
   describe("--test-hook", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

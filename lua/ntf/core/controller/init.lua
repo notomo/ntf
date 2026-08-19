@@ -237,8 +237,7 @@ function M.run(root)
 
   local schedule = require("ntf.core.controller.schedule")
   local schedule_cache_path = require("ntf.core.cache_path").schedule()
-  local schedule_cache = schedule.load(schedule_cache_path)
-  items = schedule.order(items, schedule_cache, vim.fn.getcwd())
+  items = schedule.order(items, schedule.load(schedule_cache_path), vim.fn.getcwd())
 
   local prog
   if vim.uv.guess_handle(2) == "tty" then
@@ -285,7 +284,7 @@ function M.run(root)
     prog.finish()
   end
 
-  schedule.save(schedule_cache_path, schedule_cache, results, cwd)
+  schedule.save(schedule_cache_path, results, cwd, opts.whole_suite)
 
   local text, code = report.build(results, load_errors, { color = color })
   if not mode.list then
