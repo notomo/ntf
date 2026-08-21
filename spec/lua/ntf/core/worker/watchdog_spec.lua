@@ -58,6 +58,100 @@ describe("ntf.core.worker.watchdog.start", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
+  --- @type integer how long a worker waits between two beats, short enough that several land inside one poll of the parent
+  local beat_ms = 50
+
+  --- @type integer beats a worker writes before it stops on its own, bounding a worker no watchdog ever kills
+  local beats = 600
+
+  --- @param path string the file a worker beats into
+  --- @return integer # bytes it has beaten so far, which only grows
+  local function beaten(path)
+    local stat = vim.uv.fs_stat(path)
+    return stat and stat.size or 0
+  end
+
+  --- @param path string the file a worker beats into
+  --- @param deadline_ms integer how long to give the watchdog
+  --- @return boolean # whether the beats stopped
+  local function beats_stopped(path, deadline_ms)
+    local quiet_ms = watchdog.poll_interval() * 3
+    local waited = 0
+    while waited < deadline_ms do
+      local seen = beaten(path)
+      vim.uv.sleep(quiet_ms)
+      waited = waited + quiet_ms
+      if beaten(path) == seen then
+        return true
+      end
+    end
+    return false
+  end
+
+  --- @param script string path to a lua file
+  --- @return table # a vim.SystemObj running it in a headless neovim
+  local function nvim(script)
+    return vim.system({
+      vim.v.progpath,
+      "--clean",
+      "--headless",
+      "-c",
+      ("lua vim.cmd.luafile({ args = { %q }, magic = { file = false } })"):format(script),
+    }, { text = true })
+  end
+
+  it("kills a worker whose run died, leaving it beating into a directory nothing reads", function()
+    local heartbeat = helper.test_data:path("heartbeat")
+    local worker = helper.test_data:create_file(
+      "worker.lua",
+      ([[
+vim.opt.runtimepath:prepend(%q)
+require("ntf.core.worker.watchdog").start(nil)
+for _ = 1, %d do
+  vim.fn.writefile({ "beat" }, %q, "a")
+  vim.uv.sleep(%d)
+end
+]]):format(helper.root, beats, heartbeat, beat_ms)
+    )
+    local run = helper.test_data:create_file(
+      "run.lua",
+      ([[
+local worker = vim.system({
+  vim.v.progpath,
+  "--clean",
+  "--headless",
+  "-c",
+  ("lua vim.cmd.luafile({ args = { %%q }, magic = { file = false } })"):format(%q),
+})
+local _ = worker
+vim.wait(%d, function()
+  return false
+end)
+]]):format(worker, beats * beat_ms)
+    )
+
+    local proc = nvim(run)
+    local one_beat = #"beat\n"
+    local started_beating = vim.wait(30000, function()
+      return beaten(heartbeat) >= 2 * one_beat
+    end, 20)
+    assert.is_true(started_beating)
+
+    proc:kill("sigkill")
+
+    -- WHY: windows reports the pid the process was created under and goes on
+    -- reporting it once that process is gone, so a worker there outlives its run
+    -- until the deadline the run set for it, which an untimed run never sets.
+    -- NOT: killing the run's whole process group, which the run cannot arrange
+    -- for itself and would say nothing about what an orphan does.
+    local unix = vim.fn.has("win32") == 0
+    if unix then
+      assert.is_true(beats_stopped(heartbeat, 10000))
+    else
+      assert.is_false(beats_stopped(heartbeat, watchdog.poll_interval() * 3))
+    end
+  end)
+
   it("kills a process spinning in lua, which no timer of its own could reach", function()
     local script = helper.test_data:create_file(
       "spinner.lua",
