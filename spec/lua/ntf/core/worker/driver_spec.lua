@@ -217,6 +217,19 @@ end)
     )
   end)
 
+  it("runs a worker with no swap file, which several in one directory would collide over", function()
+    local outcome = launch(item_of([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("keeps no swap file", function()
+    ntf.assert.is_false(vim.o.swapfile)
+  end)
+end)
+]]))
+
+    assert.equal("passed", outcome.results[1].status)
+  end)
+
   it("lets a worker run untimed when the timeout is zero", function()
     local outcome = launch(item_of(ONE_TEST), { timeout = 0 })
 
