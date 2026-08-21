@@ -44,6 +44,68 @@ local function counted(coverage)
   return measured, seeded
 end
 
+--- @type integer how long a worker waits for the other slots to fill before giving up on them
+local rendezvous_ms = 5000
+
+--- @type integer how long a worker holds its slot past the rendezvous, so peers that met there overlap by more than the poll that found them
+local hold_ms = 50
+
+--- @param count integer tests the spec holds
+--- @param jobs integer workers the run may hold at once
+--- @param dir string directory the tests record their spans in
+--- @return string # spec source
+local function spec_recording_spans(count, jobs, dir)
+  local tests = {}
+  for index = 1, count do
+    table.insert(
+      tests,
+      ([[
+  ntf.it("slot %d", function()
+    local path = vim.fs.joinpath(%q, "%d")
+    local started = vim.uv.hrtime() * 1e-6
+    vim.fn.writefile({ ("%%.3f"):format(started) }, path)
+    vim.wait(%d, function()
+      return #vim.fn.readdir(%q) >= %d
+    end, 10)
+    vim.uv.sleep(%d)
+    vim.fn.writefile({ ("%%.3f"):format(started), ("%%.3f"):format(vim.uv.hrtime() * 1e-6) }, path)
+  end)
+]]):format(index, dir, index, rendezvous_ms, dir, jobs, hold_ms)
+    )
+  end
+  return ([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+%s
+end)
+]]):format(table.concat(tests))
+end
+
+--- @param dir string directory the workers recorded their spans in
+--- @return integer # the most workers that held a slot at one instant
+local function most_at_once(dir)
+  local events = {}
+  for _, name in ipairs(vim.fn.readdir(dir)) do
+    local lines = vim.fn.readfile(vim.fs.joinpath(dir, name))
+    assert(#lines == 2, "a worker recorded no span: " .. name)
+    table.insert(events, { at = tonumber(lines[1]), delta = 1 })
+    table.insert(events, { at = tonumber(lines[2]), delta = -1 })
+  end
+  table.sort(events, function(a, b)
+    if a.at ~= b.at then
+      return a.at < b.at
+    end
+    return a.delta < b.delta
+  end)
+
+  local held, most = 0, 0
+  for _, event in ipairs(events) do
+    held = held + event.delta
+    most = math.max(most, held)
+  end
+  return most
+end
+
 describe("ntf.core.controller.pool.run", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -254,5 +316,15 @@ end)
       { item_index = 1, measured = true },
       { item_index = 2, measured = true },
     }, calls)
+  end)
+
+  it("fills the jobs it was given and no more, so an item waits for a slot to free", function()
+    local jobs = 2
+    local dir = helper.test_data:create_dir("slots")
+    local items = work.plan({ helper.write_spec(spec_recording_spans(2 * jobs, jobs, dir)) })
+
+    pool.run(items, { root = helper.root, jobs = jobs })
+
+    assert.equal(jobs, most_at_once(dir))
   end)
 end)
