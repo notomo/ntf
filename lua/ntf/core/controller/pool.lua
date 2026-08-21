@@ -75,7 +75,7 @@ function M.run(items, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = "tests" })
+  wait.settle(state, { budget = wait.budget(total), total = total, unit = "tests" })
 
   if opts.coverage then
     for _, path in ipairs(collector.measurable_files(cwd, coverage_excludes)) do

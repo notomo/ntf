@@ -2,6 +2,16 @@ local driver = require("ntf.core.worker.driver")
 
 local M = {}
 
+--- @type integer ms the shortest a run gets, however few items it waits on
+local floor_ms = 10 * 60 * 1000
+
+--- @param total integer items the run waits on
+--- @param per_item_ms integer? how much of the budget each item earns beyond the floor, nil for a run whose budget does not grow with them
+--- @return integer ms the whole run may take before it gives up
+function M.budget(total, per_item_ms)
+  return math.max(floor_ms, total * (per_item_ms or 0))
+end
+
 --- @class NtfRunState what a run's worker callbacks report back to the wait
 --- @field finished integer work items that have reported back
 --- @field fatal any? the error a callback raised, which ends the run before its items are done

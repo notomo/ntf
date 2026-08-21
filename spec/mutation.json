@@ -558,33 +558,6 @@
       "rationale": "xpcall leaves err nil when the callback succeeded, so the fallback records nothing either way"
     },
     {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 33,
-      "operator": "perturb-number",
-      "original": "10",
-      "replacement": "11",
-      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
-      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 38,
-      "operator": "perturb-number",
-      "original": "60",
-      "replacement": "61",
-      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
-      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
-    },
-    {
-      "path": "lua/ntf/core/controller/pool.lua",
-      "col": 43,
-      "operator": "perturb-number",
-      "original": "1000",
-      "replacement": "1001",
-      "line": "  wait.settle(state, { budget = 10 * 60 * 1000, total = total, unit = \"tests\" })",
-      "rationale": "the wait only bounds a run that never finishes, and every passing run settles long before the budget"
-    },
-    {
       "path": "lua/ntf/core/worker/driver.lua",
       "col": 26,
       "operator": "perturb-number",

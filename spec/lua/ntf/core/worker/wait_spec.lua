@@ -61,3 +61,18 @@ describe("ntf.core.worker.wait.settle", function()
     assert.equal("the run gave up after 0.1s: 1 of 1 mutants never reported back", err)
   end)
 end)
+
+describe("ntf.core.worker.wait.budget", function()
+  it("gives a run ten minutes, however many items it waits on", function()
+    assert.equal(600000, wait.budget(1))
+    assert.equal(600000, wait.budget(1000000))
+  end)
+
+  it("keeps that floor for a run whose items earn less than it", function()
+    assert.equal(600000, wait.budget(3, 10000))
+  end)
+
+  it("grows the budget with the items once they earn more than the floor", function()
+    assert.equal(700000, wait.budget(70, 10000))
+  end)
+end)
