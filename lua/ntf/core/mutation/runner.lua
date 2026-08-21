@@ -1,3 +1,4 @@
+local budget = require("ntf.core.mutation.budget")
 local driver = require("ntf.core.worker.driver")
 local wait = require("ntf.core.worker.wait")
 local verdict = require("ntf.core.mutation.verdict")
@@ -13,17 +14,6 @@ local M = {}
 --- @field mutant NtfMutant
 --- @field trials NtfMutantTrial[] cheapest first, so a kill is found early
 --- @field confirm_kill boolean? take a kill only from a trial that kills twice, for a task that runs every trial it has and so meets a test failing for reasons of its own far more often than one stopping at its first kill
-
---- @param baseline_ms number
---- @param timeout integer the run's per-test timeout in ms (0 disables)
---- @return integer
-local function trial_timeout(baseline_ms, timeout)
-  local budget = math.max(3000, 2 * baseline_ms + 2000)
-  if timeout > 0 then
-    budget = math.min(budget, timeout)
-  end
-  return math.floor(budget)
-end
 
 -- WHY: each trial runs in its own worker process, exactly as in the baseline
 -- run, because ntf has no between-test cleanup.
@@ -70,7 +60,7 @@ function M.run(tasks, opts)
     driver.launch(trial.item, {
       root = opts.root,
       cwd = opts.cwd,
-      timeout = trial_timeout(trial.baseline_ms, opts.timeout),
+      timeout = budget.trial(trial.baseline_ms, opts.timeout),
       test_hook = opts.test_hook,
       mutation = {
         path = task.mutant.path,
@@ -109,8 +99,7 @@ function M.run(tasks, opts)
     spawn_next()
   end
 
-  local budget = math.max(10 * 60 * 1000, total * 10 * 1000)
-  wait.settle(state, { budget = budget, total = total, unit = "mutants" })
+  wait.settle(state, { budget = budget.run(total), total = total, unit = "mutants" })
 
   return outcomes
 end
