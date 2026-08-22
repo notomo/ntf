@@ -139,17 +139,14 @@ end)
 
     proc:kill("sigkill")
 
-    -- WHY: windows reports the pid the process was created under and goes on
-    -- reporting it once that process is gone, so a worker there outlives its run
-    -- until the deadline the run set for it, which an untimed run never sets.
-    -- NOT: killing the run's whole process group, which the run cannot arrange
-    -- for itself and would say nothing about what an orphan does.
-    local unix = vim.fn.has("win32") == 0
-    if unix then
-      assert.is_true(beats_stopped(heartbeat, 10000))
-    else
-      assert.is_false(beats_stopped(heartbeat, watchdog.poll_interval() * 3))
-    end
+    -- WHY: what ends a worker whose run died is the platform's to choose -- unix
+    -- reparents it and leaves the watchdog to read the parent it landed on, while
+    -- windows ends every process the run spawned along with it -- so the claim is
+    -- the one both agree on: the beats stopped, which under unix nothing but the
+    -- watchdog could have stopped.
+    -- NOT: asserting under windows that the beats go on, which the pid it reports
+    -- for a dead parent would suggest and its own kill of the tree denies.
+    assert.is_true(beats_stopped(heartbeat, 10000))
   end)
 
   it("kills a process spinning in lua, which no timer of its own could reach", function()
