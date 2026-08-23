@@ -201,8 +201,10 @@ in the tests, and is reported with the change it got away with:
 - The full result — every mutant, its position, and what it became — is written
   to a cache file named for the working directory (under
   `stdpath("cache")/ntf/mutation/`, as `--coverage` files its stats), which
-  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer with no
-  path to configure. `--results=FILE` writes it where you name instead.
+  |ntf.mutation.decorate()| reads back to set the survivors as diagnostics in a
+  buffer with no path to configure — in a namespace of its own, so that
+  `vim.diagnostic.jump()` and `setloclist()` can take the survivors alone.
+  `--results=FILE` writes it where you name instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor. It leaves the score instead of passing it,
@@ -586,9 +588,6 @@ NtfCoverageCovered                                     *hl-NtfCoverageCovered*
 NtfCoverageMissed                                       *hl-NtfCoverageMissed*
   coverable-but-missed lines
 
-NtfMutationSurvived                                   *hl-NtfMutationSurvived*
-  lines with a mutant no test detected
-
 ==============================================================================
 Lua module: ntf                                                      *ntf-ntf*
 
@@ -783,15 +782,20 @@ results_path({opts})                             *ntf.mutation.results_path()*
 
 decorate({opts})                                     *ntf.mutation.decorate()*
   Mark a buffer's surviving mutants, read from the results file (as
-  written by `ntf mutation`): each line a mutant got away with is signed with
-  the `NtfMutationSurvived` highlight and shows the change it survived as
-  virtual text. Detected mutants are not drawn: they say nothing about the tests.
+  written by `ntf mutation`): each mutant a test let through becomes a warning
+  diagnostic in |ntf.mutation.namespace()|, underlining the code it changed
+  and carrying what it put there as its message, `ntf` as its source and the
+  operator as its code — which |diagnostic-virtual_lines| prefixes to the
+  message and the float appends to it. What the mutant replaced is the
+  underlined code itself, so the message spells only the replacement, on one
+  line and cut to a width a buffer can carry. Detected mutants are not set:
+  they say nothing about the tests.
 
   Parameters: ~
     {opts} (NtfMutationDecorateOption?) |NtfMutationDecorateOption|
 
 is_decorated({opts})                             *ntf.mutation.is_decorated()*
-  Whether `decorate` is currently drawing on the buffer. Intended for a
+  Whether the buffer holds survivors `decorate` set. Intended for a
   toggle mapping paired with `decorate`.
 
   Parameters: ~
@@ -799,6 +803,18 @@ is_decorated({opts})                             *ntf.mutation.is_decorated()*
 
   Return: ~
     (boolean) 
+
+namespace()                                         *ntf.mutation.namespace()*
+  The diagnostic namespace `decorate` sets the survivors in. Requiring this
+  module gives the namespace a display of its own — the `▌` sign, and the
+  messages as |diagnostic-virtual_lines| on the cursor line alone, so that
+  neither a survivor on another line nor a second one on this line draws over
+  the code — which `vim.diagnostic.config(opts, ntf.mutation.namespace())`
+  overrides. It is also what `vim.diagnostic.get()`, `jump()` and
+  `setloclist()` take to work with the survivors alone.
+
+  Return: ~
+    (integer) 
 
 ==============================================================================
 STRUCTURE                                                      *ntf-STRUCTURE*

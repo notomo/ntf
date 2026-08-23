@@ -1,12 +1,18 @@
 local results = require("ntf.core.mutation.results")
 local cache_path = require("ntf.core.cache_path")
-local highlight_group = require("ntf.mutation.highlight_group")
+local oneline = require("ntf.core.controller.report").oneline
 
 local M = {}
 
 local ns = vim.api.nvim_create_namespace("ntf.mutation")
 
 local SIGN = "▌"
+
+vim.diagnostic.config({
+  signs = { text = { [vim.diagnostic.severity.WARN] = SIGN } },
+  virtual_text = false,
+  virtual_lines = { current_line = true },
+}, ns)
 
 --- @class NtfMutationResultsPathOption
 --- @field working_dir string? the directory the run was made from (default:
@@ -30,17 +36,22 @@ end
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
 --- Mark a buffer's surviving mutants, read from the results file (as
---- written by `ntf mutation`): each line a mutant got away with is signed with
---- the `NtfMutationSurvived` highlight and shows the change it survived as
---- virtual text. Detected mutants are not drawn: they say nothing about the tests.
+--- written by `ntf mutation`): each mutant a test let through becomes a warning
+--- diagnostic in |ntf.mutation.namespace()|, underlining the code it changed
+--- and carrying what it put there as its message, `ntf` as its source and the
+--- operator as its code — which |diagnostic-virtual_lines| prefixes to the
+--- message and the float appends to it. What the mutant replaced is the
+--- underlined code itself, so the message spells only the replacement, on one
+--- line and cut to a width a buffer can carry. Detected mutants are not set:
+--- they say nothing about the tests.
 --- @param opts NtfMutationDecorateOption?: |NtfMutationDecorateOption|
 function M.decorate(opts)
   opts = opts or {}
   local bufnr = opts.buffer or 0
   local enable = opts.enable ~= false
 
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
   if not enable then
+    vim.diagnostic.reset(ns, bufnr)
     return
   end
 
@@ -52,40 +63,50 @@ function M.decorate(opts)
   end
 
   local file = vim.fs.normalize(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":p"))
-  local records = (data.files or {})[file]
-  if not records then
-    return
-  end
+  local records = (data.files or {})[file] or {}
 
   local line_count = vim.api.nvim_buf_line_count(bufnr)
+  local diagnostics = {}
   for _, record in ipairs(records) do
     if record.status == "survived" and record.row <= line_count then
-      vim.api.nvim_buf_set_extmark(bufnr, ns, record.row - 1, 0, {
-        sign_text = SIGN,
-        sign_hl_group = highlight_group.NtfMutationSurvived,
-        virt_text = {
-          {
-            (" %s: %s -> %s"):format(record.operator, record.original, record.replacement),
-            highlight_group.NtfMutationSurvived,
-          },
-        },
-        virt_text_pos = "eol",
+      table.insert(diagnostics, {
+        lnum = record.row - 1,
+        col = record.col,
+        end_lnum = record.end_row - 1,
+        end_col = record.end_col,
+        severity = vim.diagnostic.severity.WARN,
+        source = "ntf",
+        code = record.operator,
+        message = oneline(record.replacement),
       })
     end
   end
+  vim.diagnostic.set(ns, bufnr, diagnostics)
 end
 
 --- @class NtfMutationIsDecoratedOption
 --- @field buffer integer? target buffer (default `0`, the current buffer).
 
---- Whether `decorate` is currently drawing on the buffer. Intended for a
+--- Whether the buffer holds survivors `decorate` set. Intended for a
 --- toggle mapping paired with `decorate`.
 --- @param opts NtfMutationIsDecoratedOption?: |NtfMutationIsDecoratedOption|
 --- @return boolean
 function M.is_decorated(opts)
   opts = opts or {}
-  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })
-  return #marks > 0
+  local counts = vim.diagnostic.count(opts.buffer or 0, { namespace = ns })
+  return not vim.tbl_isempty(counts)
+end
+
+--- The diagnostic namespace `decorate` sets the survivors in. Requiring this
+--- module gives the namespace a display of its own — the `▌` sign, and the
+--- messages as |diagnostic-virtual_lines| on the cursor line alone, so that
+--- neither a survivor on another line nor a second one on this line draws over
+--- the code — which `vim.diagnostic.config(opts, ntf.mutation.namespace())`
+--- overrides. It is also what `vim.diagnostic.get()`, `jump()` and
+--- `setloclist()` take to work with the survivors alone.
+--- @return integer
+function M.namespace()
+  return ns
 end
 
 return M

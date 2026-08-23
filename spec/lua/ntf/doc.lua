@@ -656,8 +656,10 @@ in the tests, and is reported with the change it got away with:]],
 - The full result — every mutant, its position, and what it became — is written
   to a cache file named for the working directory (under
   `stdpath("cache")/ntf/mutation/`, as `--coverage` files its stats), which
-  |ntf.mutation.decorate()| reads back to mark the survivors in a buffer with no
-  path to configure. `--results=FILE` writes it where you name instead.
+  |ntf.mutation.decorate()| reads back to set the survivors as diagnostics in a
+  buffer with no path to configure — in a namespace of its own, so that
+  `vim.diagnostic.jump()` and `setloclist()` can take the survivors alone.
+  `--results=FILE` writes it where you name instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor. It leaves the score instead of passing it,
@@ -874,7 +876,6 @@ nothing — fails it on its own, with or without the gate.]],
       body = function(ctx)
         local files = {
           ("./lua/%s/coverage/highlight_group.lua"):format(plugin_name),
-          ("./lua/%s/mutation/highlight_group.lua"):format(plugin_name),
         }
         local sections = vim
           .iter(files)

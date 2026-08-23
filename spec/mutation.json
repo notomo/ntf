@@ -384,25 +384,6 @@
       "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
     },
     {
-      "path": "lua/ntf/mutation/init.lua",
-      "col": 51,
-      "operator": "perturb-number",
-      "original": "1",
-      "replacement": "2",
-      "line": "  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)",
-      "rationale": "nvim_buf_clear_namespace treats every negative line_end as the end of the buffer, so -2 clears exactly what -1 does",
-      "invariant_spec": "nvim_buf_clear_namespace clears through the end of the buffer for any negative line_end, not only -1"
-    },
-    {
-      "path": "lua/ntf/mutation/init.lua",
-      "col": 86,
-      "operator": "perturb-number",
-      "original": "1",
-      "replacement": "2",
-      "line": "  local marks = vim.api.nvim_buf_get_extmarks(opts.buffer or 0, ns, 0, -1, { limit = 1 })",
-      "rationale": "the caller only asks whether the list is empty, which a limit of one already settles"
-    },
-    {
       "path": "lua/ntf/coverage/init.lua",
       "col": 51,
       "operator": "perturb-number",
