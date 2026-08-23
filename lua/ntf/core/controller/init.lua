@@ -91,7 +91,10 @@ function M.mutate(opts, ctx)
   if #summary.lost > 0 then
     io.stdout:flush()
     io.stderr:write(
-      ("%d baseline entr%s matched no mutant\n"):format(#summary.lost, #summary.lost == 1 and "y" or "ies")
+      ("mutation gate failed: %d baseline entr%s matched no mutant\n"):format(
+        #summary.lost,
+        #summary.lost == 1 and "y" or "ies"
+      )
     )
     code = 1
   end

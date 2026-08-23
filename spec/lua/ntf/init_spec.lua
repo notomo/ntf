@@ -1176,7 +1176,7 @@ describe("ntf mutation", function()
 
     assert.equal(1, obj.code)
     assert.match("LOST BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
-    assert.match("1 baseline entry matched no mutant", obj.stderr)
+    assert.match("mutation gate failed: 1 baseline entry matched no mutant", obj.stderr)
   end)
 
   it("exits non-zero when a --config baseline invariant_spec names no passing test", function()
