@@ -227,133 +227,150 @@ function M.run(root)
     os.exit(code)
   end
 
-  local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
+  -- WHY: everything the run does after the global setup is inside this, so a
+  -- raise anywhere in it -- a give-up budget spent, an output path that cannot
+  -- be written -- still reaches the teardown that answers for the setup, and is
+  -- reported by ntf rather than escaping as a bare `E5113: Lua chunk:`.
+  -- NOT: catching around each step, which is a list that a later step is added
+  -- outside of.
+  --- @return integer # what the run has come to
+  local function tested()
+    local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
-  -- WHY: a run that selected nothing is the same "nothing to run" the discovery
-  -- above already exits 2 for, and a --filter that matches no test is how it
-  -- happens by accident, where reporting 0 passed hands a green CI back for a
-  -- typo.
-  -- NOT: gating on the load errors too, which explain an empty selection
-  -- themselves and already fail the run under their own report.
-  if #items == 0 and #load_errors == 0 then
-    if opts.filter then
-      io.stderr:write("no test matched --filter: " .. opts.filter .. "\n")
-    else
-      io.stderr:write("no test declared in: " .. table.concat(opts.paths, ", ") .. "\n")
-    end
-    finish(2)
-  end
-
-  if mode.list and not mode.mutation then
-    local list = require("ntf.core.controller.list")
-    io.stdout:write(list.tests(items))
-    io.stderr:write(list.load_errors(load_errors))
-
-    finish(#load_errors > 0 and 1 or 0)
-  end
-  local planned_items = items
-
-  local schedule = require("ntf.core.controller.schedule")
-  local schedule_cache_path = require("ntf.core.cache_path").schedule()
-  items = schedule.order(items, schedule.load(schedule_cache_path), vim.fn.getcwd())
-
-  local prog
-  if vim.uv.guess_handle(2) == "tty" then
-    prog = require("ntf.core.controller.progress").new({
-      write = function(s)
-        io.stderr:write(s)
-        io.stderr:flush()
-      end,
-      color = not vim.env.NO_COLOR,
-    })
-  end
-
-  local report = require("ntf.core.controller.report")
-  local color = report.resolve_color()
-
-  local cwd = vim.fn.getcwd()
-  local collector = require("ntf.core.coverage.collector")
-  local coverage_excludes =
-    vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
-  local exclude = require("ntf.core.mutation.exclude")
-  local _, unused_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
-  local coverage_map = require("ntf.core.mutation.coverage_map").new({
-    ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
-  })
-
-  local results, coverage, timing = require("ntf.core.controller.pool").run(items, {
-    root = root,
-    jobs = opts.jobs,
-    timeout = opts.timeout,
-    test_hook = opts.test_hook,
-    coverage = opts.coverage or mode.mutation,
-    coverage_excludes = coverage_excludes,
-    on_item = prog and prog.on_item or nil,
-    on_item_coverage = mode.mutation and coverage_map.add or nil,
-    on_output = not mode.list and function(out)
-      if prog then
-        prog.newline()
+    -- WHY: a run that selected nothing is the same "nothing to run" the discovery
+    -- above already exits 2 for, and a --filter that matches no test is how it
+    -- happens by accident, where reporting 0 passed hands a green CI back for a
+    -- typo.
+    -- NOT: gating on the load errors too, which explain an empty selection
+    -- themselves and already fail the run under their own report.
+    if #items == 0 and #load_errors == 0 then
+      if opts.filter then
+        io.stderr:write("no test matched --filter: " .. opts.filter .. "\n")
+      else
+        io.stderr:write("no test declared in: " .. table.concat(opts.paths, ", ") .. "\n")
       end
-      io.stdout:write(report.output_block(out, color))
-      io.stdout:flush()
-    end or nil,
-  })
-  if prog then
-    prog.finish()
-  end
-
-  schedule.save(schedule_cache_path, results, cwd, opts.whole_suite)
-
-  local text, code = report.build(results, load_errors, { color = color })
-  if not mode.list then
-    io.stdout:write(text)
-    io.stdout:write("\n" .. report.timing(results, timing))
-  end
-
-  if opts.coverage then
-    require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
-    io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, cwd))
-  end
-
-  if mode.mutation then
-    if code ~= 0 then
-      if mode.list then
-        io.stdout:write(text)
-      end
-      io.stdout:flush()
-      io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(mode.list and "list" or "run"))
-      finish(code)
+      return 2
     end
-    if mode.list then
+
+    if mode.list and not mode.mutation then
       local list = require("ntf.core.controller.list")
-      local tests_text = list.tests(planned_items)
-      local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
-        cwd = cwd,
-        baseline = mutation_baseline,
-        mutation_exclude = mutation_exclude,
-        mutation_operators = mutation_operators,
-        coverage_map = coverage_map,
-        coverage_excludes = coverage_excludes,
-      }))
-      local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
-      io.stdout:write(tests_text .. separator .. mutants_text)
-    else
-      code = M.mutate(opts, {
-        root = root,
-        cwd = cwd,
-        items = items,
-        results = results,
-        baseline = mutation_baseline,
-        mutation_exclude = mutation_exclude,
-        mutation_operators = mutation_operators,
-        unused_spec_excludes = unused_spec_excludes,
-        coverage_map = coverage_map,
-        coverage_excludes = coverage_excludes,
-        color = color,
+      io.stdout:write(list.tests(items))
+      io.stderr:write(list.load_errors(load_errors))
+
+      return #load_errors > 0 and 1 or 0
+    end
+    local planned_items = items
+
+    local schedule = require("ntf.core.controller.schedule")
+    local schedule_cache_path = require("ntf.core.cache_path").schedule()
+    items = schedule.order(items, schedule.load(schedule_cache_path), vim.fn.getcwd())
+
+    local prog
+    if vim.uv.guess_handle(2) == "tty" then
+      prog = require("ntf.core.controller.progress").new({
+        write = function(s)
+          io.stderr:write(s)
+          io.stderr:flush()
+        end,
+        color = not vim.env.NO_COLOR,
       })
     end
+
+    local report = require("ntf.core.controller.report")
+    local color = report.resolve_color()
+
+    local cwd = vim.fn.getcwd()
+    local collector = require("ntf.core.coverage.collector")
+    local coverage_excludes =
+      vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
+    local exclude = require("ntf.core.mutation.exclude")
+    local _, unused_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
+    local coverage_map = require("ntf.core.mutation.coverage_map").new({
+      ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
+    })
+
+    local results, coverage, timing = require("ntf.core.controller.pool").run(items, {
+      root = root,
+      jobs = opts.jobs,
+      timeout = opts.timeout,
+      test_hook = opts.test_hook,
+      coverage = opts.coverage or mode.mutation,
+      coverage_excludes = coverage_excludes,
+      on_item = prog and prog.on_item or nil,
+      on_item_coverage = mode.mutation and coverage_map.add or nil,
+      on_output = not mode.list and function(out)
+        if prog then
+          prog.newline()
+        end
+        io.stdout:write(report.output_block(out, color))
+        io.stdout:flush()
+      end or nil,
+    })
+    if prog then
+      prog.finish()
+    end
+
+    schedule.save(schedule_cache_path, results, cwd, opts.whole_suite)
+
+    local text, code = report.build(results, load_errors, { color = color })
+    if not mode.list then
+      io.stdout:write(text)
+      io.stdout:write("\n" .. report.timing(results, timing))
+    end
+
+    if opts.coverage then
+      require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
+      io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, cwd))
+    end
+
+    if mode.mutation then
+      if code ~= 0 then
+        if mode.list then
+          io.stdout:write(text)
+        end
+        io.stdout:flush()
+        io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(mode.list and "list" or "run"))
+        return code
+      end
+      if mode.list then
+        local list = require("ntf.core.controller.list")
+        local tests_text = list.tests(planned_items)
+        local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
+          cwd = cwd,
+          baseline = mutation_baseline,
+          mutation_exclude = mutation_exclude,
+          mutation_operators = mutation_operators,
+          coverage_map = coverage_map,
+          coverage_excludes = coverage_excludes,
+        }))
+        local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
+        io.stdout:write(tests_text .. separator .. mutants_text)
+      else
+        code = M.mutate(opts, {
+          root = root,
+          cwd = cwd,
+          items = items,
+          results = results,
+          baseline = mutation_baseline,
+          mutation_exclude = mutation_exclude,
+          mutation_operators = mutation_operators,
+          unused_spec_excludes = unused_spec_excludes,
+          coverage_map = coverage_map,
+          coverage_excludes = coverage_excludes,
+          color = color,
+        })
+      end
+    end
+
+    return code
   end
 
+  local ok_run, code = xpcall(tested, debug.traceback)
+  if not ok_run then
+    io.stdout:flush()
+    io.stderr:write("ntf error: " .. tostring(code) .. "\n")
+    code = 1
+  end
   finish(code)
 end
 

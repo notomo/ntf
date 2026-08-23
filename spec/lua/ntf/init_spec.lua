@@ -400,6 +400,21 @@ return {
     assert.match("2 passed", obj.stdout)
   end)
 
+  it("tears the --global-hook down after a run that raised, and reports what raised", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local log = vim.fs.joinpath(helper.test_data.full_path, "torn_down.log")
+    local hook = spec(
+      "global_hook.lua",
+      ([[return { teardown = function() vim.fn.writefile({ "torn down" }, %q) end }]]):format(log)
+    )
+
+    local obj = run({ path }, { "--global-hook=" .. hook, "--coverage=/no/such/root/luacov.stats.out" })
+
+    assert.equal(1, obj.code)
+    assert.match("ntf error:", obj.stderr)
+    assert.same({ "torn down" }, vim.fn.readfile(log))
+  end)
+
   it("exits 1 when the --global-hook module's setup errors", function()
     local path = spec("pass_spec.lua", PASSING)
     local hook = spec("global_hook.lua", [[return { setup = function() error("setup boom") end }]])
