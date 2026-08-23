@@ -47,6 +47,22 @@ local function diagnostics(bufnr)
     :totable()
 end
 
+--- @param bufnr integer
+--- @return string[] # the lines drawn under the code, whichever namespace draws them
+local function virtual_lines(bufnr)
+  local drawn = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, -1, 0, -1, { details = true })) do
+    for _, line in ipairs(mark[4].virt_lines or {}) do
+      local texts = {}
+      for _, chunk in ipairs(line) do
+        table.insert(texts, chunk[1])
+      end
+      table.insert(drawn, table.concat(texts))
+    end
+  end
+  return drawn
+end
+
 --- @param row integer 1-based
 local function survivor(row)
   return {
@@ -325,16 +341,33 @@ describe("ntf.mutation.is_decorated", function()
 end)
 
 describe("ntf.mutation.namespace", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
   it("is the diagnostic namespace the survivors are set in", function()
     assert.equal(vim.api.nvim_create_namespace("ntf.mutation"), mutation.namespace())
   end)
 
-  it("shows a survivor as a sign and as virtual lines on the cursor line alone", function()
+  it("shows the survivors as a sign and as virtual lines, never as end-of-line text", function()
     assert.same({
       signs = { text = { [vim.diagnostic.severity.WARN] = "▌" } },
       virtual_text = false,
-      virtual_lines = { current_line = true },
+      virtual_lines = { current_line = false },
     }, vim.diagnostic.config(nil, mutation.namespace()))
+  end)
+
+  it("draws a survivor as soon as it is set, wherever the cursor is", function()
+    vim.diagnostic.config({ virtual_lines = { current_line = true } })
+    local src, results_file = project({ record(3, "survived") })
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    mutation.decorate({ path = results_file, buffer = bufnr })
+
+    local drawn = virtual_lines(bufnr)
+    assert.equal(1, #drawn)
+    assert.match("swap%-relational: <=", drawn[1])
   end)
 end)
 

@@ -11,7 +11,7 @@ local SIGN = "▌"
 vim.diagnostic.config({
   signs = { text = { [vim.diagnostic.severity.WARN] = SIGN } },
   virtual_text = false,
-  virtual_lines = { current_line = true },
+  virtual_lines = { current_line = false },
 }, ns)
 
 --- @class NtfMutationResultsPathOption
@@ -39,11 +39,11 @@ end
 --- written by `ntf mutation`): each mutant a test let through becomes a warning
 --- diagnostic in |ntf.mutation.namespace()|, underlining the code it changed
 --- and carrying what it put there as its message, `ntf` as its source and the
---- operator as its code — which |diagnostic-virtual_lines| prefixes to the
---- message and the float appends to it. What the mutant replaced is the
---- underlined code itself, so the message spells only the replacement, on one
---- line and cut to a width a buffer can carry. Detected mutants are not set:
---- they say nothing about the tests.
+--- operator as its code — which the virtual-lines handler prefixes to the
+--- message and |vim.diagnostic.open_float()| appends to it. What the mutant
+--- replaced is the underlined code itself, so the message spells only the
+--- replacement, on one line and cut to a width a buffer can carry. Detected
+--- mutants are not set: they say nothing about the tests.
 --- @param opts NtfMutationDecorateOption?: |NtfMutationDecorateOption|
 function M.decorate(opts)
   opts = opts or {}
@@ -98,10 +98,11 @@ function M.is_decorated(opts)
 end
 
 --- The diagnostic namespace `decorate` sets the survivors in. Requiring this
---- module gives the namespace a display of its own — the `▌` sign, and the
---- messages as |diagnostic-virtual_lines| on the cursor line alone, so that
---- neither a survivor on another line nor a second one on this line draws over
---- the code — which `vim.diagnostic.config(opts, ntf.mutation.namespace())`
+--- module gives the namespace a display of its own — the `▌` sign, and every
+--- message under the code it belongs to as virtual lines
+--- (|vim.diagnostic.Opts.VirtualLines|), drawn as soon as `decorate` runs and
+--- taking a line apiece, so that a second survivor on a line does not run into
+--- the first — which `vim.diagnostic.config(opts, ntf.mutation.namespace())`
 --- overrides. It is also what `vim.diagnostic.get()`, `jump()` and
 --- `setloclist()` take to work with the survivors alone.
 --- @return integer
