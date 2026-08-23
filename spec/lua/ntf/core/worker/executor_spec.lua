@@ -221,6 +221,61 @@ end)
     assert.match("after blew up", results[1].message)
   end)
 
+  it("reports a passing test whose finally errored as an error", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+ntf.it("passes", function()
+  ntf.finally(function()
+    error("finally blew up")
+  end)
+end)
+]]))
+    local results = executor.run(root, nil)
+
+    assert.equal("error", results[1].status)
+    assert.match("finally blew up", results[1].message)
+    assert.match("temp_spec%.lua", results[1].traceback)
+  end)
+
+  it("runs every finally even after one of them errors, and reports the first error", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+_G.__NTF_LOG = {}
+ntf.it("registers three", function()
+  ntf.finally(function()
+    table.insert(_G.__NTF_LOG, "first")
+  end)
+  ntf.finally(function()
+    error("the middle blew up")
+  end)
+  ntf.finally(function()
+    table.insert(_G.__NTF_LOG, "last")
+  end)
+end)
+]]))
+    local results = executor.run(root, nil)
+
+    assert.same({ "last", "first" }, rawget(_G, "__NTF_LOG"))
+    assert.equal("error", results[1].status)
+    assert.match("the middle blew up", results[1].message)
+  end)
+
+  it("keeps a test's own failure when its finally errors too", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+ntf.it("fails", function()
+  ntf.finally(function()
+    error("finally blew up")
+  end)
+  error("the body blew up")
+end)
+]]))
+    local results = executor.run(root, nil)
+
+    assert.equal("failed", results[1].status)
+    assert.match("the body blew up", results[1].message)
+  end)
+
   it("keeps a test's own failure when its after_each errors too", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")

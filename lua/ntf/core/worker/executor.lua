@@ -50,6 +50,19 @@ local function run_hooks(hooks)
   return nil
 end
 
+--- @param finallies (fun())[] in the order they were registered
+--- @return { message: string?, traceback: string? }? # the first error raised, every callback having run whatever the one before it did
+local function run_finallies(finallies)
+  local first
+  for i = #finallies, 1, -1 do
+    local ok, err = xpcall(finallies[i], handler)
+    if not ok then
+      first = first or err
+    end
+  end
+  return first
+end
+
 --- @param root NtfNode tree root from ntf.core.tree
 --- @param selected table<string,boolean>|nil set of leaf ids to run, nil = all
 --- @return NtfResult[] results
@@ -107,8 +120,9 @@ function M.run(root, selected)
         end
       end
     end)
-    for i = #finallies, 1, -1 do
-      pcall(finallies[i])
+    local finally_err = run_finallies(finallies)
+    if finally_err and status == "passed" then
+      status, message, traceback = "error", finally_err.message, finally_err.traceback
     end
 
     local after_err = run_hooks(after_chain)
