@@ -330,4 +330,13 @@ describe("ntf.core.mutation.config.write", function()
 
     assert.equal(config.format(document), table.concat(vim.fn.readfile(file), "\n") .. "\n")
   end)
+
+  it("leaves no temporary file beside the document, having renamed one into place", function()
+    local dir = helper.test_data:path("policy")
+    local file = helper.test_data:create_file("policy/mutation.json", "")
+
+    config.write(file, { operators = "all", baseline = {}, exclude = {}, exclude_spec = {} })
+
+    assert.same({ "mutation.json" }, vim.fn.readdir(dir))
+  end)
 end)

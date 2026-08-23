@@ -1,3 +1,5 @@
+local write = require("ntf.core.write")
+
 local M = {}
 
 local VERSION = 1
@@ -150,9 +152,7 @@ end
 --- @param path string
 --- @param config NtfMutationConfig
 function M.write(path, config)
-  local file = assert(io.open(path, "w"))
-  file:write(M.format(config))
-  file:close()
+  write.file(path, M.format(config))
 end
 
 return M
