@@ -24,7 +24,7 @@ local M = {}
 --- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, test_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutantOutcome[] # parallel to tasks
 function M.run(tasks, opts)
-  local jobs = opts.jobs or (vim.uv.available_parallelism and vim.uv.available_parallelism()) or 4
+  local jobs = opts.jobs or vim.uv.available_parallelism()
   local total = #tasks
 
   local dispatch = order.order(tasks)
