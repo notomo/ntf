@@ -224,6 +224,40 @@ describe("bin/ntf end-to-end", function()
     assert.match("top%-level boom", obj.stdout)
   end)
 
+  it("reports a finally() an after_each registered, which runs past the callbacks", function()
+    local path = spec(
+      "late_finally_spec.lua",
+      [[
+local ntf = require("ntf")
+ntf.after_each(function()
+  ntf.finally(function() end)
+end)
+ntf.it("passes", function() end)
+]]
+    )
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("ERROR", obj.stdout)
+    assert.match("finally%(%) outside a running test", obj.stdout)
+  end)
+
+  it("reports a finally() declared outside any test as a LOAD ERROR", function()
+    local path = spec(
+      "declared_finally_spec.lua",
+      [[
+local ntf = require("ntf")
+ntf.finally(function() end)
+ntf.it("never gets there", function() end)
+]]
+    )
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("LOAD ERROR", obj.stdout)
+    assert.match("finally%(%) outside a running test", obj.stdout)
+  end)
+
   it("kills a worker that exceeds --timeout and reports it as an error", function()
     local path = spec("hang_spec.lua", HANGING)
     local obj = run({ path }, { "--timeout=300" })

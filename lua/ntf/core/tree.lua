@@ -108,10 +108,20 @@ M.it = new_it
 M.pending = new_pending
 M.before_each = add_hook("before_each")
 M.after_each = add_hook("after_each")
-M.finally = function(fn)
-  if finally_collector then
-    table.insert(finally_collector, fn)
+--- @param collector (fun())[]? what the running test collects into, nil when no test is running
+--- @param fn fun()
+function M.collect_finally(collector, fn)
+  if not collector then
+    error(
+      "finally() outside a running test: only a before_each or a test body registers one, since an after_each already runs after the callbacks",
+      0
+    )
   end
+  table.insert(collector, fn)
+end
+
+M.finally = function(fn)
+  M.collect_finally(finally_collector, fn)
 end
 
 --- @param fn fun() runs with a fresh `finally` collector installed; must not throw, the caller catches errors inside

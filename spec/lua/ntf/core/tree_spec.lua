@@ -145,11 +145,37 @@ describe("ntf.core.tree.collect_finallies", function()
     assert.same({ outer_fn }, outer)
   end)
 
-  it("collects nothing once it has returned, so a stray finally has nowhere to land", function()
-    local collected = tree.collect_finallies(function() end)
-    tree.finally(function() end)
+  it("puts the collector it was given back, so a finally after it lands in that one", function()
+    local outer_fn = function() end
 
-    assert.same({}, collected)
+    local outer = tree.collect_finallies(function()
+      local inner = tree.collect_finallies(function() end)
+      assert.same({}, inner)
+      tree.finally(outer_fn)
+    end)
+
+    assert.same({ outer_fn }, outer)
+  end)
+end)
+
+describe("ntf.core.tree.collect_finally", function()
+  it("adds the callback to the collector it is given", function()
+    local fn = function() end
+    local collector = {}
+
+    tree.collect_finally(collector, fn)
+
+    assert.same({ fn }, collector)
+  end)
+
+  it("raises for a finally that has no running test to register with", function()
+    local ok, err = pcall(tree.collect_finally, nil, function() end)
+
+    assert.is_false(ok)
+    assert.equal(
+      "finally() outside a running test: only a before_each or a test body registers one, since an after_each already runs after the callbacks",
+      err
+    )
   end)
 end)
 

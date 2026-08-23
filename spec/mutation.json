@@ -234,15 +234,6 @@
       "path": "lua/ntf/core/tree.lua",
       "col": 6,
       "operator": "force-branch",
-      "original": "finally_collector",
-      "replacement": "true",
-      "line": "  if finally_collector then",
-      "rationale": "every spec runs inside collect_finallies, which keeps finally_collector non-nil for the whole call including any nested build, so finally()'s nil branch is unreachable from a spec"
-    },
-    {
-      "path": "lua/ntf/core/tree.lua",
-      "col": 6,
-      "operator": "force-branch",
       "original": "not ok",
       "replacement": "true",
       "line": "  if not ok then",
