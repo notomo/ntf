@@ -26,8 +26,22 @@ local function current()
   return stack[#stack]
 end
 
-local function add_child(node)
-  local parent = current()
+--- @param what string the API the message answers for
+--- @param group NtfNode? the group being declared into, nil once no spec file is being loaded
+--- @return NtfNode
+local function declaring(what, group)
+  if not group then
+    error(
+      ("%s() outside a spec file being loaded: the tests are declared once, before any of them runs"):format(what),
+      0
+    )
+  end
+  return group
+end
+
+--- @param node NtfNode
+--- @param parent NtfNode
+local function add_child(node, parent)
   table.insert(parent.children, node)
   local prefix = parent.id == "" and "" or parent.id .. "."
   node.id = prefix .. tostring(#parent.children)
@@ -59,7 +73,7 @@ local function new_describe(name, fn)
     after_each = {},
     trace = trace_of(fn),
   }
-  add_child(node)
+  add_child(node, declaring("describe", current()))
   table.insert(stack, node)
   local ok, err = pcall(fn)
   table.remove(stack)
@@ -79,13 +93,14 @@ local function new_it(name, fn, opts)
     trace = trace_of(fn),
     timeout = opts and opts.timeout or nil,
   }
-  add_child(node)
+  add_child(node, declaring("it", current()))
 end
 
 --- @param name string
 --- @param fn fun()? optional body (ignored; pending is never executed)
 local function new_pending(name, fn)
-  if not current() then
+  local group = current()
+  if not group then
     error({ [M.PENDING] = true, message = name }, 0)
   end
   local node = {
@@ -94,21 +109,16 @@ local function new_pending(name, fn)
     fn = nil,
     trace = trace_of(fn, 3),
   }
-  add_child(node)
+  add_child(node, group)
 end
 
 local function add_hook(field)
   return function(fn)
-    table.insert(current()[field], fn)
+    table.insert(declaring(field, current())[field], fn)
   end
 end
 
-M.describe = new_describe
-M.it = new_it
-M.pending = new_pending
-M.before_each = add_hook("before_each")
-M.after_each = add_hook("after_each")
---- @param collector (fun())[]? what the running test collects into, nil when no test is running
+--- @param collector (fun())[]? what the running test collects into, nil once no test is running
 --- @param fn fun()
 function M.collect_finally(collector, fn)
   if not collector then
@@ -120,6 +130,11 @@ function M.collect_finally(collector, fn)
   table.insert(collector, fn)
 end
 
+M.describe = new_describe
+M.it = new_it
+M.pending = new_pending
+M.before_each = add_hook("before_each")
+M.after_each = add_hook("after_each")
 M.finally = function(fn)
   M.collect_finally(finally_collector, fn)
 end

@@ -158,6 +158,43 @@ describe("ntf.core.tree.collect_finallies", function()
   end)
 end)
 
+describe("ntf.core.tree declaration outside a spec file being loaded", function()
+  local declares_from_a_running_test = {
+    describe = function()
+      tree.describe("too late", function() end)
+    end,
+    it = function()
+      tree.it("too late", function() end)
+    end,
+    before_each = function()
+      tree.before_each(function() end)
+    end,
+    after_each = function()
+      tree.after_each(function() end)
+    end,
+  }
+
+  for what, declare in pairs(declares_from_a_running_test) do
+    it(("raises for a %s() a running test declares"):format(what), function()
+      local ok, err = pcall(declare)
+
+      assert.is_false(ok)
+      assert.equal(
+        ("%s() outside a spec file being loaded: the tests are declared once, before any of them runs"):format(what),
+        err
+      )
+    end)
+  end
+
+  it("keeps pending() as the pending signal it already answers with", function()
+    local ok, err = pcall(tree.pending, "no node to attach to")
+
+    assert.is_false(ok)
+    assert.is_true(err[tree.PENDING])
+    assert.equal("no node to attach to", err.message)
+  end)
+end)
+
 describe("ntf.core.tree.collect_finally", function()
   it("adds the callback to the collector it is given", function()
     local fn = function() end
