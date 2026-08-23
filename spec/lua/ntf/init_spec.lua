@@ -137,6 +137,32 @@ describe("bin/ntf end-to-end", function()
     assert.match("1 passed", obj.stdout)
   end)
 
+  it("exits 2 when --filter matches no test, instead of reporting a run of none", function()
+    local path = spec("filter_spec.lua", FILTERABLE)
+    local obj = run({ path }, { "--filter=nothing answers to this" })
+
+    assert.equal(2, obj.code)
+    assert.match("no test matched %-%-filter: nothing answers to this", obj.stderr)
+    assert.no.match("0 tests", obj.stdout)
+  end)
+
+  it("exits 2 when the spec files declare no test at all", function()
+    local path = spec("empty_spec.lua", "")
+    local obj = run({ path })
+
+    assert.equal(2, obj.code)
+    assert.match("no test declared in: " .. vim.pesc(path), obj.stderr)
+  end)
+
+  it("reports the load errors rather than an empty selection when nothing loaded", function()
+    local path = spec("broken_spec.lua", LOAD_ERROR)
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match("LOAD ERROR", obj.stdout)
+    assert.no.match("no test declared", obj.stderr)
+  end)
+
   it("prints usage and exits 0 with --help", function()
     local obj = helper.run_cli({ "--help" })
 

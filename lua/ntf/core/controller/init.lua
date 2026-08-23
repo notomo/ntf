@@ -229,6 +229,21 @@ function M.run(root)
 
   local items, load_errors = require("ntf.core.controller.work").plan(files, opts.filter)
 
+  -- WHY: a run that selected nothing is the same "nothing to run" the discovery
+  -- above already exits 2 for, and a --filter that matches no test is how it
+  -- happens by accident, where reporting 0 passed hands a green CI back for a
+  -- typo.
+  -- NOT: gating on the load errors too, which explain an empty selection
+  -- themselves and already fail the run under their own report.
+  if #items == 0 and #load_errors == 0 then
+    if opts.filter then
+      io.stderr:write("no test matched --filter: " .. opts.filter .. "\n")
+    else
+      io.stderr:write("no test declared in: " .. table.concat(opts.paths, ", ") .. "\n")
+    end
+    finish(2)
+  end
+
   if mode.list and not mode.mutation then
     local list = require("ntf.core.controller.list")
     io.stdout:write(list.tests(items))
