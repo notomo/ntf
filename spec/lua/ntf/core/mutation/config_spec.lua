@@ -137,7 +137,7 @@ describe("ntf.core.mutation.config.load", function()
   it("names the file it rejects", function()
     local file = create_file({ version = 2 })
 
-    assert.match("%-%-mutation%-config " .. vim.pesc(file) .. ":", config.load(file))
+    assert.match("%-%-config " .. vim.pesc(file) .. ":", config.load(file))
   end)
 
   it("rejects a baseline that is not an array", function()

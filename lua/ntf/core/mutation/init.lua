@@ -19,11 +19,11 @@ local M = {}
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
 --- @field score number? percent detected; nil when nothing was scoreable
---- @field verified integer? baseline entries re-run; nil unless --mutation-verify-baseline=only left the rest unrun
+--- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
---- @field unused_excludes NtfMutationExcludeEntry[] --mutation-config exclude entries covering none of the measurable files
---- @field unused_spec_excludes NtfMutationExcludeEntry[] --mutation-config exclude_spec entries covering none of the discovered spec files
+--- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
+--- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files
 
 --- @param path string any form of a path
 --- @return string
@@ -258,7 +258,7 @@ end
 --- @field mutant NtfMutant
 --- @field relative_path string cwd-relative path of the mutated file
 --- @field covered_count integer number of tests covering the mutated lines
---- @field equivalent boolean matched by a --mutation-config baseline entry
+--- @field equivalent boolean matched by a --config baseline entry
 
 --- @param opts NtfOptions
 --- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }

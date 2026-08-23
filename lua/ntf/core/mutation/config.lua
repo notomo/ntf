@@ -35,7 +35,7 @@ end
 --- @return NtfMutationConfig|string # the config, or an error message
 function M.load(path)
   local invalid = function(message)
-    return ("--mutation-config %s: %s"):format(path, message)
+    return ("--config %s: %s"):format(path, message)
   end
 
   local f = io.open(path, "r")
