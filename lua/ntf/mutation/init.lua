@@ -50,8 +50,8 @@ function M.decorate(opts)
   local bufnr = opts.buffer or 0
   local enable = opts.enable ~= false
 
+  vim.diagnostic.reset(ns, bufnr)
   if not enable then
-    vim.diagnostic.reset(ns, bufnr)
     return
   end
 

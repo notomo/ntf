@@ -264,6 +264,18 @@ describe("ntf.mutation.decorate", function()
     assert.same({}, diagnostics(0))
   end)
 
+  it("clears the decoration before it reads, so a results file that is gone leaves none behind", function()
+    local src, results_file = project({ record(3, "survived") })
+
+    vim.cmd.edit(src)
+    local bufnr = vim.api.nvim_get_current_buf()
+    mutation.decorate({ path = results_file, buffer = bufnr })
+
+    local missing = helper.test_data:path("nope.json")
+    assert.is_false(pcall(mutation.decorate, { path = missing, buffer = bufnr }))
+    assert.same({}, diagnostics(bufnr))
+  end)
+
   it("reads the default results path when called with no options at all", function()
     helper.test_data:cd("")
 
