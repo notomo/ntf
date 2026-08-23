@@ -62,12 +62,16 @@ function M.register_same(name, get_actual)
   local self = Assert.create(name)
   self:register(function(_)
     return function(_, args)
-      local expected = vim.inspect(args[#args])
-      local actual = vim.inspect(get_actual(unpack(args, 1, #args - 1)))
+      local expected = args[#args]
+      local actual = get_actual(unpack(args, 1, #args - 1))
 
-      local positive_msg = ("%s should be %s, but actual: %s"):format(name, expected, actual)
+      local positive_msg = ("%s should be %s, but actual: %s"):format(name, vim.inspect(expected), vim.inspect(actual))
       self:set_positive(positive_msg)
-      local negative_msg = ("%s should not be %s, but actual: %s"):format(name, expected, actual)
+      local negative_msg = ("%s should not be %s, but actual: %s"):format(
+        name,
+        vim.inspect(expected),
+        vim.inspect(actual)
+      )
       self:set_negative(negative_msg)
 
       return vim.deep_equal(actual, expected)

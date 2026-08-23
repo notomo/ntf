@@ -315,6 +315,25 @@ describe("ntf.assert", function()
     assert.spec_arg_count_same("a", "b", { count = 2 })
   end)
 
+  it("register_same compares the values themselves, not how vim.inspect renders them", function()
+    require("ntf.assert").register_same("spec_same_values", function(fn)
+      return { fn }
+    end)
+
+    local a_function = function() end
+    local another_function = function() end
+    assert.is_true(fails(function()
+      assert.spec_same_values(a_function, { another_function })
+    end))
+
+    require("ntf.assert").register_same("spec_same_plain", function(value)
+      return { value = value }
+    end)
+
+    local with_metatable = setmetatable({ value = 1 }, { __index = function() end })
+    assert.spec_same_plain(1, with_metatable)
+  end)
+
   it("registers deep-equality asserts via ntf.assert.register_same", function()
     require("ntf.assert").register_same("spec_wrap", function(n)
       return { value = n }
