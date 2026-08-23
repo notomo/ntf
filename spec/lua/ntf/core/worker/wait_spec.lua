@@ -63,12 +63,7 @@ describe("ntf.core.worker.wait.settle", function()
 end)
 
 describe("ntf.core.worker.wait.budget", function()
-  it("gives a run ten minutes, however many items it waits on", function()
-    assert.equal(600000, wait.budget(1))
-    assert.equal(600000, wait.budget(1000000))
-  end)
-
-  it("keeps that floor for a run whose items earn less than it", function()
+  it("keeps a ten-minute floor for a run whose items earn less than it", function()
     assert.equal(600000, wait.budget(3, 10000))
   end)
 

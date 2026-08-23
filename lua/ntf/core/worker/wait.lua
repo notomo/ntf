@@ -6,10 +6,10 @@ local M = {}
 local floor_ms = 10 * 60 * 1000
 
 --- @param total integer items the run waits on
---- @param per_item_ms integer? how much of the budget each item earns beyond the floor, nil for a run whose budget does not grow with them
+--- @param per_item_ms integer how much of the budget each item earns beyond the floor
 --- @return integer ms the whole run may take before it gives up
 function M.budget(total, per_item_ms)
-  return math.max(floor_ms, total * (per_item_ms or 0))
+  return math.max(floor_ms, total * per_item_ms)
 end
 
 --- @class NtfRunState what a run's worker callbacks report back to the wait
