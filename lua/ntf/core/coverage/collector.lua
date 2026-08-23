@@ -1,3 +1,5 @@
+local is_hidden = require("ntf.core.path").is_hidden
+
 local M = {}
 
 --- @class NtfCoverageMeasurement one measurement in progress
@@ -112,6 +114,9 @@ function M.measurable_files(cwd, excludes)
     vim.fs.dir(cwd, {
       depth = math.huge,
       skip = function(rel)
+        if is_hidden(rel) then
+          return false
+        end
         local prefix = cwd .. "/" .. rel .. "/"
         for _, exclude in ipairs(excludes) do
           if prefix:sub(1, #exclude) == exclude then
@@ -122,7 +127,7 @@ function M.measurable_files(cwd, excludes)
       end,
     })
   do
-    if node_type == "file" and name:match("%.lua$") then
+    if node_type == "file" and name:match("%.lua$") and not is_hidden(name) then
       local path = measured_path(cwd .. "/" .. name, cwd, excludes)
       if path and not M.is_meta_file(path) then
         table.insert(files, path)

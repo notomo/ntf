@@ -1,15 +1,11 @@
+local is_hidden = require("ntf.core.path").is_hidden
+
 local M = {}
 
 --- @param path string
 --- @return string # normalized absolute path
 local function absolute(path)
   return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"), { plain = true })
-end
-
---- @param path string
---- @return boolean # whether the path's last component is dot-prefixed
-local function is_hidden(path)
-  return vim.startswith(vim.fs.basename(path), ".")
 end
 
 --- @param dir string normalized absolute directory

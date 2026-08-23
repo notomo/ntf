@@ -338,6 +338,25 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({ vim.fs.normalize(file) }, files)
   end)
 
+  it("does not descend into a dot-prefixed directory, which spec discovery skips too", function()
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    helper.test_data:create_file(".venv/vendored.lua", "return 1")
+    helper.test_data:create_file("lua/.cache/generated.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
+
+  it("does not list a dot-prefixed lua file", function()
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    helper.test_data:create_file("lua/.hidden.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ vim.fs.normalize(file) }, files)
+  end)
+
   it("skips LuaCATS meta files", function()
     helper.test_data:create_file("lua/meta.lua", "--- @meta\nlocal M = {}\nreturn M")
 
