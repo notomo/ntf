@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, pending, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.pending, ntf.assert
 local helper = require("ntf.test.helper")
 
 --- @param name string
@@ -168,6 +169,26 @@ describe("bin/ntf end-to-end", function()
 
     assert.equal(0, obj.code)
     assert.match("Usage: ntf", obj.stdout)
+  end)
+
+  it("finds the plugin through a symlink to bin/ntf, as an install on $PATH is", function()
+    if vim.fn.has("win32") == 1 then
+      return pending("windows runs bin/ntf.bat, and a symlink there needs a privileged account")
+    end
+
+    local link = helper.test_data:path("bin/ntf")
+    vim.fn.mkdir(vim.fs.dirname(link), "p")
+    local ok, err = vim.uv.fs_symlink(vim.fs.joinpath(helper.root, "bin/ntf"), link)
+    if not ok then
+      error(err)
+    end
+
+    local path = spec("pass_spec.lua", PASSING)
+    local env = { XDG_CACHE_HOME = helper.test_data:path("xdg_cache") }
+    local obj = vim.system({ link, path }, { text = true, env = env }):wait(60000)
+
+    assert.equal(0, obj.code)
+    assert.match("2 passed", obj.stdout)
   end)
 
   it("defaults to ./spec when no path is given", function()
