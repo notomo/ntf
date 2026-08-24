@@ -192,7 +192,7 @@ function M.unpinned(entries, results)
 end
 
 --- @param entries NtfMutationBaselineEntry[]
---- @return { match: (fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry?), lost: (fun(): NtfMutationBaselineEntry[]) }
+--- @return { match: (fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry?), lost: (fun(judged: table<string, true>): NtfMutationBaselineEntry[]) }
 function M.matcher(entries)
   local by_key = {} --- @type table<string, NtfMutationBaselineEntry[]>
   for _, entry in ipairs(entries) do
@@ -214,9 +214,9 @@ function M.matcher(entries)
       end
       return bucket[1]
     end,
-    lost = function()
+    lost = function(judged)
       return vim.tbl_filter(function(entry)
-        return not matched[entry]
+        return judged[entry.path] == true and not matched[entry]
       end, entries)
     end,
   }

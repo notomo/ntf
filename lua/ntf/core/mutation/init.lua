@@ -44,6 +44,16 @@ local function read_file(file)
 end
 
 --- @param cwd string normalized absolute working directory
+--- @param file string normalized absolute path
+--- @return string
+local function relative_to(cwd, file)
+  if file:sub(1, #cwd + 1) == cwd .. "/" then
+    return file:sub(#cwd + 2)
+  end
+  return file
+end
+
+--- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes to skip
 --- @param mutation_target string? restrict to this file or directory
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
@@ -71,8 +81,10 @@ end
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
 --- @return integer # mutants an exclude entry named an operator of, left out of the run
 --- @return integer # mutants of an operator the config did not adopt, left out of the run
+--- @return table<string, true> # the relative paths the run enumerated, which is what a baseline entry is judged against
 local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries, selection)
   local entries = {}
+  local judged = {}
   local files, unused = target_files(cwd, excludes, mutation_target, exclude_entries)
   local excluded_operator = exclude.operator_filter(exclude_entries, cwd)
   local adopted = operators.adopted(selection)
@@ -81,7 +93,8 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
   for _, file in ipairs(files) do
     local src = read_file(file) or ""
     local src_lines = vim.split(src, "\n", { plain = true })
-    local relative_path = file:sub(1, #cwd + 1) == cwd .. "/" and file:sub(#cwd + 2) or file
+    local relative_path = relative_to(cwd, file)
+    judged[relative_path] = true
     for _, site in ipairs(operators.enumerate(src)) do
       local mutated = splice.apply(src, site)
       if mutated and loadstring(mutated, "@" .. file) then
@@ -99,7 +112,7 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
       end
     end
   end
-  return entries, unused, excluded, unadopted
+  return entries, unused, excluded, unadopted, judged
 end
 
 --- @param mutant NtfMutant
@@ -168,7 +181,7 @@ function M.run(opts, ctx)
   local task_verify = {}
 
   local selection = ctx.mutation_operators or "all"
-  local mutant_entries, unused_excludes, excluded, unadopted =
+  local mutant_entries, unused_excludes, excluded, unadopted, judged =
     enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {}, selection)
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
@@ -247,7 +260,7 @@ function M.run(opts, ctx)
     counts = counts,
     score = score_of(counts),
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
-    lost = matcher.lost(),
+    lost = matcher.lost(judged),
     unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
     unused_excludes = unused_excludes,
     unused_spec_excludes = ctx.unused_spec_excludes or {},

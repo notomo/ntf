@@ -320,18 +320,20 @@ describe("ntf.core.mutation.baseline.unpinned", function()
 end)
 
 describe("ntf.core.mutation.baseline.matcher", function()
+  local judged = { ["lua/mod.lua"] = true }
+
   it("matches a mutant with the same content key", function()
     local matcher = baseline.matcher({ entry() })
 
     assert.is_true(matcher.match("lua/mod.lua", "  if a < b then", site()) ~= nil)
-    assert.equal(0, #matcher.lost())
+    assert.equal(0, #matcher.lost(judged))
   end)
 
   it("does not match when the line text differs", function()
     local matcher = baseline.matcher({ entry() })
 
     assert.is_nil(matcher.match("lua/mod.lua", "  if a < c then", site()))
-    assert.equal(1, #matcher.lost())
+    assert.equal(1, #matcher.lost(judged))
   end)
 
   it("does not match another column on the same line", function()
@@ -345,6 +347,13 @@ describe("ntf.core.mutation.baseline.matcher", function()
 
     assert.is_true(matcher.match("lua/mod.lua", "  if a < b then", site()) ~= nil)
     assert.is_true(matcher.match("lua/mod.lua", "  if a < b then", site()) ~= nil)
-    assert.equal(0, #matcher.lost())
+    assert.equal(0, #matcher.lost(judged))
+  end)
+
+  it("leaves an entry alone whose file the run never enumerated, as --target narrows it away", function()
+    local matcher = baseline.matcher({ entry() })
+
+    assert.equal(0, #matcher.lost({ ["lua/other.lua"] = true }))
+    assert.equal(1, #matcher.lost(judged))
   end)
 end)

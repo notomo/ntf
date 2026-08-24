@@ -1254,6 +1254,40 @@ describe("ntf mutation", function()
     assert.match("mutation gate failed: 1 baseline entry matched no mutant", obj.stderr)
   end)
 
+  it("leaves a baseline entry outside --target unjudged, rather than losing every one of them", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/elsewhere.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/elsewhere.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a <= b then",
+            rationale = "stale, but this run never enumerated the file it names",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--target=lua/mod.lua",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("LOST BASELINE", obj.stdout)
+  end)
+
   it("exits non-zero when a --config baseline invariant_spec names no passing test", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file(
