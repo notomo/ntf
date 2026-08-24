@@ -21,6 +21,7 @@ end
 --- @return table
 local function site(overrides)
   return vim.tbl_extend("force", {
+    row = 3,
     col = 7,
     operator = "swap-relational",
     original = "<",
@@ -35,6 +36,22 @@ describe("ntf.core.mutation.baseline.validate", function()
 
   it("accepts the optional invariant_spec", function()
     assert.is_nil(baseline.validate(entry({ invariant_spec = "mod keeps a and b apart" })))
+  end)
+
+  it("accepts the optional row", function()
+    assert.is_nil(baseline.validate(entry({ row = 3 })))
+  end)
+
+  it("accepts a row on the first line", function()
+    assert.is_nil(baseline.validate(entry({ row = 1 })))
+  end)
+
+  it("rejects a row below the first line", function()
+    assert.equal("needs a row of 1 or more, or none at all", baseline.validate(entry({ row = 0 })))
+  end)
+
+  it("rejects a row that is not a number", function()
+    assert.equal("needs a row of 1 or more, or none at all", baseline.validate(entry({ row = "3" })))
   end)
 
   it("rejects an entry that lacks a field", function()
@@ -62,6 +79,53 @@ describe("ntf.core.mutation.baseline.validate", function()
 
   it("rejects a non-number col", function()
     assert.match("needs a number col", baseline.validate(entry({ col = "seven" })))
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.twinned", function()
+  local function twin_site(overrides)
+    return vim.tbl_extend("force", {
+      row = 1,
+      col = 7,
+      operator = "swap-relational",
+      original = "<",
+      replacement = "<=",
+    }, overrides or {})
+  end
+
+  it("reports a site another one shares its whole content with", function()
+    local first, second = twin_site(), twin_site({ row = 2 })
+    local lines = { "  if a < b then", "  if a < b then" }
+
+    assert.is_true(baseline.twinned({ first, second }, lines, first))
+    assert.is_true(baseline.twinned({ first, second }, lines, second))
+  end)
+
+  it("leaves a site alone when the other line reads differently", function()
+    local first, second = twin_site(), twin_site({ row = 2 })
+    local lines = { "  if a < b then", "  if a < c then" }
+
+    assert.is_false(baseline.twinned({ first, second }, lines, first))
+  end)
+
+  it("leaves a site alone when the other one sits at another column", function()
+    local first, second = twin_site(), twin_site({ row = 2, col = 9 })
+    local lines = { "  if a < b then", "  if a < b then" }
+
+    assert.is_false(baseline.twinned({ first, second }, lines, first))
+  end)
+
+  it("leaves a site alone when the other one puts something else in place", function()
+    local first, second = twin_site(), twin_site({ row = 2, replacement = ">" })
+    local lines = { "  if a < b then", "  if a < b then" }
+
+    assert.is_false(baseline.twinned({ first, second }, lines, first))
+  end)
+
+  it("leaves the only site of a file alone", function()
+    local only = twin_site()
+
+    assert.is_false(baseline.twinned({ only }, { "  if a < b then" }, only))
   end)
 end)
 
@@ -101,6 +165,41 @@ describe("ntf.core.mutation.baseline.build", function()
     helper.test_data:cd("")
     return helper.test_data.full_path
   end
+
+  local TWINNED_MODULE = table.concat({
+    "local M = {}",
+    "function M.min(a, b)",
+    "  if a < b then",
+    "    return a",
+    "  end",
+    "  return b",
+    "end",
+    "function M.lesser(a, b)",
+    "  if a < b then",
+    "    return a",
+    "  end",
+    "  return b",
+    "end",
+    "return M",
+  }, "\n")
+
+  it("carries no row for a position the file holds once", function()
+    local cwd = project()
+
+    local built = baseline.build(request(), cwd)
+
+    assert.is_nil(built.row)
+  end)
+
+  it("carries the row for a position whose content names a second mutant", function()
+    helper.test_data:create_file("lua/mod.lua", TWINNED_MODULE)
+    helper.test_data:cd("")
+
+    local built = baseline.build(request({ row = 9 }), helper.test_data.full_path)
+
+    assert.equal(9, built.row)
+    assert.equal("  if a < b then", built.line)
+  end)
 
   it("writes the mutant the position holds as an entry", function()
     local cwd = project()
@@ -284,6 +383,42 @@ describe("ntf.core.mutation.baseline.insert", function()
 
     assert.equal(2, #added)
   end)
+
+  it("adds an entry sharing a position with one that names another row", function()
+    local entries = { entry({ row = 3 }) }
+
+    local added = baseline.insert(entries, entry({ row = 9 }))
+
+    assert.equal(2, #added)
+    assert.equal(9, added[2].row)
+  end)
+
+  it("rejects an entry the baseline already carries at the same row", function()
+    local entries = { entry({ row = 3 }) }
+
+    local err = baseline.insert(entries, entry({ row = 3, rationale = "a second opinion" }))
+
+    assert.equal("already in the baseline: lua/mod.lua swap-relational < -> <=", err)
+  end)
+
+  it("rejects a row for a position whose entry carries none, which no run could pair up", function()
+    local entries = { entry() }
+
+    local err = baseline.insert(entries, entry({ row = 9 }))
+
+    assert.equal(
+      "the position already has an entry with no row: lua/mod.lua swap-relational < -> <=; give that one its row first",
+      err
+    )
+  end)
+
+  it("rejects an entry with no row for a position whose entry carries one", function()
+    local entries = { entry({ row = 3 }) }
+
+    local err = baseline.insert(entries, entry())
+
+    assert.match("the position already has an entry with no row", err)
+  end)
 end)
 
 describe("ntf.core.mutation.baseline.unpinned", function()
@@ -355,5 +490,84 @@ describe("ntf.core.mutation.baseline.matcher", function()
 
     assert.equal(0, #matcher.lost({ ["lua/other.lua"] = true }))
     assert.equal(1, #matcher.lost(judged))
+  end)
+
+  it("takes no row into account while every entry of the position carries none", function()
+    local matcher = baseline.matcher({ entry() })
+
+    assert.is_true(matcher.match("lua/mod.lua", "  if a < b then", site({ row = 99 })) ~= nil)
+  end)
+
+  it("gives each mutant the entry naming its own row", function()
+    local third, ninth = entry({ row = 3 }), entry({ row = 9, rationale = "the other one" })
+    local matcher = baseline.matcher({ third, ninth })
+
+    assert.equal(third, matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 })))
+    assert.equal(ninth, matcher.match("lua/mod.lua", "  if a < b then", site({ row = 9 })))
+    assert.equal(0, #matcher.lost(judged))
+  end)
+
+  it("matches no mutant on a row the position's entries do not name", function()
+    local matcher = baseline.matcher({ entry({ row = 3 }) })
+
+    assert.is_nil(matcher.match("lua/mod.lua", "  if a < b then", site({ row = 9 })))
+    assert.equal(1, #matcher.lost(judged))
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.matcher ambiguity", function()
+  it("reports a position whose content named two mutants for one entry", function()
+    local matcher = baseline.matcher({ entry() })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 9 }))
+
+    local ambiguous = matcher.ambiguous()
+
+    assert.equal(1, #ambiguous)
+    assert.equal("lua/mod.lua", ambiguous[1].entry.path)
+    assert.same({ 3, 9 }, ambiguous[1].rows)
+  end)
+
+  it("reports a position two entries share with no row between them", function()
+    local matcher = baseline.matcher({ entry(), entry({ rationale = "the other one" }) })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+
+    assert.equal(1, #matcher.ambiguous())
+  end)
+
+  it("reports a position only one of whose entries carries a row", function()
+    local matcher = baseline.matcher({ entry({ row = 3 }), entry({ rationale = "the other one" }) })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+
+    assert.equal(1, #matcher.ambiguous())
+  end)
+
+  it("reports a position once, however many mutants its content named", function()
+    local matcher = baseline.matcher({ entry(), entry({ rationale = "the other one" }) })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 9 }))
+
+    assert.equal(1, #matcher.ambiguous())
+  end)
+
+  it("leaves a position alone whose entries each name a row", function()
+    local matcher = baseline.matcher({ entry({ row = 3 }), entry({ row = 9, rationale = "the other one" }) })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 9 }))
+
+    assert.same({}, matcher.ambiguous())
+  end)
+
+  it("leaves a lone entry alone whose content named the one mutant", function()
+    local matcher = baseline.matcher({ entry() })
+    matcher.match("lua/mod.lua", "  if a < b then", site({ row = 3 }))
+
+    assert.same({}, matcher.ambiguous())
+  end)
+
+  it("leaves a lone entry alone that the run never reached", function()
+    local matcher = baseline.matcher({ entry() })
+
+    assert.same({}, matcher.ambiguous())
   end)
 end)

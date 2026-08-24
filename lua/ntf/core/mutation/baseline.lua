@@ -8,6 +8,7 @@ local M = {}
 
 --- @class NtfMutationBaselineEntry a mutant judged impossible to kill
 --- @field path string working-directory-relative path of the mutated file
+--- @field row integer? 1-based start line, carried only where the file holds the same line twice and the content alone names two mutants
 --- @field col integer 0-based start column
 --- @field operator string
 --- @field original string
@@ -36,6 +37,20 @@ local function key_of(path, line, site)
   return table.concat({ path, site.col, site.operator, site.original, site.replacement, line }, "\0")
 end
 
+--- @param sites NtfMutantSite[] every site of the file
+--- @param src_lines string[] the file's lines, 1-based
+--- @param site NtfMutantSite one of them
+--- @return boolean # whether another site carries the same key, so the content alone names two mutants
+function M.twinned(sites, src_lines, site)
+  local key = key_of("", src_lines[site.row] or "", site)
+  for _, other in ipairs(sites) do
+    if other ~= site and key_of("", src_lines[other.row] or "", other) == key then
+      return true
+    end
+  end
+  return false
+end
+
 local STRING_FIELDS = { "path", "operator", "original", "replacement", "line", "rationale" }
 
 --- @param entry any
@@ -51,6 +66,9 @@ function M.validate(entry)
   end
   if type(entry.col) ~= "number" then
     return "needs a number col"
+  end
+  if entry.row ~= nil and (type(entry.row) ~= "number" or entry.row < 1) then
+    return "needs a row of 1 or more, or none at all"
   end
   if not entry.rationale:find("%S") then
     return "needs a non-empty rationale"
@@ -102,9 +120,10 @@ function M.build(request, cwd)
   end
   local relative = file:sub(#root + 2)
 
+  local sites = operators.enumerate(src)
   local on_row = vim.tbl_filter(function(site)
     return site.row == request.row
-  end, operators.enumerate(src))
+  end, sites)
   local at_position = vim.tbl_filter(function(site)
     return site.col == request.col and site.operator == request.operator
   end, on_row)
@@ -134,13 +153,16 @@ function M.build(request, cwd)
   end
 
   local site = candidates[1]
+  local src_lines = vim.split(src, "\n", { plain = true })
+  local line = src_lines[site.row]
   local entry = {
     path = relative,
+    row = M.twinned(sites, src_lines, site) and site.row or nil,
     col = site.col,
     operator = site.operator,
     original = site.original,
     replacement = site.replacement,
-    line = vim.split(src, "\n", { plain = true })[site.row],
+    line = line,
     rationale = request.rationale,
     invariant_spec = request.invariant_spec,
   }
@@ -159,12 +181,22 @@ function M.insert(entries, entry)
   local index = #entries
   for i, existing in ipairs(entries) do
     if key_of(existing.path, existing.line, existing) == key then
-      return ("already in the baseline: %s %s %s -> %s"):format(
-        entry.path,
-        entry.operator,
-        oneline(entry.original),
-        oneline(entry.replacement)
-      )
+      if existing.row == entry.row then
+        return ("already in the baseline: %s %s %s -> %s"):format(
+          entry.path,
+          entry.operator,
+          oneline(entry.original),
+          oneline(entry.replacement)
+        )
+      end
+      if existing.row == nil or entry.row == nil then
+        return ("the position already has an entry with no row: %s %s %s -> %s; give that one its row first"):format(
+          entry.path,
+          entry.operator,
+          oneline(entry.original),
+          oneline(entry.replacement)
+        )
+      end
     end
     if existing.path == entry.path then
       index = i
@@ -191,33 +223,76 @@ function M.unpinned(entries, results)
   end, entries)
 end
 
+--- @class NtfMutationBaselineAmbiguity a position whose entries the run cannot pair with one mutant each
+--- @field entry NtfMutationBaselineEntry the first entry holding the position
+--- @field rows integer[] the rows of the mutants its content named, ascending
+
+--- @param bucket NtfMutationBaselineEntry[] the entries sharing one content key
+--- @return boolean # whether every one of them carries a row, which is what pairs them with a mutant apiece
+local function all_rowed(bucket)
+  for _, entry in ipairs(bucket) do
+    if entry.row == nil then
+      return false
+    end
+  end
+  return true
+end
+
 --- @param entries NtfMutationBaselineEntry[]
---- @return { match: (fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry?), lost: (fun(judged: table<string, true>): NtfMutationBaselineEntry[]) }
+--- @return { match: (fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry?), lost: (fun(judged: table<string, true>): NtfMutationBaselineEntry[]), ambiguous: (fun(): NtfMutationBaselineAmbiguity[]) }
 function M.matcher(entries)
   local by_key = {} --- @type table<string, NtfMutationBaselineEntry[]>
+  local rows_of = {} --- @type table<string, integer[]> the rows the run's mutants of that key landed on
   for _, entry in ipairs(entries) do
     local key = key_of(entry.path, entry.line, entry)
     local bucket = by_key[key] or {}
     table.insert(bucket, entry)
     by_key[key] = bucket
+    rows_of[key] = rows_of[key] or {}
   end
 
   local matched = {} --- @type table<NtfMutationBaselineEntry, true>
   return {
     match = function(relative_path, line, site)
-      local bucket = by_key[key_of(relative_path, line, site)]
+      local key = key_of(relative_path, line, site)
+      local bucket = by_key[key]
       if not bucket then
         return nil
       end
-      for _, entry in ipairs(bucket) do
-        matched[entry] = true
+      table.insert(rows_of[key], site.row)
+
+      if not all_rowed(bucket) then
+        for _, entry in ipairs(bucket) do
+          matched[entry] = true
+        end
+        return bucket[1]
       end
-      return bucket[1]
+      for _, entry in ipairs(bucket) do
+        if entry.row == site.row then
+          matched[entry] = true
+          return entry
+        end
+      end
+      return nil
     end,
     lost = function(judged)
       return vim.tbl_filter(function(entry)
         return judged[entry.path] == true and not matched[entry]
       end, entries)
+    end,
+    ambiguous = function()
+      local seen = {} --- @type table<string, true>
+      local found = {}
+      for _, entry in ipairs(entries) do
+        local key = key_of(entry.path, entry.line, entry)
+        local bucket = by_key[key]
+        local rows = rows_of[key]
+        if not seen[key] and not all_rowed(bucket) and (#rows > 1 or #bucket > 1) then
+          seen[key] = true
+          table.insert(found, { entry = bucket[1], rows = rows })
+        end
+      end
+      return found
     end,
   }
 end

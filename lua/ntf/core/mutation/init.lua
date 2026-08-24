@@ -21,6 +21,7 @@ local M = {}
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
+--- @field ambiguous NtfMutationBaselineAmbiguity[] positions whose content named more than one mutant, with no row to tell them apart
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files
@@ -261,6 +262,7 @@ function M.run(opts, ctx)
     score = score_of(counts),
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
     lost = matcher.lost(judged),
+    ambiguous = matcher.ambiguous(),
     unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
     unused_excludes = unused_excludes,
     unused_spec_excludes = ctx.unused_spec_excludes or {},

@@ -436,6 +436,7 @@ and be held there with `--strict`.
 An entry names its mutant with the report's own words for it:
 >
   path            the mutated file, relative to the working directory
+  row             the 1-based line, only where the content names two mutants
   col             the 1-based column the mutant starts at
   operator        the change, named as the report names it
   original        what the mutant replaces
@@ -463,6 +464,15 @@ what it writes is the claim that no test can tell the difference:
   guessed at.
 - The file stays a plain document written in one shape, so editing it by hand
   remains first-class.
+
+An entry names its mutant by content rather than by position, so it survives the
+line moving. Where a file carries the same line twice — same text, same column,
+same operator — the content names two mutants and cannot say which one the
+rationale answers for, and the run fails as AMBIGUOUS BASELINE rather than
+excusing both behind one reason. `row` is what separates them, and
+`baseline add` writes it exactly where it is needed: an entry that carries one
+goes LOST BASELINE as soon as its line moves, which is the churn a content key
+spares every other entry.
 
 An entry is otherwise only ever trusted, not checked: a mutant a new test would
 now detect stays out of the score behind a mark that no longer holds.
@@ -556,6 +566,7 @@ mutant as `PATH:ROW:COL:OPERATOR` or the config entry as its path:
   NOT APPLIED          the file was not `require`d, so nothing changed
   BASELINE KILLABLE    a baseline entry a test kills, named with the test
   LOST BASELINE        a baseline entry whose `line` is no longer there
+  AMBIGUOUS BASELINE   its content names two mutants and it carries no `row`
   UNPINNED BASELINE    its `invariant_spec` names no test that passed
   UNUSED EXCLUDE       an `exclude` entry covering no measurable file
   UNUSED EXCLUDE SPEC  an `exclude_spec` entry covering no spec file

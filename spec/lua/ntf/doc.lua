@@ -203,6 +203,7 @@ end
 --- @field label string the name the document lists, as the implementation spells it
 --- @field description string what the document says it is
 --- @field note string? what its own section adds, where it has one
+--- @field absent boolean? the example carries no such key, it being written only where it is needed
 
 --- @param entries NtfDocEntry[]
 --- @param width integer the document width a line has to fit in
@@ -236,7 +237,7 @@ end
 --- @field what string what the document calls the names
 --- @field entries NtfDocEntry[] the names the document spells, in the order it lists them
 --- @field in_use string[] the names the implementation works from
---- @field keys_of table? a documented example the names have to be exactly the keys of
+--- @field keys_of table? a documented example whose keys the names have to answer for, every name but an `absent` one being carried
 --- @field unordered boolean? for names no order is meant to be read into
 
 -- WHY: an implementation that gains a name the document has never heard of is
@@ -259,8 +260,16 @@ local enumeration = function(opts)
   end
 
   if opts.keys_of then
+    local expected = sorted(vim.tbl_map(
+      function(entry)
+        return entry.label
+      end,
+      vim.tbl_filter(function(entry)
+        return not entry.absent
+      end, opts.entries)
+    ))
     local carried = sorted(vim.tbl_keys(opts.keys_of))
-    if not vim.deep_equal(sorted(names), carried) then
+    if not vim.deep_equal(expected, carried) then
       error(("the %s the example file carries are not the documented ones: %s"):format(opts.what, vim.inspect(carried)))
     end
   end
@@ -416,6 +425,11 @@ local baseline_fields = enumeration({
   keys_of = documented.baseline[1],
   entries = {
     { label = "path", description = "the mutated file, relative to the working directory" },
+    {
+      label = "row",
+      description = "the 1-based line, only where the content names two mutants",
+      absent = true,
+    },
     { label = "col", description = "the 1-based column the mutant starts at" },
     { label = "operator", description = "the change, named as the report names it" },
     { label = "original", description = "what the mutant replaces" },
@@ -466,6 +480,7 @@ local report_labels = enumeration({
     { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
     { label = "BASELINE KILLABLE", description = "a baseline entry a test kills, named with the test" },
     { label = "LOST BASELINE", description = "a baseline entry whose `line` is no longer there" },
+    { label = "AMBIGUOUS BASELINE", description = "its content names two mutants and it carries no `row`" },
     { label = "UNPINNED BASELINE", description = "its `invariant_spec` names no test that passed" },
     { label = "UNUSED EXCLUDE", description = "an `exclude` entry covering no measurable file" },
     { label = "UNUSED EXCLUDE SPEC", description = "an `exclude_spec` entry covering no spec file" },
@@ -757,6 +772,15 @@ what it writes is the claim that no test can tell the difference:]],
   guessed at.
 - The file stays a plain document written in one shape, so editing it by hand
   remains first-class.
+
+An entry names its mutant by content rather than by position, so it survives the
+line moving. Where a file carries the same line twice — same text, same column,
+same operator — the content names two mutants and cannot say which one the
+rationale answers for, and the run fails as AMBIGUOUS BASELINE rather than
+excusing both behind one reason. `row` is what separates them, and
+`baseline add` writes it exactly where it is needed: an entry that carries one
+goes LOST BASELINE as soon as its line moves, which is the churn a content key
+spares every other entry.
 
 An entry is otherwise only ever trusted, not checked: a mutant a new test would
 now detect stays out of the score behind a mark that no longer holds.

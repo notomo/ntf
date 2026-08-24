@@ -86,7 +86,7 @@ local INDENT = "  "
 M.sections = {
   {
     key = "baseline",
-    fields = { "path", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
+    fields = { "path", "row", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
     to_document = function(entry)
       return require("ntf.core.mutation.baseline").to_document(entry)
     end,

@@ -21,6 +21,7 @@ M.entry_labels = {
   unused_exclude_spec = "UNUSED EXCLUDE SPEC",
   unpinned = "UNPINNED BASELINE",
   lost = "LOST BASELINE",
+  ambiguous = "AMBIGUOUS BASELINE",
 }
 
 --- @type { status: string, label: string, color: string }[] the statuses the count line tallies, in its order
@@ -124,6 +125,21 @@ function M.summary(summary, cwd, opts)
         oneline(entry.original),
         oneline(entry.replacement),
         entry.invariant_spec
+      )
+    )
+  end
+
+  for _, ambiguity in ipairs(summary.ambiguous or {}) do
+    local entry = ambiguity.entry
+    table.insert(
+      lines,
+      ("%s %s %s: %s -> %s names rows %s; give each entry its row"):format(
+        paint("red", M.entry_labels.ambiguous),
+        entry.path,
+        entry.operator,
+        oneline(entry.original),
+        oneline(entry.replacement),
+        table.concat(vim.tbl_map(tostring, ambiguity.rows), ", ")
       )
     )
   end

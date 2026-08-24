@@ -1254,6 +1254,134 @@ describe("ntf mutation", function()
     assert.match("mutation gate failed: 1 baseline entry matched no mutant", obj.stderr)
   end)
 
+  it("exits non-zero when one baseline entry's content names two mutants", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "lua/twin.lua",
+      table.concat({
+        "local M = {}",
+        "function M.first(n)",
+        "  return n > 0",
+        "end",
+        "function M.second(n)",
+        "  return n > 0",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/twin.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "written for one of them, and there is no telling which",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--target=lua/twin.lua",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("AMBIGUOUS BASELINE lua/twin%.lua swap%-relational: > %-> >= names rows 3, 6", obj.stdout)
+    assert.match("mutation gate failed: 1 ambiguous baseline position", obj.stderr)
+  end)
+
+  it("takes one entry per row once the position's entries name theirs", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "lua/twin.lua",
+      table.concat({
+        "local M = {}",
+        "function M.first(n)",
+        "  return n > 0",
+        "end",
+        "function M.second(n)",
+        "  return n > 0",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    local function twin_entry(row, rationale)
+      return {
+        path = "lua/twin.lua",
+        row = row,
+        col = 12,
+        operator = "swap-relational",
+        original = ">",
+        replacement = ">=",
+        line = "  return n > 0",
+        rationale = rationale,
+      }
+    end
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = { twin_entry(3, "the one first answers with"), twin_entry(6, "the one second answers with") },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--target=lua/twin.lua",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.no.match("AMBIGUOUS BASELINE", obj.stdout)
+    assert.no.match("LOST BASELINE", obj.stdout)
+    assert.match("2 equivalent", obj.stdout)
+  end)
+
+  it("writes the row into an entry whose position holds a second mutant of the same content", function()
+    local root = mutation_project()
+    helper.test_data:create_file(
+      "lua/twin.lua",
+      table.concat({
+        "local M = {}",
+        "function M.first(n)",
+        "  return n > 0",
+        "end",
+        "function M.second(n)",
+        "  return n > 0",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    local config = helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, operators = "all" }))
+
+    local obj = helper.run_cli({
+      "mutation",
+      "baseline",
+      "add",
+      "--config=mutation.json",
+      "--mutant=lua/twin.lua:6:12:swap-relational",
+      "--rationale=second is only ever asked away from the boundary",
+    }, root)
+
+    assert.equal(0, obj.code)
+    local written = vim.json.decode(table.concat(vim.fn.readfile(config), "\n"))
+    assert.equal(1, #written.baseline)
+    assert.equal(6, written.baseline[1].row)
+  end)
+
   it("leaves a baseline entry outside --target unjudged, rather than losing every one of them", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/elsewhere.lua", MUTATION_MODULE)

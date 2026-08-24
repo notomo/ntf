@@ -118,6 +118,16 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
+  if #summary.ambiguous > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d ambiguous baseline position%s\n"):format(
+        #summary.ambiguous,
+        #summary.ambiguous == 1 and "" or "s"
+      )
+    )
+    code = 1
+  end
   if #summary.unpinned > 0 then
     io.stdout:flush()
     io.stderr:write(

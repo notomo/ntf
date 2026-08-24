@@ -228,6 +228,46 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match('LOST BASELINE lua/b%.lua swap%-boolean: true %-> false at "  local x = true"', text)
   end)
 
+  it("lists a baseline position whose content named more than one mutant", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+      lost = {},
+      ambiguous = {
+        {
+          entry = {
+            path = "lua/b.lua",
+            col = 3,
+            operator = "swap-boolean",
+            original = "true",
+            replacement = "false",
+            line = "  local x = true",
+            rationale = "unused",
+          },
+          rows = { 26, 29 },
+        },
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match(
+      "AMBIGUOUS BASELINE lua/b%.lua swap%-boolean: true %-> false names rows 26, 29; give each entry its row",
+      text
+    )
+  end)
+
   it("counts the mutants an exclude entry's operator left out", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/b.lua"), 2, "excluded") },
