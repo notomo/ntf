@@ -442,7 +442,13 @@ return {
       ([[return { teardown = function() vim.fn.writefile({ "torn down" }, %q) end }]]):format(log)
     )
 
-    local obj = run({ path }, { "--global-hook=" .. hook, "--coverage=/no/such/root/luacov.stats.out" })
+    -- WHY: a windows run resolves a leading-slash path onto the writable workspace drive, so the
+    -- only directory no platform can create is one an existing file already occupies
+    -- NOT: --coverage=/no/such/root/luacov.stats.out, which a windows run creates and writes
+    local file_where_the_directory_has_to_be = spec("not_a_directory", "")
+    local unwritable_stats_path = vim.fs.joinpath(file_where_the_directory_has_to_be, "luacov.stats.out")
+
+    local obj = run({ path }, { "--global-hook=" .. hook, "--coverage=" .. unwritable_stats_path })
 
     assert.equal(1, obj.code)
     assert.match("ntf error:", obj.stderr)
