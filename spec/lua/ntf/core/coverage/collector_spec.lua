@@ -244,7 +244,7 @@ describe("ntf.core.coverage.collector.start/stop", function()
     assert.same({}, data)
   end)
 
-  it("does not measure files sitting alongside a spec, whatever the directory is named", function()
+  it("does not measure a file sitting alongside the specs, in a test tree left out of the run", function()
     local file = helper.test_data:create_file(
       "test/sub.lua",
       table.concat({
@@ -255,7 +255,7 @@ describe("ntf.core.coverage.collector.start/stop", function()
       }, "\n")
     )
     local add = assert(loadfile(file))()
-    local excludes = collector.exclude_roots({ helper.test_data:path("test/x_spec.lua") }, helper.test_data.full_path)
+    local excludes = collector.exclude_paths({ helper.test_data:path("test") })
 
     collector.start({ cwd = helper.test_data.full_path, excludes = excludes })
     add(1, 2)
@@ -301,11 +301,11 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({ vim.fs.normalize(file) }, files)
   end)
 
-  it("skips spec files and excluded test directories", function()
+  it("skips spec files and an excluded test tree", function()
     helper.test_data:create_file("lua/mod_spec.lua", "return 1")
-    local spec_file = helper.test_data:create_file("test/x_spec.lua", "return 1")
+    helper.test_data:create_file("test/x_spec.lua", "return 1")
     helper.test_data:create_file("test/dep.lua", "return 1")
-    local excludes = collector.exclude_roots({ spec_file }, helper.test_data.full_path)
+    local excludes = collector.exclude_paths({ helper.test_data:path("test") })
 
     local files = collector.measurable_files(helper.test_data.full_path, excludes)
 
@@ -377,39 +377,6 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     local missing = helper.test_data:path("lua/missing.lua")
 
     assert.is_false(collector.is_meta_file(vim.fs.normalize(missing)))
-  end)
-end)
-
-describe("ntf.core.coverage.collector.exclude_roots", function()
-  --- @param path string
-  --- @return string absolute path under a real base, so a bare "/repo" keeps the drive letter it gains on Windows
-  local function abs(path)
-    return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
-  end
-  local repo = abs("/repo")
-
-  it("derives each spec file's top-level directory under cwd", function()
-    local roots = collector.exclude_roots({ repo .. "/spec/lua/x/a_spec.lua" }, repo)
-
-    assert.same({ repo .. "/spec/" }, roots)
-  end)
-
-  it("dedups roots shared by many spec files", function()
-    local roots = collector.exclude_roots({ repo .. "/spec/a_spec.lua", repo .. "/spec/lua/b_spec.lua" }, repo)
-
-    assert.same({ repo .. "/spec/" }, roots)
-  end)
-
-  it("derives the roots against a normalized cwd, so an odd spelling of it still matches", function()
-    local roots = collector.exclude_roots({ repo .. "/spec/lua/x/a_spec.lua" }, repo .. "/./")
-
-    assert.same({ repo .. "/spec/" }, roots)
-  end)
-
-  it("ignores spec files outside cwd and those sitting directly in cwd", function()
-    local roots = collector.exclude_roots({ abs("/elsewhere") .. "/a_spec.lua", repo .. "/top_spec.lua" }, repo)
-
-    assert.same({}, roots)
   end)
 end)
 

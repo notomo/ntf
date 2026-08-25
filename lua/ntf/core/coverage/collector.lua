@@ -16,31 +16,6 @@ local function normalize_dir(cwd)
   return (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", ""))
 end
 
---- @param spec_files string[] absolute paths of the spec files being run
---- @param cwd string working directory (any form)
---- @return string[] absolute dir prefixes (each ending with "/") to exclude
-function M.exclude_roots(spec_files, cwd)
-  cwd = normalize_dir(cwd)
-  local roots = {}
-  local seen = {}
-  for _, file in ipairs(spec_files) do
-    local abs = vim.fs.normalize(vim.fn.fnamemodify(file, ":p"))
-    if abs:sub(1, #cwd + 1) == cwd .. "/" then
-      local relative = abs:sub(#cwd + 2)
-      local first = relative:match("^[^/]+")
-      local in_subdir = first ~= nil and first ~= relative
-      if in_subdir then
-        local root = cwd .. "/" .. first .. "/"
-        if not seen[root] then
-          seen[root] = true
-          table.insert(roots, root)
-        end
-      end
-    end
-  end
-  return roots
-end
-
 --- @param paths string[] files or directories (any form)
 --- @return string[] absolute prefixes: a directory keeps its trailing slash, so
 --- it cannot also match a sibling whose name merely starts with it

@@ -38,7 +38,7 @@
       "replacement": "2",
       "line": "          if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -48,7 +48,7 @@
       "replacement": "true",
       "line": "            return false",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -270,7 +270,7 @@
       "replacement": "false",
       "line": "          if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -290,7 +290,7 @@
       "replacement": "do end",
       "line": "    decided[source] = result",
       "rationale": "the decided cache only memoizes measured_path, a pure function of source, so never storing the result recomputes the identical one",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -300,7 +300,7 @@
       "replacement": "_ in pairs({})",
       "line": "        for _, exclude in ipairs(excludes) do",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
@@ -310,7 +310,7 @@
       "replacement": "(#exclude - 1)",
       "line": "          if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
-      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and excluded test directories"
+      "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",

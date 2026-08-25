@@ -61,6 +61,7 @@ end
 --- @param merged table<string, { max: integer, lines: table<integer, integer> }>
 --- @param cwd string? working directory, to show file paths relative to it
 --- @return string
+--- @return boolean # whether it found a line to hold the tests to: a run that measured none has no coverage to report, however green it looks
 function M.summary(merged, cwd)
   cwd = cwd and (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", "")) or nil
 
@@ -102,7 +103,7 @@ function M.summary(merged, cwd)
       lines[#lines + 1] = line
     end
   end
-  return table.concat(lines, "\n") .. "\n"
+  return table.concat(lines, "\n") .. "\n", total_coverable > 0
 end
 
 return M

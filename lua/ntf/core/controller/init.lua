@@ -58,6 +58,14 @@ local function no_mutant_found(target, cwd)
   return 2
 end
 
+--- @param cwd string normalized absolute working directory
+--- @return integer exit_code
+local function no_measured_line(cwd)
+  io.stdout:flush()
+  io.stderr:write(("no measured line in: %s\n"):format(cwd))
+  return 2
+end
+
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
@@ -320,8 +328,8 @@ function M.run(root)
 
     local cwd = vim.fn.getcwd()
     local collector = require("ntf.core.coverage.collector")
-    local coverage_excludes =
-      vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
+    local test_tree = require("ntf.core.controller.discover").default_paths()
+    local coverage_excludes = collector.exclude_paths(vim.list_extend(test_tree, opts.exclude_code))
     local exclude = require("ntf.core.mutation.exclude")
     local _, uncovered_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
     local unused_spec_excludes = exclude.within(uncovered_spec_excludes, opts.paths, cwd)
@@ -360,7 +368,11 @@ function M.run(root)
 
     if opts.coverage then
       require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
-      io.stdout:write("\n" .. require("ntf.core.coverage.report").summary(coverage, cwd))
+      local summary, measured = require("ntf.core.coverage.report").summary(coverage, cwd)
+      io.stdout:write("\n" .. summary)
+      if code == 0 and not measured then
+        code = no_measured_line(cwd)
+      end
     end
 
     if mode.mutation then

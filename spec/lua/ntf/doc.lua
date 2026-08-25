@@ -612,16 +612,22 @@ its own instead of the runs overwriting one another, and
 What it measures:
 
 - every file under the working directory, except the test tree: any
-  `*_spec.lua` file and the directory the specs were found in (`spec/` by
-  default, but whatever path you pass), so anything sitting alongside the specs
-  there — cloned test dependencies, say — is left out too
+  `*_spec.lua` file, and `./spec` when the project has one — the directory a run
+  naming no path discovers from — so anything sitting alongside the specs there,
+  cloned test dependencies say, is left out too. That is the whole of it: the
+  paths you name pick which specs run, never which code is measured, so code
+  that sits beside its own specs is measured like any other
 - a measured file no test executed, which shows up at 0%
 - but never a LuaCATS meta file, which by definition never runs
 
+A run that measured no line at all fails rather than reporting a coverage of
+`n/a` that reads like a clean gate.
+
 Not everything under the working directory is code you hold your tests to —
-vendored third-party files, your own test helpers. `--exclude-code=PATH` leaves a
-file or directory out of the code under test; repeat it for each one. The
-`mutation` commands take it too, since they measure the same code:]],
+vendored third-party files, your own test helpers, a test tree that is not
+`./spec` and so is measured like the rest. `--exclude-code=PATH` leaves a file
+or directory out of the code under test; repeat it for each one. The `mutation`
+commands take it too, since they measure the same code:]],
           util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
 The built-in summary is intentionally simple (its line classification is a

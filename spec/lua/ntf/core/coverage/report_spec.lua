@@ -257,10 +257,20 @@ describe("ntf.core.coverage.report.summary", function()
     )
   end)
 
-  it("reports n/a when nothing was measured", function()
-    local text = report.summary({}, helper.test_data.full_path)
+  it("reports n/a when nothing was measured, and says it found no line to hold the tests to", function()
+    local text, measured = report.summary({}, helper.test_data.full_path)
 
     assert.match("Coverage: n/a", text)
+    assert.is_false(measured)
+  end)
+
+  it("says it found a line to hold the tests to when one file was measured", function()
+    local measured_file = helper.test_data:create_file("a.lua", "return 1")
+    local merged = { [vim.fs.normalize(measured_file)] = { max = 1, lines = { [1] = 1 } } }
+
+    local _, measured = report.summary(merged, helper.test_data.full_path)
+
+    assert.is_true(measured)
   end)
 
   it("lists a file whose name is longer than the width string.format accepts", function()

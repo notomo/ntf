@@ -667,6 +667,114 @@ end)
     assert.no.match("vendor", table.concat(vim.fn.readfile(stats_file), "\n"))
   end)
 
+  it("measures code the specs sit beside, which no test tree of its own excludes", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "lua/mod/init.lua",
+      table.concat({
+        "local M = {}",
+        "function M.f()",
+        "  return 1",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "lua/mod/init_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'describe("mod", function()',
+        '  it("calls f", function()',
+        "    assert.equal(1, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "lua" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("lua/mod/init%.lua%s+100%.0%%", obj.stdout)
+    assert.no.match("init_spec%.lua", obj.stdout)
+  end)
+
+  it("leaves the test tree out even when the run names one spec file in it", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file("lua/mod.lua", "return { f = function() end }")
+    local run_by_the_specs_but_not_the_code_under_test = "spec/dep.lua"
+    helper.test_data:create_file(run_by_the_specs_but_not_the_code_under_test, "return { g = function() end }")
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
+        'local dep = dofile(vim.fs.joinpath(vim.fn.getcwd(), "spec/dep.lua"))',
+        'describe("mod", function()',
+        '  it("calls f", function()',
+        "    dep.g()",
+        "    assert.equal(nil, mod.f())",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+    local stats_file = vim.fs.joinpath(root, "cov.stats.out")
+
+    local obj = helper.run_cli({ "--coverage=" .. stats_file, "spec/mod_spec.lua" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("lua/mod%.lua", obj.stdout)
+    assert.no.match("dep%.lua", obj.stdout)
+    assert.no.match("dep%.lua", table.concat(vim.fn.readfile(stats_file), "\n"))
+  end)
+
+  it("fails a --coverage run that measured no line, instead of handing back a green n/a", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'describe("mod", function()',
+        '  it("holds no code to its name", function()',
+        "    assert.equal(1, 1)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "--coverage=" .. vim.fs.joinpath(root, "cov.stats.out"), "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("Coverage: n/a", obj.stdout)
+    assert.match("no measured line in: ", obj.stderr)
+  end)
+
+  it("keeps the test failure's exit code when the --coverage run also measured no line", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file(
+      "spec/mod_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'describe("mod", function()',
+        '  it("fails", function()',
+        "    assert.equal(1, 2)",
+        "  end)",
+        "end)",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "--coverage=" .. vim.fs.joinpath(root, "cov.stats.out"), "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("Coverage: n/a", obj.stdout)
+    assert.no.match("no measured line in: ", obj.stderr)
+  end)
+
   it("counts every hot-loop iteration; the JIT must not skip the line hook", function()
     local root = helper.test_data.full_path
     helper.test_data:create_file(
@@ -756,14 +864,16 @@ end)
 
   it("does not consume a following path as a bare optional-argument flag's value", function()
     local root = helper.test_data.full_path
+    helper.test_data:create_file("lua/mod.lua", "return { f = function() end }")
     helper.test_data:create_file(
       "spec/mod_spec.lua",
       table.concat({
         'local ntf = require("ntf")',
         "local describe, it, assert = ntf.describe, ntf.it, ntf.assert",
+        'local mod = require("mod")',
         'describe("mod", function()',
         '  it("passes", function()',
-        "    assert.equal(1, 1)",
+        "    assert.equal(nil, mod.f())",
         "  end)",
         "end)",
       }, "\n")

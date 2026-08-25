@@ -24,10 +24,8 @@ function M.run(items, opts)
 
   local results = {}
   local merged_coverage = {}
-  local spec_files = vim.tbl_map(function(item)
-    return item.file
-  end, items)
-  local coverage_excludes = opts.coverage_excludes or collector.exclude_roots(spec_files, cwd)
+  local coverage_excludes = opts.coverage_excludes
+    or collector.exclude_paths(require("ntf.core.controller.discover").default_paths())
   local started = 0
   local state = { finished = 0 } --- @type NtfRunState
 
