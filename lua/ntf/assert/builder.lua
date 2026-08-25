@@ -103,18 +103,15 @@ local function register_builtins(registry)
     )
     return args[1] ~= nil and args[1] ~= false
   end)
-  registry.falsy = {
-    callback = function(_, args)
-      set_messages(
-        "falsy",
-        ("expected a falsy value, but got: %s"):format(vim.inspect(args[1])),
-        ("expected a truthy value, but got: %s"):format(vim.inspect(args[1]))
-      )
-      return args[1] == nil or args[1] == false
-    end,
-    positive = "ntf.assertion.falsy.positive",
-    negative = "ntf.assertion.falsy.negative",
-  }
+
+  builtin(registry, "falsy", function(_, args)
+    set_messages(
+      "falsy",
+      ("expected a falsy value, but got: %s"):format(vim.inspect(args[1])),
+      ("expected a truthy value, but got: %s"):format(vim.inspect(args[1]))
+    )
+    return args[1] == nil or args[1] == false
+  end)
 
   builtin(registry, "is_true", function(_, args)
     set_messages(
