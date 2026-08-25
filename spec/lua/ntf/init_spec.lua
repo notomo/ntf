@@ -958,6 +958,16 @@ describe("ntf mutation", function()
     assert.same({ vim.fs.joinpath(root, "lua/mod.lua") }, vim.tbl_keys(results.files))
   end)
 
+  it("exits 2 when --target holds no file to mutate, instead of reporting no mutants", function()
+    local root = mutation_project()
+    helper.test_data:create_file("doc/ntf.txt", "no lua here")
+
+    local obj = helper.run_cli({ "mutation", "--strict", "--target=doc", "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("no mutant found in: doc", obj.stderr)
+  end)
+
   it("mutates nothing under an --exclude-code path", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/vendor/dep.lua", MUTATION_MODULE)
@@ -1182,6 +1192,45 @@ describe("ntf mutation", function()
     assert.equal(0, obj.code)
     assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
     assert.no.match("BASELINE KILLABLE", obj.stdout)
+  end)
+
+  it("exits 2 when baseline verify re-runs none of the entries it stands behind", function()
+    local root = mutation_project()
+    helper.test_data:create_file("doc/ntf.txt", "no lua here")
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+          },
+        },
+      })
+    )
+
+    local obj =
+      helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "--target=doc", "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("baseline verify re%-ran none of the 1 entry in mutation%.json", obj.stderr)
+  end)
+
+  it("passes baseline verify on a config that lists no entry, which claims nothing to re-run", function()
+    local root = mutation_project()
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1,\n  "operators": "all"\n}\n')
+
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Baseline: 0/0 entries re%-run", obj.stdout)
   end)
 
   it("exits non-zero when baseline verify finds a baseline entry a test kills", function()
@@ -1854,6 +1903,17 @@ describe("ntf list", function()
     assert.no.match("Mutation:", obj.stdout)
     assert.no.match("passed", obj.stdout)
     assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+
+  it("exits 2 when the mutant list would hold nothing under --target", function()
+    local root = mutation_project()
+    helper.test_data:create_file("doc/ntf.txt", "no lua here")
+
+    local obj = helper.run_cli({ "mutation", "list", "--target=doc", "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("no mutant found in: doc", obj.stderr)
+    assert.no.match("mod detects positives", obj.stdout)
   end)
 
   it("skips the mutant list when the tests fail", function()

@@ -49,6 +49,15 @@ local function add_baseline(opts, config)
   return 0
 end
 
+--- @param target string? the --target the run narrowed the mutated files to
+--- @param cwd string normalized absolute working directory
+--- @return integer exit_code
+local function no_mutant_found(target, cwd)
+  io.stdout:flush()
+  io.stderr:write(("no mutant found in: %s\n"):format(target or cwd))
+  return 2
+end
+
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
@@ -87,6 +96,23 @@ function M.mutate(opts, ctx)
   io.stdout:write(
     "\n" .. require("ntf.core.mutation.report").summary(summary, ctx.cwd, { color = ctx.color, elapsed = elapsed })
   )
+
+  if opts.mutation_verify_baseline_only then
+    local listed = #(ctx.baseline or {})
+    if listed > 0 and summary.verified == 0 then
+      io.stdout:flush()
+      io.stderr:write(
+        ("baseline verify re-ran none of the %d entr%s in %s\n"):format(
+          listed,
+          listed == 1 and "y" or "ies",
+          opts.mutation_config
+        )
+      )
+      return 2
+    end
+  elseif #summary.records == 0 then
+    return no_mutant_found(opts.mutation_target, ctx.cwd)
+  end
 
   local code = 0
   if #summary.lost > 0 then
@@ -348,15 +374,19 @@ function M.run(root)
       end
       if mode.list then
         local list = require("ntf.core.controller.list")
-        local tests_text = list.tests(planned_items)
-        local mutants_text = list.mutants(require("ntf.core.mutation").list(opts, {
+        local mutants = require("ntf.core.mutation").list(opts, {
           cwd = cwd,
           baseline = mutation_baseline,
           mutation_exclude = mutation_exclude,
           mutation_operators = mutation_operators,
           coverage_map = coverage_map,
           coverage_excludes = coverage_excludes,
-        }))
+        })
+        if #mutants == 0 then
+          return no_mutant_found(opts.mutation_target, cwd)
+        end
+        local tests_text = list.tests(planned_items)
+        local mutants_text = list.mutants(mutants)
         local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
         io.stdout:write(tests_text .. separator .. mutants_text)
       else

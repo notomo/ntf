@@ -686,6 +686,11 @@ survived, was left uncovered, or never landed. `--strict=survived` (or
 raised in steps:]],
           util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
+A run that enumerated no mutant at all fails whatever `--strict` was asked for,
+since its categories count the mutants a run did enumerate: a `--target` naming
+no file to mutate, or an `exclude` covering every one of them, otherwise reports
+a score of `n/a` that reads like a clean gate.
+
 To see what a run would cover before paying for it, `ntf mutation list` runs
 the tests once and lists the mutants with the number of tests that reach each:]],
           util.help_code_block(mutation_list_command, { language = "sh" }),
@@ -790,6 +795,9 @@ non-zero. It leaves every other mutant unrun, scoring nothing and writing no
 results file, which is what you want right after editing the baseline:]],
           util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
           [[
+Verify fails the same way when it re-ran none of the entries its config lists,
+so a run scoped past all of them is answered rather than passing as `0/0`.
+
 A kill has to repeat before it counts, so a test that fails for reasons of its
 own does not condemn an entry. `--verify-baseline` asks the same question of a
 scoring run, verifying the entries in the same pass that scores the rest, so a
