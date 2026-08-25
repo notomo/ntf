@@ -103,7 +103,9 @@ functions run once per test, outside everything the spec itself defines:
 The same module contract, run once in the launcher process instead of in every
 worker: `setup` before any spec file is loaded, `teardown` after all workers
 have finished. Use it for state shared by the whole run — start a server once,
-build a fixture once — while `--test-hook` remains the per-test bracket.
+build a fixture once — while `--test-hook` remains the per-test bracket. What
+it sets in its own process, the runtimepath included, no worker sees:
+|ntf-hook-dependency|.
 >sh
   ntf --global-hook=./global_hook.lua
 <
@@ -111,6 +113,30 @@ build a fixture once — while `--test-hook` remains the per-test bracket.
   any test starts.
 - A `teardown` error is reported after the results, and fails the run without
   discarding them.
+
+Loading dependency plugins                               *ntf-hook-dependency*
+
+A worker is a clean `nvim`, started with none of your config or plugins, so its
+runtimepath holds ntf and the plugin under test (the working directory) and
+nothing else. A plugin your specs depend on is put there by `--test-hook`,
+whose `setup` runs in the worker before the spec is built:
+>lua
+  -- dependency_hook.lua
+  return {
+    setup = function()
+      vim.opt.runtimepath:append(vim.fs.joinpath(vim.fn.getcwd(), "deps/dependency"))
+      vim.cmd.runtime({ args = { "plugin/**/*.{vim,lua}" }, bang = true })
+    end,
+  }
+<
+>sh
+  ntf --test-hook=./dependency_hook.lua
+<
+- `--global-hook` cannot do this: it runs in the launcher, whose runtimepath no
+  worker inherits.
+- The runtimepath alone only makes the dependency's `lua/` and other runtime
+  files findable; startup is over, so its `plugin/` scripts are sourced only
+  where the second line does it.
 
 Attaching a debugger                                          *ntf-hook-debug*
 
