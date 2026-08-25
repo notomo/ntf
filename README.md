@@ -9,9 +9,10 @@ Neovim process so state never leaks between tests.
 
 ## Setup
 
-`bin/ntf` is the CLI. With ntf installed as a Neovim plugin, you can expose the
-command to `:terminal` (and anything else Neovim spawns) by prepending its `bin`
-directory to `$PATH`:
+`bin/ntf` is the CLI (`bin/ntf.bat` on Windows). It runs the `nvim` found on
+`$PATH`, or the one `$NTF_NVIM` names. With ntf installed as a Neovim plugin,
+you can expose the command to `:terminal` (and anything else Neovim spawns) by
+prepending its `bin` directory to `$PATH`:
 
 ```lua
 local ntf = vim.api.nvim_get_runtime_file("bin/ntf", false)[1]

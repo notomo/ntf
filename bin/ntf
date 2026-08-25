@@ -1,4 +1,7 @@
-#!/usr/bin/env -S nvim --clean --headless -l
+#!/bin/sh
+--[==[ 2>/dev/null
+exec "${NTF_NVIM:-nvim}" --clean --headless -l "$0" "$@"
+]==]
 local script = vim.fn.resolve(vim.fn.fnamemodify(arg[0], ":p"))
 local root = vim.fn.fnamemodify(script, ":p:h:h")
 vim.opt.runtimepath:prepend(root)

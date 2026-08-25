@@ -17,6 +17,15 @@ local function run(paths, extra_flags)
   return helper.run_cli(args)
 end
 
+--- @param args string[] CLI arguments
+--- @return string[] # bin/ntf's own command line, for a run that needs an env helper.run_cli does not set
+local function cli(args)
+  local is_win = vim.fn.has("win32") == 1
+  local script = vim.fs.joinpath(helper.root, "bin", is_win and "ntf.bat" or "ntf")
+  local cmd = is_win and { "cmd.exe", "/c", script } or { script }
+  return vim.list_extend(cmd, args)
+end
+
 local PASSING = [[
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
@@ -189,6 +198,24 @@ describe("bin/ntf end-to-end", function()
 
     assert.equal(0, obj.code)
     assert.match("2 passed", obj.stdout)
+  end)
+
+  it("runs the nvim $NTF_NVIM names", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local env = { XDG_CACHE_HOME = helper.test_data:path("xdg_cache"), NTF_NVIM = vim.v.progpath }
+    local obj = vim.system(cli({ path }), { text = true, cwd = helper.root, env = env }):wait(60000)
+
+    assert.equal(0, obj.code)
+    assert.match("2 passed", obj.stdout)
+  end)
+
+  it("fails instead of falling back to nvim when $NTF_NVIM names no runnable binary", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local env = { XDG_CACHE_HOME = helper.test_data:path("xdg_cache"), NTF_NVIM = "ntf-no-such-nvim" }
+    local obj = vim.system(cli({ path }), { text = true, cwd = helper.root, env = env }):wait(60000)
+
+    assert.no.equal(0, obj.code)
+    assert.no.match("2 passed", obj.stdout)
   end)
 
   it("defaults to ./spec when no path is given", function()

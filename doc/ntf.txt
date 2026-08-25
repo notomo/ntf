@@ -34,6 +34,9 @@ rejects the rest.
   `ntf run list` is how you name a path that reads like a command.
 - A command that leaves the tests unrun takes no path at all and says so in its
   usage line, `mutation baseline add` being the one.
+- `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
+  Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
+  instead.
 - |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.
 
 ==============================================================================
