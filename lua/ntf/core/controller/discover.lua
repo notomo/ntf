@@ -72,4 +72,32 @@ function M.specs(paths, exclude)
   return files
 end
 
+--- @return string[] # the paths a run discovers from when it names none; empty where the project holds no such directory
+function M.default_paths()
+  if vim.fn.isdirectory("spec") == 1 then
+    return { "spec" }
+  end
+  return {}
+end
+
+--- @param files string[] the spec files a run discovered
+--- @return boolean # whether they hold every spec the project has, which is what a run naming no path takes
+function M.holds_every_spec(files)
+  local defaults = M.default_paths()
+  if #defaults == 0 then
+    return false
+  end
+
+  local discovered = {}
+  for _, file in ipairs(files) do
+    discovered[file] = true
+  end
+  for _, file in ipairs(M.specs(defaults)) do
+    if not discovered[file] then
+      return false
+    end
+  end
+  return true
+end
+
 return M

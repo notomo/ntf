@@ -50,7 +50,7 @@ local function add_baseline(opts, config)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
 function M.mutate(opts, ctx)
   local progress = require("ntf.core.controller.progress").mutation({
@@ -68,6 +68,7 @@ function M.mutate(opts, ctx)
     cwd = ctx.cwd,
     items = ctx.items,
     baseline_results = ctx.results,
+    whole_suite = ctx.whole_suite,
     baseline = ctx.baseline,
     mutation_exclude = ctx.mutation_exclude,
     mutation_operators = ctx.mutation_operators,
@@ -271,6 +272,8 @@ function M.run(root)
     end
     local planned_items = items
 
+    local whole_suite = not opts.filter and require("ntf.core.controller.discover").holds_every_spec(files)
+
     local schedule = require("ntf.core.controller.schedule")
     local schedule_cache_path = require("ntf.core.cache_path").schedule()
     items = schedule.order(items, schedule.load(schedule_cache_path), vim.fn.getcwd())
@@ -294,7 +297,8 @@ function M.run(root)
     local coverage_excludes =
       vim.list_extend(collector.exclude_roots(files, cwd), collector.exclude_paths(opts.exclude_code))
     local exclude = require("ntf.core.mutation.exclude")
-    local _, unused_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
+    local _, uncovered_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
+    local unused_spec_excludes = exclude.within(uncovered_spec_excludes, opts.paths, cwd)
     local coverage_map = require("ntf.core.mutation.coverage_map").new({
       ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
     })
@@ -320,7 +324,7 @@ function M.run(root)
       prog.finish()
     end
 
-    schedule.save(schedule_cache_path, results, cwd, opts.whole_suite)
+    schedule.save(schedule_cache_path, results, cwd, whole_suite)
 
     local text, code = report.build(results, load_errors, { color = color })
     if not mode.list then
@@ -361,6 +365,7 @@ function M.run(root)
           cwd = cwd,
           items = items,
           results = results,
+          whole_suite = whole_suite,
           baseline = mutation_baseline,
           mutation_exclude = mutation_exclude,
           mutation_operators = mutation_operators,

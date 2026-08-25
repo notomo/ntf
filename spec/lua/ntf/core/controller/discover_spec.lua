@@ -175,3 +175,56 @@ describe("ntf.core.controller.discover.specs", function()
     assert.match("a_spec%.lua$", files[1])
   end)
 end)
+
+describe("ntf.core.controller.discover.default_paths", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("names the spec directory the project holds", function()
+    helper.test_data:create_dir("spec")
+    helper.test_data:cd("")
+
+    assert.same({ "spec" }, discover.default_paths())
+  end)
+
+  it("names nothing where the project holds no spec directory", function()
+    helper.test_data:cd("")
+
+    assert.same({}, discover.default_paths())
+  end)
+end)
+
+describe("ntf.core.controller.discover.holds_every_spec", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("holds every spec where the files are the ones the spec directory gives", function()
+    helper.test_data:create_file("spec/a_spec.lua", "")
+    helper.test_data:cd("")
+
+    assert.is_true(discover.holds_every_spec(discover.specs({ "spec" })))
+  end)
+
+  it("holds every spec where the files are more than the spec directory gives", function()
+    helper.test_data:create_file("spec/a_spec.lua", "")
+    helper.test_data:create_file("other/b_spec.lua", "")
+    helper.test_data:cd("")
+
+    assert.is_true(discover.holds_every_spec(discover.specs({ "spec", "other" })))
+  end)
+
+  it("holds only part of them where a spec of the directory is missing from the files", function()
+    helper.test_data:create_file("spec/a_spec.lua", "")
+    helper.test_data:create_file("spec/b_spec.lua", "")
+    helper.test_data:cd("")
+
+    assert.is_false(discover.holds_every_spec(discover.specs({ "spec/a_spec.lua" })))
+  end)
+
+  it("holds only part of them where the project has no spec directory to answer with", function()
+    helper.test_data:create_file("other/a_spec.lua", "")
+    helper.test_data:cd("")
+
+    assert.is_false(discover.holds_every_spec(discover.specs({ "other" })))
+  end)
+end)

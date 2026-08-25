@@ -22,9 +22,9 @@ local M = {}
 --- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field ambiguous NtfMutationBaselineAmbiguity[] positions whose content named more than one mutant, with no row to tell them apart
---- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed
+--- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed; none where the run took part of the suite, which cannot tell a name that is gone from one it never selected
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
---- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files
+--- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
 
 --- @param path string any form of a path
 --- @return string
@@ -165,7 +165,7 @@ local function covering_trials(ctx, durations, mutant)
 end
 
 --- @param opts NtfOptions
---- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
 function M.run(opts, ctx)
   local cwd = normalize(ctx.cwd)
@@ -263,7 +263,7 @@ function M.run(opts, ctx)
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
     lost = matcher.lost(judged),
     ambiguous = matcher.ambiguous(),
-    unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results),
+    unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results, ctx.whole_suite),
     unused_excludes = unused_excludes,
     unused_spec_excludes = ctx.unused_spec_excludes or {},
   }

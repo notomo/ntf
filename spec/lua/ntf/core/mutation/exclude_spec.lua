@@ -166,6 +166,51 @@ describe("ntf.core.mutation.exclude.partition", function()
   end)
 end)
 
+describe("ntf.core.mutation.exclude.within", function()
+  local cwd = "/project"
+
+  it("keeps an entry a spec path of the run holds", function()
+    local entries = { spec_entry({ path = "spec/a_spec.lua" }) }
+
+    local kept = exclude.within(entries, { "/project/spec" }, cwd)
+
+    assert.equal(1, #kept)
+    assert.equal("spec/a_spec.lua", kept[1].path)
+  end)
+
+  it("keeps an entry a spec path of the run names outright", function()
+    local entries = { spec_entry({ path = "spec/a_spec.lua" }) }
+
+    local kept = exclude.within(entries, { "/project/spec/a_spec.lua" }, cwd)
+
+    assert.equal(1, #kept)
+  end)
+
+  it("drops an entry no spec path of the run holds, which never looked for the file it names", function()
+    local entries = { spec_entry({ path = "spec/a_spec.lua" }) }
+
+    local kept = exclude.within(entries, { "/project/spec/b_spec.lua" }, cwd)
+
+    assert.same({}, kept)
+  end)
+
+  it("drops an entry a spec path merely shares its first characters with", function()
+    local entries = { spec_entry({ path = "specs/a_spec.lua" }) }
+
+    local kept = exclude.within(entries, { "/project/spec" }, cwd)
+
+    assert.same({}, kept)
+  end)
+
+  it("keeps an entry held by the second of the run's spec paths", function()
+    local entries = { spec_entry({ path = "spec/a_spec.lua" }) }
+
+    local kept = exclude.within(entries, { "/project/other", "/project/spec" }, cwd)
+
+    assert.equal(1, #kept)
+  end)
+end)
+
 describe("ntf.core.mutation.exclude.operator_filter", function()
   local cwd = "/project"
 

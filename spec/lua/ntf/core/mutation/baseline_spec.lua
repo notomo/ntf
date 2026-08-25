@@ -425,7 +425,7 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("reports an entry whose invariant_spec matches no test of the run", function()
     local entries = { entry({ invariant_spec = "mod keeps a and b apart" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } })
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, true)
 
     assert.equal(1, #unpinned)
     assert.equal("mod keeps a and b apart", unpinned[1].invariant_spec)
@@ -434,7 +434,7 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("keeps an entry whose invariant_spec passed", function()
     local entries = { entry({ invariant_spec = "mod takes the min" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } })
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, true)
 
     assert.equal(0, #unpinned)
   end)
@@ -442,13 +442,21 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("reports an entry whose invariant_spec only went pending, since a pending test asserts nothing", function()
     local entries = { entry({ invariant_spec = "mod takes the min" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "pending" } })
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "pending" } }, true)
 
     assert.equal(1, #unpinned)
   end)
 
   it("leaves an entry carrying no invariant_spec alone", function()
-    local unpinned = baseline.unpinned({ entry() }, {})
+    local unpinned = baseline.unpinned({ entry() }, {}, true)
+
+    assert.equal(0, #unpinned)
+  end)
+
+  it("leaves every entry alone where the run took part of the suite", function()
+    local entries = { entry({ invariant_spec = "mod keeps a and b apart" }) }
+
+    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, false)
 
     assert.equal(0, #unpinned)
   end)

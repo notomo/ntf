@@ -1500,6 +1500,40 @@ describe("ntf mutation", function()
     assert.no.match("UNPINNED BASELINE", obj.stdout)
   end)
 
+  it("leaves a baseline invariant_spec unjudged where the run took part of the suite", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/other_spec.lua", MUTATION_SPEC)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+            invariant_spec = "mod names a test this run never selected",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec/mod_spec.lua",
+    }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("UNPINNED BASELINE", obj.stdout)
+  end)
+
   it("leaves a --config exclude path unmutated", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
@@ -1652,6 +1686,31 @@ describe("ntf mutation", function()
     assert.equal(1, obj.code)
     assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", obj.stdout)
     assert.match("1 exclude_spec entry covering nothing", obj.stderr)
+  end)
+
+  it("leaves a --config exclude_spec entry outside the run's spec paths unjudged", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/other/e2e_spec.lua", MUTATION_SPEC)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        exclude_spec = {
+          { path = "spec/other/e2e_spec.lua", rationale = "end-to-end, so it never drives a mutant" },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec/mod_spec.lua",
+    }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("UNUSED EXCLUDE SPEC", obj.stdout)
   end)
 
   it("rejects an invalid --config exclude before running the tests", function()

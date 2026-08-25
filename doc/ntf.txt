@@ -497,7 +497,9 @@ rests on a fact from somewhere else — what the callers pass, what shape anothe
 module hands over, what the runtime does with a value — and that fact can stop
 holding without the marked line moving. Naming the test that pins it is what
 makes renaming or deleting that test something to answer for, instead of
-quietly unmooring the rationale.
+quietly unmooring the rationale. A run that takes part of the suite cannot tell
+a name that is gone from one it never selected, so UNPINNED BASELINE is
+answered for only where the run takes every test the project has.
 
 ==============================================================================
 MUTATION EXCLUDE                                        *ntf-MUTATION-EXCLUDE*
@@ -552,7 +554,9 @@ mutants are enumerated from.
 
 Both sections fail the run — UNUSED EXCLUDE and UNUSED EXCLUDE SPEC — when an
 entry covers nothing, so a path that has been renamed, or is already covered by
-a broader entry, has to be answered for.
+a broader entry, has to be answered for. An `exclude_spec` entry outside the
+spec paths the run was given is left alone, the run never having looked for the
+file it names.
 
 ==============================================================================
 MUTATION REPORT                                          *ntf-MUTATION-REPORT*

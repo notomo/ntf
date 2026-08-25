@@ -210,8 +210,13 @@ end
 
 --- @param entries NtfMutationBaselineEntry[]
 --- @param results NtfResult[] the results of the run the mutants were enumerated from
+--- @param whole_suite boolean whether the run took every test the project has, which is what tells a name that is gone from one the run never selected
 --- @return NtfMutationBaselineEntry[] # entries whose invariant_spec names no test that passed
-function M.unpinned(entries, results)
+function M.unpinned(entries, results, whole_suite)
+  if not whole_suite then
+    return {}
+  end
+
   local passed = {} --- @type table<string, true>
   for _, result in ipairs(results) do
     if result.status == "passed" then

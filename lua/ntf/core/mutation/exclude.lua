@@ -111,6 +111,28 @@ function M.partition(files, entries, cwd)
   return kept, unused
 end
 
+--- @param entries NtfMutationExcludeEntry[] entries covering nothing the run took
+--- @param paths string[] the paths the run discovered specs from, in the form the command line spelled them
+--- @param cwd string normalized absolute working directory
+--- @return NtfMutationExcludeEntry[] # only the entries one of those paths holds, the rest never having been looked for
+function M.within(entries, paths, cwd)
+  local roots = vim.tbl_map(function(path)
+    return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
+  end, paths)
+  local targets = targets_of(entries, cwd)
+
+  local kept = {}
+  for index, entry in ipairs(entries) do
+    for _, root in ipairs(roots) do
+      if covers(root, targets[index]) then
+        table.insert(kept, entry)
+        break
+      end
+    end
+  end
+  return kept
+end
+
 --- @param entries NtfMutationExcludeEntry[]
 --- @param cwd string normalized absolute working directory
 --- @return fun(file: string, operator: string): boolean # whether an entry leaves that operator's mutants out of the file
