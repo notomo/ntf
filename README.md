@@ -33,6 +33,7 @@ Commands:
 
 Options:
   --filter=PATTERN     run only tests whose full name matches the Lua pattern
+  --process-hook=FILE  run a Lua module providing setup in every process, before it loads any spec
   --global-hook=FILE   run a Lua module providing setup/teardown once around the whole run, in the launcher process
   --exclude-spec=PATH  skip a spec file or directory when discovering tests (repeatable)
   --timeout=MS         kill a worker after MS milliseconds (default: 60000; 0 disables)

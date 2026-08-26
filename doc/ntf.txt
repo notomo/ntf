@@ -17,6 +17,7 @@ rejects the rest.
 
   Options:
     --filter=PATTERN     run only tests whose full name matches the Lua pattern
+    --process-hook=FILE  run a Lua module providing setup in every process, before it loads any spec
     --global-hook=FILE   run a Lua module providing setup/teardown once around the whole run, in the launcher process
     --exclude-spec=PATH  skip a spec file or directory when discovering tests (repeatable)
     --timeout=MS         kill a worker after MS milliseconds (default: 60000; 0 disables)
@@ -73,7 +74,7 @@ WRITING SPECS                                              *ntf-WRITING-SPECS*
 HOOKS                                                              *ntf-HOOKS*
 
 A hook module returns an optional `setup` and an optional `teardown`. Which
-process runs them, and how often, is what the two flags differ in.
+process runs them, and how often, is what the three flags differ in.
 
 --test-hook=FILE                                               *ntf-hook-test*
 
@@ -104,8 +105,8 @@ The same module contract, run once in the launcher process instead of in every
 worker: `setup` before any spec file is loaded, `teardown` after all workers
 have finished. Use it for state shared by the whole run — start a server once,
 build a fixture once — while `--test-hook` remains the per-test bracket. What
-it sets in its own process, the runtimepath included, no worker sees:
-|ntf-hook-dependency|.
+it sets in its own process, the runtimepath included, no worker sees — that is
+|ntf-hook-process|, which every process runs.
 >sh
   ntf --global-hook=./global_hook.lua
 <
@@ -114,12 +115,36 @@ it sets in its own process, the runtimepath included, no worker sees:
 - A `teardown` error is reported after the results, and fails the run without
   discarding them.
 
+--process-hook=FILE                                         *ntf-hook-process*
+
+Run in every process ntf starts — the launcher and each worker alike — before
+that process loads a spec, which makes it the one hook the two of them agree
+on. It is for what a process has to be before it can read a spec at all: the
+runtimepath a dependency plugin sits on, a `package.path` entry, a stub. It
+takes a `setup` and nothing else — it says what a process is rather than what it
+brackets, so a module carrying a `teardown` is rejected before any test runs,
+naming the two flags a teardown does belong in.
+>lua
+  -- process_hook.lua
+  return {
+    setup = function() end,
+  }
+<
+>sh
+  ntf --process-hook=./process_hook.lua
+<
+- The launcher loads every spec file to discover the tests in it, so a module a
+  spec requires at file scope has to reach the launcher as well as the workers.
+  This is the only hook that reaches both.
+- An error while loading the module, or from its `setup`, aborts the run before
+  any test starts.
+
 Loading dependency plugins                               *ntf-hook-dependency*
 
 A worker is a clean `nvim`, started with none of your config or plugins, so its
 runtimepath holds ntf and the plugin under test (the working directory) and
-nothing else. A plugin your specs depend on is put there by `--test-hook`,
-whose `setup` runs in the worker before the spec is built:
+nothing else. A plugin your specs depend on is put there by `--process-hook`,
+whose `setup` runs before a spec is loaded, in every process that loads one:
 >lua
   -- dependency_hook.lua
   return {
@@ -130,10 +155,13 @@ whose `setup` runs in the worker before the spec is built:
   }
 <
 >sh
-  ntf --test-hook=./dependency_hook.lua
+  ntf --process-hook=./dependency_hook.lua
 <
-- `--global-hook` cannot do this: it runs in the launcher, whose runtimepath no
-  worker inherits.
+- `--test-hook` cannot do this: it runs only in a worker, so a spec that
+  requires the dependency at file scope still fails to load in the launcher,
+  which reads every spec file to discover its tests.
+- `--global-hook` cannot do this either: it runs only in the launcher, whose
+  runtimepath no worker inherits.
 - The runtimepath alone only makes the dependency's `lua/` and other runtime
   files findable; startup is over, so its `plugin/` scripts are sourced only
   where the second line does it.

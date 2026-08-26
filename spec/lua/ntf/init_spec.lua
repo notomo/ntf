@@ -415,6 +415,71 @@ return {
     assert.match("%-%-test%-hook module not found", obj.stderr)
   end)
 
+  it(
+    "puts a dependency on the runtimepath of the launcher and of every worker, so a spec reaches it at file scope",
+    function()
+      spec("deps/dependency/lua/dependency.lua", "return { value = 42 }")
+      local hook = spec(
+        "process_hook.lua",
+        ([[
+return {
+  setup = function()
+    vim.opt.runtimepath:append(%q)
+  end,
+}
+]]):format(helper.test_data:path("deps/dependency"))
+      )
+      local path = spec(
+        "dependency_spec.lua",
+        [[
+local ntf = require("ntf")
+local dependency = require("dependency")
+ntf.it("reaches the dependency", function()
+  ntf.assert.equal(42, dependency.value)
+end)
+]]
+      )
+
+      local without_hook = run({ path })
+      local with_hook = run({ path }, { "--process-hook=" .. hook })
+
+      assert.equal(1, without_hook.code)
+      assert.match("module 'dependency' not found", without_hook.stdout)
+      assert.equal(0, with_hook.code)
+      assert.match("1 passed", with_hook.stdout)
+    end
+  )
+
+  it("exits 2 when the --process-hook module does not exist", function()
+    local path = spec("pass_spec.lua", PASSING)
+
+    local obj = run({ path }, { "--process-hook=/no/such/hook.lua" })
+
+    assert.equal(2, obj.code)
+    assert.match("%-%-process%-hook module not found", obj.stderr)
+  end)
+
+  it("exits 2 for a --process-hook module providing a teardown, which it has nowhere to run", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("process_hook.lua", [[return { setup = function() end, teardown = function() end }]])
+
+    local obj = run({ path }, { "--process-hook=" .. hook })
+
+    assert.equal(2, obj.code)
+    assert.match("takes no teardown", obj.stderr)
+  end)
+
+  it("surfaces an error from the --process-hook module's setup before any test runs", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("process_hook.lua", [[return { setup = function() error("process boom") end }]])
+
+    local obj = run({ path }, { "--process-hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("%-%-process%-hook setup error", obj.stderr)
+    assert.match("process boom", obj.stderr)
+  end)
+
   it("runs the --global-hook module's setup and teardown once around the whole run", function()
     local log = vim.fs.joinpath(helper.test_data.full_path, "global_hook.log")
     local path = spec(

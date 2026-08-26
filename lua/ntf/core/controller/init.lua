@@ -222,7 +222,17 @@ function M.run(root)
   end
   local mode = MODES[opts.command]
 
-  require("ntf.core.runtime").setup()
+  local ok_process, process_result = xpcall(function()
+    return require("ntf.core.runtime").setup(opts.process_hook)
+  end, debug.traceback)
+  if not ok_process then
+    io.stderr:write("--process-hook setup error: " .. tostring(process_result) .. "\n")
+    os.exit(1)
+  end
+  if process_result then
+    io.stderr:write(process_result .. "\n")
+    os.exit(2)
+  end
 
   local mutation_config --- @type NtfMutationConfig?
   if opts.mutation_config then
@@ -342,6 +352,7 @@ function M.run(root)
       jobs = opts.jobs,
       timeout = opts.timeout,
       test_hook = opts.test_hook,
+      process_hook = opts.process_hook,
       coverage = opts.coverage or mode.mutation,
       coverage_excludes = coverage_excludes,
       on_item = prog and prog.on_item or nil,

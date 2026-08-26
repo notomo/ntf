@@ -7,6 +7,7 @@ local M = {}
 --- @field file string spec file path
 --- @field node_id string leaf id to run
 --- @field test_hook string? Lua module path providing setup/teardown
+--- @field process_hook string? Lua module path providing the setup this process runs before it loads a spec
 --- @field coverage boolean
 --- @field coverage_excludes string[]? absolute dir prefixes to exclude
 --- @field mutation NtfWorkerMutation? apply this mutation when the module is required

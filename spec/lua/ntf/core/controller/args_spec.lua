@@ -271,6 +271,46 @@ describe("ntf.core.controller.args.parse", function()
     end)
   end)
 
+  describe("--process-hook", function()
+    before_each(helper.before_each)
+    after_each(helper.after_each)
+
+    it("parses --process-hook into opts.process_hook", function()
+      local path = helper.test_data:create_file("process_hook.lua", "return {}")
+
+      local opts = args.parse({ "--process-hook=" .. path, "spec" })
+
+      assert.equal(path, opts.process_hook)
+    end)
+
+    it("leaves opts.process_hook nil when --process-hook is absent", function()
+      local opts = args.parse({ "spec" })
+
+      assert.equal(nil, opts.process_hook)
+    end)
+
+    it("errors when the --process-hook module does not exist", function()
+      local err = args.parse({ "--process-hook=/no/such/hook.lua", "spec" })
+
+      assert.match("%-%-process%-hook module not found", err)
+    end)
+
+    it("is taken by every command that loads a spec", function()
+      local config = helper.test_data:create_file("mutation.json", '{ "version": 1, "operators": "all" }')
+      for _, argv in ipairs({
+        { "list" },
+        { "mutation" },
+        { "mutation", "list" },
+        { "mutation", "baseline", "verify", "--config=" .. config },
+      }) do
+        local path = helper.test_data:create_file("process_hook.lua", "return {}")
+        local opts = args.parse(vim.list_extend(vim.list_extend({}, argv), { "--process-hook=" .. path, "spec" }))
+
+        assert.equal(path, opts.process_hook)
+      end
+    end)
+  end)
+
   describe("--global-hook", function()
     before_each(helper.before_each)
     after_each(helper.after_each)

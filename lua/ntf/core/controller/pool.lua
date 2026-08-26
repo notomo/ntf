@@ -11,7 +11,7 @@ local M = {}
 --- @field jobs integer workers run in parallel, whether given or defaulted
 
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
 --- @return table coverage merged per-file line hit counts
 --- @return NtfRunTiming timing
@@ -43,6 +43,7 @@ function M.run(items, opts)
       cwd = cwd,
       timeout = opts.timeout,
       test_hook = opts.test_hook,
+      process_hook = opts.process_hook,
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)

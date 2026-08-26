@@ -220,6 +220,7 @@ function M.run(opts, ctx)
     jobs = opts.jobs,
     timeout = opts.timeout,
     test_hook = opts.test_hook,
+    process_hook = opts.process_hook,
     on_task = ctx.on_task,
   })
   for task_index, outcome in pairs(outcomes) do

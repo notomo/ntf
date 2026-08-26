@@ -38,6 +38,10 @@ local test_hook_path = doc_dir .. "/test_hook.lua"
 run_ntf({ "--test-hook=" .. test_hook_path, example_spec })
 local test_hook_command = "ntf --test-hook=./" .. vim.fs.basename(test_hook_path)
 
+local process_hook_path = doc_dir .. "/process_hook.lua"
+run_ntf({ "--process-hook=" .. process_hook_path, example_spec })
+local process_hook_command = "ntf --process-hook=./" .. vim.fs.basename(process_hook_path)
+
 local global_hook_path = doc_dir .. "/global_hook.lua"
 run_ntf({ "--global-hook=" .. global_hook_path, example_spec })
 local global_hook_command = "ntf --global-hook=./" .. vim.fs.basename(global_hook_path)
@@ -55,16 +59,17 @@ vim.fn.writefile({
 }, vim.fs.joinpath(dependency_dir, "deps/dependency/plugin/dependency.lua"))
 vim.fn.writefile({
   'local ntf = require("ntf")',
+  'local dependency = require("dependency")',
   'ntf.it("reaches the dependency the hook put on the runtimepath", function()',
-  '  ntf.assert.equal(1, require("dependency").value)',
+  "  ntf.assert.equal(1, dependency.value)",
   "  ntf.assert.is_true(vim.g.dependency_plugin_loaded)",
   "end)",
 }, vim.fs.joinpath(dependency_dir, "spec/dependency_spec.lua"))
 run_ntf({
-  "--test-hook=" .. vim.fn.fnamemodify(dependency_hook_path, ":p"),
+  "--process-hook=" .. vim.fn.fnamemodify(dependency_hook_path, ":p"),
   "spec",
 }, { cwd = dependency_dir })
-local dependency_hook_command = "ntf --test-hook=./" .. vim.fs.basename(dependency_hook_path)
+local dependency_hook_command = "ntf --process-hook=./" .. vim.fs.basename(dependency_hook_path)
 
 local debug_hook_path = doc_dir .. "/debug.lua"
 local stub_dir = vim.fn.tempname()
@@ -196,6 +201,7 @@ run_ntf({
 
 for _, command in ipairs({
   test_hook_command,
+  process_hook_command,
   global_hook_command,
   dependency_hook_command,
   debug_command,
@@ -578,7 +584,7 @@ rejects the rest.]],
         return table.concat({
           [[
 A hook module returns an optional `setup` and an optional `teardown`. Which
-process runs them, and how often, is what the two flags differ in.]],
+process runs them, and how often, is what the three flags differ in.]],
           "\n" .. util.help_tagged(ctx, "--test-hook=FILE", "ntf-hook-test"),
           [[
 Loaded in every worker (via `dofile`). Each test runs in its own worker, so the
@@ -600,25 +606,45 @@ The same module contract, run once in the launcher process instead of in every
 worker: `setup` before any spec file is loaded, `teardown` after all workers
 have finished. Use it for state shared by the whole run — start a server once,
 build a fixture once — while `--test-hook` remains the per-test bracket. What
-it sets in its own process, the runtimepath included, no worker sees:
-|ntf-hook-dependency|.]],
+it sets in its own process, the runtimepath included, no worker sees — that is
+|ntf-hook-process|, which every process runs.]],
           util.help_code_block(global_hook_command, { language = "sh" }),
           [[
 - An error while loading the module, or from its `setup`, aborts the run before
   any test starts.
 - A `teardown` error is reported after the results, and fails the run without
   discarding them.]],
+          "\n" .. util.help_tagged(ctx, "--process-hook=FILE", "ntf-hook-process"),
+          [[
+Run in every process ntf starts — the launcher and each worker alike — before
+that process loads a spec, which makes it the one hook the two of them agree
+on. It is for what a process has to be before it can read a spec at all: the
+runtimepath a dependency plugin sits on, a `package.path` entry, a stub. It
+takes a `setup` and nothing else — it says what a process is rather than what it
+brackets, so a module carrying a `teardown` is rejected before any test runs,
+naming the two flags a teardown does belong in.]],
+          util.help_code_block_from_file(process_hook_path, { language = "lua" }),
+          util.help_code_block(process_hook_command, { language = "sh" }),
+          [[
+- The launcher loads every spec file to discover the tests in it, so a module a
+  spec requires at file scope has to reach the launcher as well as the workers.
+  This is the only hook that reaches both.
+- An error while loading the module, or from its `setup`, aborts the run before
+  any test starts.]],
           "\n" .. util.help_tagged(ctx, "Loading dependency plugins", "ntf-hook-dependency"),
           [[
 A worker is a clean `nvim`, started with none of your config or plugins, so its
 runtimepath holds ntf and the plugin under test (the working directory) and
-nothing else. A plugin your specs depend on is put there by `--test-hook`,
-whose `setup` runs in the worker before the spec is built:]],
+nothing else. A plugin your specs depend on is put there by `--process-hook`,
+whose `setup` runs before a spec is loaded, in every process that loads one:]],
           util.help_code_block_from_file(dependency_hook_path, { language = "lua" }),
           util.help_code_block(dependency_hook_command, { language = "sh" }),
           [[
-- `--global-hook` cannot do this: it runs in the launcher, whose runtimepath no
-  worker inherits.
+- `--test-hook` cannot do this: it runs only in a worker, so a spec that
+  requires the dependency at file scope still fails to load in the launcher,
+  which reads every spec file to discover its tests.
+- `--global-hook` cannot do this either: it runs only in the launcher, whose
+  runtimepath no worker inherits.
 - The runtimepath alone only makes the dependency's `lua/` and other runtime
   files findable; startup is over, so its `plugin/` scripts are sourced only
   where the second line does it.]],

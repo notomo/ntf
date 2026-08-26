@@ -11,7 +11,10 @@ local payload = protocol.payload()
 require("ntf.core.worker.watchdog").start(payload.watchdog_ms)
 
 local function main()
-  require("ntf.core.runtime").setup()
+  local process_hook_error = require("ntf.core.runtime").setup(payload.process_hook)
+  if process_hook_error then
+    error(process_hook_error, 0)
+  end
 
   local hook = require("ntf.core.hook").load(payload.test_hook)
   hook.setup()

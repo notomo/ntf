@@ -12,6 +12,7 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
+--- @field process_hook string? Lua module returning an optional setup, run once in every process before it loads a spec
 --- @field global_hook string? Lua module returning optional setup/teardown, run once in the launcher around the whole run
 --- @field exclude_code string[] files or directories to leave out of the code under test
 --- @field exclude_spec string[] spec files or directories to skip during discovery
@@ -93,6 +94,16 @@ local test_hook = {
   description = "run a Lua module providing setup/teardown around each test, in its worker",
   set = function(opts, value)
     opts.test_hook = value
+  end,
+}
+
+--- @type NtfFlag
+local process_hook = {
+  name = "--process-hook",
+  value = "FILE",
+  description = "run a Lua module providing setup in every process, before it loads any spec",
+  set = function(opts, value)
+    opts.process_hook = value
   end,
 }
 
@@ -279,7 +290,7 @@ local help = {
 }
 
 --- @type NtfFlag[] taken by every command, since every command discovers the specs it works from
-local discovery_flags = { filter, global_hook, exclude_spec }
+local discovery_flags = { filter, process_hook, global_hook, exclude_spec }
 
 --- @type NtfFlag[] taken by every command that starts workers
 local worker_flags = { timeout, jobs, test_hook }
@@ -563,6 +574,9 @@ local function validate(opts)
   if opts.global_hook and vim.fn.filereadable(opts.global_hook) == 0 then
     return "--global-hook module not found: " .. opts.global_hook
   end
+  if opts.process_hook and vim.fn.filereadable(opts.process_hook) == 0 then
+    return "--process-hook module not found: " .. opts.process_hook
+  end
   for _, path in ipairs(opts.exclude_code) do
     if vim.fn.filereadable(path) == 0 and vim.fn.isdirectory(path) == 0 then
       return "--exclude-code path not found: " .. path
@@ -606,6 +620,7 @@ function M.parse(argv)
     filter = nil,
     jobs = nil,
     test_hook = nil,
+    process_hook = nil,
     global_hook = nil,
     exclude_code = {},
     exclude_spec = {},

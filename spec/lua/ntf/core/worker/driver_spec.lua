@@ -69,6 +69,35 @@ describe("ntf.core.worker.driver.launch", function()
     assert.equal("passed", outcome.results[1].status)
   end)
 
+  it("runs the --process-hook before the worker loads the spec", function()
+    local hook = helper.test_data:create_file(
+      "process_hook.lua",
+      [[return { setup = function() vim.g.ntf_process_hook_spec = "ran" end }]]
+    )
+    local item = item_of([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("sees what the process hook set", function()
+    ntf.assert.equal("ran", vim.g.ntf_process_hook_spec)
+  end)
+end)
+]])
+
+    local outcome = launch(item, { process_hook = hook })
+
+    assert.equal("passed", outcome.results[1].status)
+  end)
+
+  it("errors on a worker whose --process-hook module provides a teardown, which no worker can run either", function()
+    local hook =
+      helper.test_data:create_file("process_hook.lua", [[return { setup = function() end, teardown = function() end }]])
+
+    local outcome = launch(item_of(ONE_TEST), { process_hook = hook })
+
+    assert.equal("error", outcome.results[1].status)
+    assert.match("takes no teardown", outcome.results[1].message)
+  end)
+
   it("stamps the item's file onto every result, which the worker never sends back itself", function()
     local item = item_of(ONE_TEST)
 
