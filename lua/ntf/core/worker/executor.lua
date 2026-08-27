@@ -40,6 +40,25 @@ local function handler(err)
   return { message = to_text(err), traceback = debug.traceback("", 2) }
 end
 
+local TOO_LATE_TO_PEND =
+  "pending() once the result is decided: only a before_each or a test body leaves a test pending, since an after_each and a finally both run after the result"
+
+--- @param err table what `handler` returned for a raise
+--- @return boolean # true once the raise is the signal pending() sends from a running test
+local function is_pending(err)
+  return err[tree.PENDING] ~= nil
+end
+
+--- @param err table what `handler` returned for a raise a decided result leaves no room for
+--- @return string? message
+--- @return string? traceback
+local function too_late(err)
+  if is_pending(err) then
+    return TOO_LATE_TO_PEND, nil
+  end
+  return err.message, err.traceback
+end
+
 local function run_hooks(hooks)
   for _, hook in ipairs(hooks) do
     local ok, err = xpcall(hook, handler)
@@ -108,12 +127,16 @@ function M.run(root, selected)
     local finallies = tree.collect_finallies(function()
       local before_err = run_hooks(before_chain)
       if before_err then
-        status, message, traceback = "error", before_err.message, before_err.traceback
+        if is_pending(before_err) then
+          status, message = "pending", before_err.message
+        else
+          status, message, traceback = "error", before_err.message, before_err.traceback
+        end
         return
       end
       local ok, err = xpcall(node.fn, handler)
       if not ok then
-        if type(err) == "table" and err[tree.PENDING] then
+        if is_pending(err) then
           status, message = "pending", err.message
         else
           status, message, traceback = "failed", err.message, err.traceback
@@ -122,12 +145,14 @@ function M.run(root, selected)
     end)
     local finally_err = run_finallies(finallies)
     if finally_err and status == "passed" then
-      status, message, traceback = "error", finally_err.message, finally_err.traceback
+      status = "error"
+      message, traceback = too_late(finally_err)
     end
 
     local after_err = run_hooks(after_chain)
     if after_err and status == "passed" then
-      status, message, traceback = "error", after_err.message, after_err.traceback
+      status = "error"
+      message, traceback = too_late(after_err)
     end
 
     result.status = status

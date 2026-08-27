@@ -729,7 +729,9 @@ it({name}, {fn}, {opts})                                            *ntf.it()*
 
 pending({name}, {fn})                                          *ntf.pending()*
   Mark a test as pending. As a declaration it records a skipped node; called
-  inside a running test body it aborts the test as pending.
+  from a running test body or from a before_each it aborts the test as
+  pending. An after_each or a finally runs once the result is decided, so
+  calling it there is an error instead.
 
   Parameters: ~
     {name} (string) pending reason
