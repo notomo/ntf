@@ -13,6 +13,7 @@ local M = {}
 --- @field names string[] describe/it name chain
 --- @field trace NtfTrace? declaration site
 --- @field timeout integer? per-item timeout in ms from the leaf node
+--- @field leaves_count integer how many tests the file declared when the run was planned
 
 --- @param shared NtfSharedName[]
 --- @return string # one line per name, so a file answers for every one of them at once
@@ -45,6 +46,7 @@ function M.plan(files, filter)
       if #shared > 0 then
         table.insert(load_errors, { file = file, message = shared_name_message(shared) })
       else
+        local leaves_count = tree.leaf_count(root)
         for leaf, names in tree.iter_leaves(root) do
           if not filter or tree.full_name(names):find(filter) ~= nil then
             table.insert(items, {
@@ -53,6 +55,7 @@ function M.plan(files, filter)
               names = names,
               trace = leaf.trace,
               timeout = leaf.timeout,
+              leaves_count = leaves_count,
             })
           end
         end

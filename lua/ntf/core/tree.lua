@@ -216,6 +216,52 @@ function M.one_line(name)
   return (name:gsub("%s+", " "))
 end
 
+--- @param root NtfNode
+--- @param node_id string
+--- @return string? # the folded full name of the leaf holding that id, nil when the tree holds none
+function M.leaf_name(root, node_id)
+  for leaf, names in M.iter_leaves(root) do
+    if leaf.id == node_id then
+      return M.one_line(M.full_name(names))
+    end
+  end
+end
+
+--- @param root NtfNode
+--- @return integer # how many tests the file declares
+function M.leaf_count(root)
+  local count = 0
+  for _ in M.iter_leaves(root) do
+    count = count + 1
+  end
+  return count
+end
+
+--- @param root NtfNode the tree this process built
+--- @param node_id string the leaf the run asked this process for
+--- @param planned_names string[] the name chain the run planned at that position
+--- @param planned_count integer how many tests the file declared when the run was planned
+--- @return string? # what this tree and the run's disagree on, nil when they are the same tree
+function M.divergence(root, node_id, planned_names, planned_count)
+  local planned = M.one_line(M.full_name(planned_names))
+  local found = M.leaf_name(root, node_id)
+  if found ~= planned then
+    return ("this worker built a different tree than the run planned from: the run picked %q, this position holds %s"):format(
+      planned,
+      found and ("%q"):format(found) or "no test"
+    )
+  end
+
+  local count = M.leaf_count(root)
+  if count ~= planned_count then
+    return ("this worker built a different tree than the run planned from: this position still holds %q, but the run planned %d tests from this file and this process declares %d"):format(
+      planned,
+      planned_count,
+      count
+    )
+  end
+end
+
 --- @class NtfSharedName a full name more than one test of a file carries
 --- @field name string the folded full name they share
 --- @field traces NtfTrace[] where each was declared, in declaration order

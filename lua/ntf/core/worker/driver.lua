@@ -40,7 +40,6 @@ local function results_of(item, obj, decoded, timed_out_ms)
   else
     detail = (obj.stderr ~= "" and obj.stderr)
       or (decoded and decoded.load_error)
-      or (decoded and decoded.results and "worker reported no result for the requested test")
       or ("worker exited with code " .. tostring(obj.code))
   end
   return {
@@ -73,6 +72,8 @@ function M.payload(item, opts)
   return {
     file = item.file,
     node_id = item.node_id,
+    names = item.names,
+    leaves_count = item.leaves_count,
     test_hook = opts.test_hook,
     process_hook = opts.process_hook,
     coverage = opts.coverage or false,

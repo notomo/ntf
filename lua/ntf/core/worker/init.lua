@@ -76,11 +76,13 @@ local function main()
   local tree = require("ntf.core.tree")
   local root_node = tree.build(payload.file)
 
-  if root_node.load_error then
+  local problem = root_node.load_error and tostring(root_node.load_error)
+    or tree.divergence(root_node, payload.node_id, payload.names, payload.leaves_count)
+  if problem then
     if collector then
       collector.stop()
     end
-    local message = tostring(root_node.load_error)
+    local message = problem
     local teardown_err = teardown()
     if teardown_err then
       message = message .. "\n\nteardown error: " .. teardown_err.message

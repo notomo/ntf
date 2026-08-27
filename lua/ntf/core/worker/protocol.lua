@@ -6,6 +6,8 @@ local M = {}
 --- @class NtfWorkerPayload parameters for one worker process
 --- @field file string spec file path
 --- @field node_id string leaf id to run
+--- @field names string[] the name chain the run planned at that id, which a diverged tree is answered with
+--- @field leaves_count integer how many tests the file declared when the run was planned
 --- @field test_hook string? Lua module path providing setup/teardown
 --- @field process_hook string? Lua module path providing the setup this process runs before it loads a spec
 --- @field coverage boolean

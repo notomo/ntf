@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local driver = require("ntf.core.worker.driver")
 local watchdog = require("ntf.core.worker.watchdog")
 local work = require("ntf.core.controller.work")
@@ -98,6 +99,28 @@ end)
     assert.match("takes no teardown", outcome.results[1].message)
   end)
 
+  it("refuses a worker whose spec declares another test at the position the run planned", function()
+    local item = item_of([[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  if vim.env.NTF_DRIVER_SPEC_GROWS then
+    ntf.it("grown", function() end)
+  end
+  ntf.it("planned", function() end)
+end)
+]])
+    finally(function()
+      vim.env.NTF_DRIVER_SPEC_GROWS = nil
+    end)
+    vim.env.NTF_DRIVER_SPEC_GROWS = "1"
+
+    local outcome = launch(item)
+
+    assert.equal("error", outcome.results[1].status)
+    assert.match('the run picked "g planned"', outcome.results[1].message)
+    assert.match('this position holds "g grown"', outcome.results[1].message)
+  end)
+
   it("stamps the item's file onto every result, which the worker never sends back itself", function()
     local item = item_of(ONE_TEST)
 
@@ -106,7 +129,7 @@ end)
     assert.equal(item.file, outcome.results[1].file)
   end)
 
-  it("errors on a worker that reported no result, since it was asked for exactly one node", function()
+  it("refuses a worker whose spec no longer holds the position the run planned", function()
     local item = item_of(ONE_TEST)
     item.node_id = "a node the rebuilt tree does not hold"
 
@@ -114,7 +137,7 @@ end)
 
     assert.equal(1, #outcome.results)
     assert.equal("error", outcome.results[1].status)
-    assert.match("no result", outcome.results[1].message)
+    assert.match("this position holds no test", outcome.results[1].message)
   end)
 
   it("measures no coverage for a run that did not ask for any", function()
@@ -283,6 +306,15 @@ describe("ntf.core.worker.driver.payload", function()
 
     assert.is_nil(timeout)
     assert.is_nil(payload.watchdog_ms)
+  end)
+
+  it("hands a worker what the run planned at the position it asks for", function()
+    local item = item_of(ONE_TEST)
+
+    local payload = driver.payload(item, { cwd = helper.root })
+
+    assert.same(item.names, payload.names)
+    assert.equal(1, payload.leaves_count)
   end)
 
   it("gives each worker a marker nonce of its own", function()

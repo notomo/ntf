@@ -554,6 +554,16 @@
       "rationale": "the exit callback runs once per worker and nothing reads timer after it, so clearing the closed handle is hygiene no run can observe"
     },
     {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "col": 55,
+      "operator": "swap-relational",
+      "original": ">",
+      "replacement": ">=",
+      "line": "  if decoded and decoded.results and #decoded.results > 0 then",
+      "rationale": "a worker emits its results only after tree.divergence confirmed the position it was asked for still holds the planned test, so executor.run always ran one leaf and the block is never empty; widening the comparison therefore takes the same branch for every block a worker can send",
+      "invariant_spec": "ntf.core.worker.driver.launch refuses a worker whose spec no longer holds the position the run planned"
+    },
+    {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 45,
       "operator": "swap-boolean",

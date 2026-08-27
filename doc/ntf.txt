@@ -88,6 +88,15 @@ line per test: every run of whitespace in it, a newline the case data carried
 in included, is folded to a single space. That folded form is what two tests
 may not share.
 
+The tests are declared once to plan the run and once again in each worker, and
+a worker is handed the position of the test it is to run. So the declarations
+have to come out the same both times: a file that decides what to declare from
+anything the two processes do not share — what another spec file left behind in
+the launcher, what a hook set up in the worker, the order `pairs()` hands back
+— gives that position to another test. A worker that finds a different tree
+than the run was planned from says so and runs nothing, rather than running the
+test that took the position.
+
 ==============================================================================
 HOOKS                                                              *ntf-HOOKS*
 

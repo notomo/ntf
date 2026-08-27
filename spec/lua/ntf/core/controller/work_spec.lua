@@ -36,6 +36,19 @@ describe("ntf.core.controller.work.plan", function()
     assert.same({ MATH_ADDS, MATH_SUBTRACTS, STRING_ADDS }, planned_ids(items))
   end)
 
+  it("carries the file's leaf count on every item, filtered ones left out of it", function()
+    local file = helper.write_spec(source)
+
+    local items = work.plan({ file }, "adds")
+
+    assert.same(
+      { 3, 3 },
+      vim.tbl_map(function(item)
+        return item.leaves_count
+      end, items)
+    )
+  end)
+
   it("keeps only leaves whose full name matches the filter", function()
     local file = helper.write_spec(source)
     local items = work.plan({ file }, "adds")

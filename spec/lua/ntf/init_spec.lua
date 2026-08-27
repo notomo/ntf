@@ -415,6 +415,29 @@ return {
     assert.match("%-%-test%-hook module not found", obj.stderr)
   end)
 
+  it("fails a run whose workers declare a different tree than it was planned from", function()
+    local path = spec(
+      "diverging_spec.lua",
+      [[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  if vim.env.NTF_SPEC_GROWS then
+    ntf.it("grown", function() end)
+  end
+  ntf.it("planned", function() end)
+end)
+]]
+    )
+    local hook = spec("test_hook.lua", [[return { setup = function() vim.env.NTF_SPEC_GROWS = "1" end }]])
+
+    local obj = run({ path }, { "--test-hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("built a different tree than the run planned from", obj.stdout)
+    assert.match('the run picked "g planned"', obj.stdout)
+    assert.match('this position holds "g grown"', obj.stdout)
+  end)
+
   it("fails a file whose tests share a full name, naming both declaration sites", function()
     local path = spec(
       "shared_name_spec.lua",

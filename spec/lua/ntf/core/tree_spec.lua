@@ -160,21 +160,34 @@ end)
 
 describe("ntf.core.tree declaration outside a spec file being loaded", function()
   local declares_from_a_running_test = {
-    describe = function()
-      tree.describe("too late", function() end)
-    end,
-    it = function()
-      tree.it("too late", function() end)
-    end,
-    before_each = function()
-      tree.before_each(function() end)
-    end,
-    after_each = function()
-      tree.after_each(function() end)
-    end,
+    {
+      what = "describe",
+      declare = function()
+        tree.describe("too late", function() end)
+      end,
+    },
+    {
+      what = "it",
+      declare = function()
+        tree.it("too late", function() end)
+      end,
+    },
+    {
+      what = "before_each",
+      declare = function()
+        tree.before_each(function() end)
+      end,
+    },
+    {
+      what = "after_each",
+      declare = function()
+        tree.after_each(function() end)
+      end,
+    },
   }
 
-  for what, declare in pairs(declares_from_a_running_test) do
+  for _, case in ipairs(declares_from_a_running_test) do
+    local what, declare = case.what, case.declare
     it(("raises for a %s() a running test declares"):format(what), function()
       local ok, err = pcall(declare)
 
@@ -337,5 +350,77 @@ describe("ntf.core.tree.one_line", function()
 
   it("leaves a name that already sits on one line alone", function()
     assert.equal("group adds", tree.one_line("group adds"))
+  end)
+end)
+
+local function tree_of(leaves)
+  local lines = { 'local ntf = require("ntf")', 'ntf.describe("g", function()' }
+  for _, name in ipairs(leaves) do
+    table.insert(lines, ("  ntf.it(%q, function() end)"):format(name))
+  end
+  table.insert(lines, "end)")
+  return tree.build(helper.write_spec(table.concat(lines, "\n")))
+end
+
+describe("ntf.core.tree.leaf_name", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("answers with the folded name of the leaf holding the id", function()
+    local root = tree_of({ "a", "b", "c" })
+
+    assert.equal("g b", tree.leaf_name(root, "1.2"))
+  end)
+
+  it("answers with nothing for an id the tree does not hold", function()
+    local root = tree_of({ "a" })
+
+    assert.is_nil(tree.leaf_name(root, "1.2"))
+  end)
+end)
+
+describe("ntf.core.tree.leaf_count", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("counts every leaf the file declares", function()
+    assert.equal(3, tree.leaf_count(tree_of({ "a", "b", "c" })))
+  end)
+end)
+
+describe("ntf.core.tree.divergence", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("finds nothing when this process declares the tree the run planned from", function()
+    local root = tree_of({ "a", "b" })
+
+    assert.is_nil(tree.divergence(root, "1.2", { "g", "b" }, 2))
+  end)
+
+  it("names what the position holds when another test took it", function()
+    local root = tree_of({ "extra", "a", "b" })
+
+    local message = tree.divergence(root, "1.2", { "g", "b" }, 2)
+
+    assert.match('the run picked "g b"', message)
+    assert.match('this position holds "g a"', message)
+  end)
+
+  it("says the position holds no test when the tree lost it", function()
+    local root = tree_of({ "a" })
+
+    local message = tree.divergence(root, "1.2", { "g", "b" }, 2)
+
+    assert.match("this position holds no test", message)
+  end)
+
+  it("counts the leaves when the position still holds the planned test, since a later one leaves it alone", function()
+    local root = tree_of({ "a", "b", "grown" })
+
+    local message = tree.divergence(root, "1.2", { "g", "b" }, 2)
+
+    assert.match('this position still holds "g b"', message)
+    assert.match("the run planned 2 tests from this file and this process declares 3", message)
   end)
 end)
