@@ -210,6 +210,42 @@ function M.iter_leaves(root)
   end
 end
 
+--- @param name string a full name, which the source is free to spell over several lines
+--- @return string # the same name on one line, so a listing keeps one line per test and a report one line per heading
+function M.one_line(name)
+  return (name:gsub("%s+", " "))
+end
+
+--- @class NtfSharedName a full name more than one test of a file carries
+--- @field name string the folded full name they share
+--- @field traces NtfTrace[] where each was declared, in declaration order
+
+--- @param root NtfNode
+--- @return NtfSharedName[] # every name more than one leaf carries, first occurrence first
+function M.shared_names(root)
+  local traces_of = {} --- @type table<string, NtfTrace[]>
+  local order = {} --- @type string[]
+  for leaf, names in M.iter_leaves(root) do
+    local name = M.one_line(M.full_name(names))
+    local traces = traces_of[name]
+    if not traces then
+      traces = {}
+      traces_of[name] = traces
+      table.insert(order, name)
+    end
+    table.insert(traces, leaf.trace)
+  end
+
+  local shared = {}
+  for _, name in ipairs(order) do
+    local traces = traces_of[name]
+    if #traces > 1 then
+      table.insert(shared, { name = name, traces = traces })
+    end
+  end
+  return shared
+end
+
 --- @param names string[] describe/it name chain
 --- @return string
 function M.full_name(names)

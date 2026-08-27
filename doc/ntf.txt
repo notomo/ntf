@@ -69,6 +69,24 @@ WRITING SPECS                                              *ntf-WRITING-SPECS*
     pending("not implemented yet")
   end)
 <
+A test's full name — the enclosing `describe` names and its own, joined by
+spaces — has to be its own within the file. Two tests sharing one fails the
+file, naming both declaration sites, rather than running either: nothing tells
+them apart afterwards, not the report, not `--filter`, not the schedule the
+next run is ordered from, and not the worker, which picks a test by its
+position in the file. So a test built in a loop puts what varies into its name:
+
+>lua
+  for _, n in ipairs({ 1, 2, 3 }) do
+    it("case " .. n, function()
+      assert.equal(n, subject(n))
+    end)
+  end
+<
+Wherever ntf shows a name it shows it on one line, so that a listing keeps one
+line per test: every run of whitespace in it, a newline the case data carried
+in included, is folded to a single space. That folded form is what two tests
+may not share.
 
 ==============================================================================
 HOOKS                                                              *ntf-HOOKS*
@@ -689,6 +707,9 @@ it({name}, {fn}, {opts})                                            *ntf.it()*
   Define a test case. The body runs at execution time, in its own fresh Neovim
   process. This is not configurable: state never leaks between tests, because
   no two tests ever share a process.
+  Its full name -- the enclosing `describe` names and its own, joined by
+  spaces -- has to be its own within the file. Two leaves sharing one fails
+  the file instead of running: |ntf-WRITING-SPECS|.
 
   Parameters: ~
     {name} (string) test name

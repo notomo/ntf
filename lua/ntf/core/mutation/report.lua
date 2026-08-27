@@ -1,3 +1,4 @@
+local tree = require("ntf.core.tree")
 local controller_report = require("ntf.core.controller.report")
 local painter = controller_report.painter
 local duration = controller_report.duration
@@ -92,7 +93,7 @@ function M.summary(summary, cwd, opts)
       local mutant = record.mutant
       local killer = ""
       if record.killed_by then
-        killer = (" killed by %q"):format(record.killed_by)
+        killer = (" killed by %q"):format(tree.one_line(record.killed_by))
       end
       table.insert(
         lines,

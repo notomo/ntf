@@ -415,6 +415,26 @@ return {
     assert.match("%-%-test%-hook module not found", obj.stderr)
   end)
 
+  it("fails a file whose tests share a full name, naming both declaration sites", function()
+    local path = spec(
+      "shared_name_spec.lua",
+      [[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  ntf.it("same name", function() end)
+  ntf.it("same name", function() end)
+end)
+]]
+    )
+
+    local obj = run({ path })
+
+    assert.equal(1, obj.code)
+    assert.match('2 tests share the full name "g same name"', obj.stdout)
+    assert.match("shared_name_spec%.lua:3, .*shared_name_spec%.lua:4", obj.stdout)
+    assert.match("0 tests", obj.stdout)
+  end)
+
   it(
     "puts a dependency on the runtimepath of the launcher and of every worker, so a spec reaches it at file scope",
     function()

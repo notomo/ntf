@@ -36,6 +36,19 @@ describe("ntf.core.controller.list.tests", function()
     assert.equal("spec/x_spec.lua:12 group adds\n", text)
   end)
 
+  it("keeps a name spelled over several lines on one line, so a listing stays one line per test", function()
+    local text = list.tests({
+      {
+        file = "x",
+        node_id = "1",
+        names = { "group", "select (\nhoge\n)" },
+        trace = { source = "@" .. vim.fs.joinpath(vim.fn.getcwd(), "spec/x_spec.lua"), line = 12 },
+      },
+    })
+
+    assert.equal("spec/x_spec.lua:12 group select ( hoge )\n", text)
+  end)
+
   it("renders no tests as empty text", function()
     assert.equal("", list.tests({}))
   end)

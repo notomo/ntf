@@ -19,6 +19,9 @@ end
 --- Define a test case. The body runs at execution time, in its own fresh Neovim
 --- process. This is not configurable: state never leaks between tests, because
 --- no two tests ever share a process.
+--- Its full name -- the enclosing `describe` names and its own, joined by
+--- spaces -- has to be its own within the file. Two leaves sharing one fails
+--- the file instead of running: |ntf-WRITING-SPECS|.
 --- @param name string: test name
 --- @param fn fun() test body
 --- @param opts NtfItOption?: |NtfItOption|

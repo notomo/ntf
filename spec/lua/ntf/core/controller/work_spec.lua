@@ -108,3 +108,59 @@ end)
     assert.same({ broken_describe }, planned_ids(items))
   end)
 end)
+
+describe("ntf.core.controller.work.plan duplicate names", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  local duplicated = [[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  ntf.it("same name", function() end)
+  ntf.it("same name", function() end)
+end)
+]]
+
+  it("plans no test from a file whose leaves share a full name", function()
+    local file = helper.write_spec(duplicated)
+
+    local items, load_errors = work.plan({ file })
+
+    assert.same({}, items)
+    assert.equal(1, #load_errors)
+    assert.equal(file, load_errors[1].file)
+  end)
+
+  it("says which name is shared, how many carry it and where each is declared", function()
+    local _, load_errors = work.plan({ helper.write_spec(duplicated) })
+
+    assert.match('2 tests share the full name "g same name"', load_errors[1].message)
+    assert.match("_spec%.lua:3, .*_spec%.lua:4", load_errors[1].message)
+  end)
+
+  it("answers for every shared name of the file in one message", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  ntf.it("case", function() end)
+  ntf.it("case", function() end)
+  ntf.it("other", function() end)
+  ntf.it("other", function() end)
+end)
+]])
+
+    local _, load_errors = work.plan({ file })
+
+    assert.equal(1, #load_errors)
+    assert.match('2 tests share the full name "g case"', load_errors[1].message)
+    assert.match('2 tests share the full name "g other"', load_errors[1].message)
+  end)
+
+  it("keeps planning the files that have no shared name", function()
+    local ok_file = helper.write_spec(source)
+
+    local items = work.plan({ ok_file })
+
+    assert.equal(3, #items)
+  end)
+end)

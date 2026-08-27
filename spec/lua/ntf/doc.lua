@@ -575,7 +575,32 @@ rejects the rest.]],
     {
       name = "WRITING SPECS",
       body = function()
-        return util.help_code_block_from_file(example_path, { language = "lua" })
+        return table.concat({
+          util.help_code_block_from_file(example_path, { language = "lua" }),
+          [[
+A test's full name — the enclosing `describe` names and its own, joined by
+spaces — has to be its own within the file. Two tests sharing one fails the
+file, naming both declaration sites, rather than running either: nothing tells
+them apart afterwards, not the report, not `--filter`, not the schedule the
+next run is ordered from, and not the worker, which picks a test by its
+position in the file. So a test built in a loop puts what varies into its name:
+]],
+          util.help_code_block(
+            table.concat({
+              "for _, n in ipairs({ 1, 2, 3 }) do",
+              '  it("case " .. n, function()',
+              "    assert.equal(n, subject(n))",
+              "  end)",
+              "end",
+            }, "\n"),
+            { language = "lua" }
+          ),
+          [[
+Wherever ntf shows a name it shows it on one line, so that a listing keeps one
+line per test: every run of whitespace in it, a newline the case data carried
+in included, is folded to a single space. That folded form is what two tests
+may not share.]],
+        }, "\n")
       end,
     },
     {

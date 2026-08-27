@@ -22,6 +22,14 @@ describe("ntf.core.controller.report.output_block", function()
     )
   end)
 
+  it("keeps a name spelled over several lines on the header line", function()
+    local out = { file = "spec/a_spec.lua", name = "group select (\nhoge\n)", output = "noise\n" }
+
+    local text = report.output_block(out, false)
+
+    assert.match("OUTPUT spec/a_spec%.lua group select %( hoge %)\n", text)
+  end)
+
   it("labels a single-test worker by its file followed by its full name", function()
     local out = { file = "spec/a_spec.lua", name = "group adds", output = "noise\n" }
     local text = report.output_block(out, false)
@@ -66,6 +74,22 @@ describe("ntf.core.controller.report.output_block", function()
 end)
 
 describe("ntf.core.controller.report.build", function()
+  it("keeps a name spelled over several lines on the FAIL heading line", function()
+    local results = {
+      {
+        id = "1",
+        names = { "group", "fails (\na\n)" },
+        status = "failed",
+        message = "boom",
+        trace = { source = "@spec/a_spec.lua", line = 3 },
+      },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.match("FAIL group fails %( a %)\n", text)
+  end)
+
   it("never emits OUTPUT itself; captured output is streamed live instead", function()
     local results = {
       { status = "passed", names = { "block", "quiet" } },
