@@ -210,19 +210,13 @@ function M.iter_leaves(root)
   end
 end
 
---- @param name string a full name, which the source is free to spell over several lines
---- @return string # the same name on one line, so a listing keeps one line per test and a report one line per heading
-function M.one_line(name)
-  return (name:gsub("%s+", " "))
-end
-
 --- @param root NtfNode
 --- @param node_id string
---- @return string? # the folded full name of the leaf holding that id, nil when the tree holds none
+--- @return string? # the full name of the leaf holding that id, nil when the tree holds none
 function M.leaf_name(root, node_id)
   for leaf, names in M.iter_leaves(root) do
     if leaf.id == node_id then
-      return M.one_line(M.full_name(names))
+      return M.full_name(names)
     end
   end
 end
@@ -243,7 +237,7 @@ end
 --- @param planned_count integer how many tests the file declared when the run was planned
 --- @return string? # what this tree and the run's disagree on, nil when they are the same tree
 function M.divergence(root, node_id, planned_names, planned_count)
-  local planned = M.one_line(M.full_name(planned_names))
+  local planned = M.full_name(planned_names)
   local found = M.leaf_name(root, node_id)
   if found ~= planned then
     return ("this worker built a different tree than the run planned from: the run picked %q, this position holds %s"):format(
@@ -263,7 +257,7 @@ function M.divergence(root, node_id, planned_names, planned_count)
 end
 
 --- @class NtfSharedName a full name more than one test of a file carries
---- @field name string the folded full name they share
+--- @field name string the full name they share
 --- @field traces NtfTrace[] where each was declared, in declaration order
 
 --- @param root NtfNode
@@ -272,7 +266,7 @@ function M.shared_names(root)
   local traces_of = {} --- @type table<string, NtfTrace[]>
   local order = {} --- @type string[]
   for leaf, names in M.iter_leaves(root) do
-    local name = M.one_line(M.full_name(names))
+    local name = M.full_name(names)
     local traces = traces_of[name]
     if not traces then
       traces = {}
@@ -292,15 +286,24 @@ function M.shared_names(root)
   return shared
 end
 
+--- @type table<string, string> the characters that would carry a name onto a second line, and what a name spells each of them as instead
+local LINE_BREAKS = {
+  ["\n"] = "\\n",
+  ["\r"] = "\\r",
+  ["\v"] = "\\v",
+  ["\f"] = "\\f",
+}
+
 --- @param names string[] describe/it name chain
---- @return string
+--- @return string # the chain on one line, a break the source spelled a name over written as the escape it is, so that a listing keeps one line per test and every use of a name -- a --filter pattern, the schedule, an invariant_spec -- takes the one a report shows
 function M.full_name(names)
-  return table.concat(
+  local joined = table.concat(
     vim.tbl_filter(function(s)
       return s ~= nil and s ~= ""
     end, names or {}),
     " "
   )
+  return (joined:gsub("[\n\r\v\f]", LINE_BREAKS))
 end
 
 return M

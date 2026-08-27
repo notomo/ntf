@@ -234,6 +234,15 @@ describe("ntf.core.tree.full_name", function()
     assert.equal("outer inner three", tree.full_name({ "outer", "", "inner", "three" }))
     assert.equal("", tree.full_name({}))
   end)
+
+  it("writes a break the name was spelled over as the escape it is", function()
+    assert.equal("group select (\\nhoge\\nfoo\\n)", tree.full_name({ "group", "select (\nhoge\nfoo\n)" }))
+  end)
+
+  it("leaves the whitespace that keeps the name on one line as the source spelled it", function()
+    assert.equal("group two  spaces", tree.full_name({ "group", "two  spaces" }))
+    assert.equal("group a\tb", tree.full_name({ "group", "a\tb" }))
+  end)
 end)
 
 describe("ntf.core.tree.is_leaf", function()
@@ -318,18 +327,6 @@ end)
     assert.same({}, tree.shared_names(root))
   end)
 
-  it("takes two names that differ only in whitespace as one, since that is all a reader sees", function()
-    local root = tree.build(helper.write_spec([[
-local ntf = require("ntf")
-ntf.describe("g", function()
-  ntf.it("a b", function() end)
-  ntf.it("a\nb", function() end)
-end)
-]]))
-
-    assert.equal("g a b", tree.shared_names(root)[1].name)
-  end)
-
   it("takes a pending as a leaf that has to carry its own name too", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")
@@ -340,16 +337,6 @@ end)
 ]]))
 
     assert.equal("g same name", tree.shared_names(root)[1].name)
-  end)
-end)
-
-describe("ntf.core.tree.one_line", function()
-  it("folds every run of whitespace into one space, newlines included", function()
-    assert.equal("select ( hoge foo ) on ( hoge )", tree.one_line("select (\nhoge\nfoo\n) on (\thoge  )"))
-  end)
-
-  it("leaves a name that already sits on one line alone", function()
-    assert.equal("group adds", tree.one_line("group adds"))
   end)
 end)
 

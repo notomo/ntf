@@ -596,10 +596,12 @@ position in the file. So a test built in a loop puts what varies into its name:
             { language = "lua" }
           ),
           [[
-Wherever ntf shows a name it shows it on one line, so that a listing keeps one
-line per test: every run of whitespace in it, a newline the case data carried
-in included, is folded to a single space. That folded form is what two tests
-may not share.
+A name is a single line, whatever the source spelled it over: a break in it, a
+newline the case data carried in included, is written as the `\n` it is, and
+every other character stands as the source wrote it. So a listing keeps one
+line per test, and that written form is the name — what two tests may not
+share, and what a `--filter` pattern, the schedule and an `invariant_spec` are
+all matched against — so the name a report shows is the one to write back.
 
 The tests are declared once to plan the run and once again in each worker, and
 a worker is handed the position of the test it is to run. So the declarations

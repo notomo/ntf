@@ -46,7 +46,7 @@ describe("ntf.core.controller.list.tests", function()
       },
     })
 
-    assert.equal("spec/x_spec.lua:12 group select ( hoge )\n", text)
+    assert.equal("spec/x_spec.lua:12 group select (\\nhoge\\n)\n", text)
   end)
 
   it("renders no tests as empty text", function()

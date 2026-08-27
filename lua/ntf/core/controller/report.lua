@@ -49,7 +49,7 @@ end
 local rel_source = M.rel_source
 
 local function full_name(result)
-  return tree.one_line(tree.full_name(result.names or { result.name }))
+  return tree.full_name(result.names or { result.name })
 end
 
 local function clean_traceback(traceback)
@@ -107,7 +107,7 @@ function M.output_block(out, color)
   local lines = {}
   local header = paint("dim", "OUTPUT ") .. paint("dim", rel)
   if out.name and out.name ~= "" then
-    header = header .. " " .. paint("bold", tree.one_line(out.name))
+    header = header .. " " .. paint("bold", out.name)
   end
   table.insert(lines, header)
   table.insert(lines, (out.output:gsub("\n$", "")))

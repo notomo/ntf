@@ -438,6 +438,26 @@ end)
     assert.match('this position holds "g grown"', obj.stdout)
   end)
 
+  it("matches --filter against the name a listing shows, a name spelled over several lines included", function()
+    local path = spec(
+      "folded_spec.lua",
+      [[
+local ntf = require("ntf")
+ntf.describe("g", function()
+  ntf.it("select (\nhoge\n)", function() end)
+  ntf.it("plain", function() end)
+end)
+]]
+    )
+
+    local listed = run({ path }, { "list" })
+    local filtered = run({ path }, { "--filter=select %(\\nhoge" })
+
+    assert.match("g select %(\\nhoge\\n%)\n", listed.stdout)
+    assert.equal(0, filtered.code)
+    assert.match("1 tests: 1 passed", filtered.stdout)
+  end)
+
   it("fails a file whose tests share a full name, naming both declaration sites", function()
     local path = spec(
       "shared_name_spec.lua",

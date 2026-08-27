@@ -14,7 +14,7 @@ end
 function M.tests(items)
   local lines = {}
   for _, item in ipairs(items) do
-    table.insert(lines, ("%s %s"):format(report.rel_source(item.trace), tree.one_line(tree.full_name(item.names))))
+    table.insert(lines, ("%s %s"):format(report.rel_source(item.trace), tree.full_name(item.names)))
   end
   return joined(lines)
 end
