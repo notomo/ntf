@@ -2,6 +2,7 @@ local stats = require("ntf.core.coverage.stats")
 local coverage_lines = require("ntf.core.coverage.lines")
 local cache_path = require("ntf.core.cache_path")
 local highlight_group = require("ntf.coverage.highlight_group")
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -47,12 +48,12 @@ function M.decorate(opts)
 
   local path = opts.path or M.stats_path()
   if not vim.uv.fs_stat(path) then
-    local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    local full_path = absolute(path)
     error(("[ntf] coverage file is not found: %s"):format(full_path), 0)
   end
 
   local data = stats.read(path)
-  local file = vim.fs.normalize(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":p"))
+  local file = absolute(vim.api.nvim_buf_get_name(bufnr))
   local entry = data[file]
   if not entry then
     return

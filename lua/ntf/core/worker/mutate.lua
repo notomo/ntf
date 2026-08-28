@@ -1,4 +1,5 @@
 local splice = require("ntf.core.mutation.splice")
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -32,7 +33,7 @@ end
 --- @param cwd string working directory (any form)
 --- @return fun(): boolean # whether the mutated source was loaded
 function M.install(mutation, cwd)
-  local normalized_cwd = (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", ""))
+  local normalized_cwd = absolute(cwd)
   local names = M.module_names(mutation.path, normalized_cwd)
   local applied = false
 

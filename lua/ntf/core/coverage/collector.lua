@@ -1,4 +1,7 @@
 local is_hidden = require("ntf.core.path").is_hidden
+local absolute = require("ntf.core.path").absolute
+local normalize = require("ntf.core.path").normalize
+local walk = require("ntf.core.walk")
 
 local M = {}
 
@@ -10,21 +13,15 @@ local M = {}
 --- @type NtfCoverageMeasurement[] the measurements in progress, innermost last
 local measurements = {}
 
---- @param cwd string any form of the working directory
---- @return string normalized absolute path with no trailing slash
-local function normalize_dir(cwd)
-  return (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", ""))
-end
-
 --- @param paths string[] files or directories (any form)
 --- @return string[] absolute prefixes: a directory keeps its trailing slash, so
 --- it cannot also match a sibling whose name merely starts with it
 function M.exclude_paths(paths)
   local prefixes = {}
   for _, path in ipairs(paths) do
-    local abs = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    local abs = absolute(path)
     if vim.fn.isdirectory(path) == 1 then
-      abs = abs:gsub("/$", "") .. "/"
+      abs = abs .. "/"
     end
     table.insert(prefixes, abs)
   end
@@ -60,7 +57,7 @@ local function make_resolver(cwd, excludes)
     end
 
     local path = source:match("^@(.*)$")
-    local result = path and measured_path(vim.fs.normalize(path), cwd, excludes) or false
+    local result = path and measured_path(normalize(path), cwd, excludes) or false
 
     decided[source] = result
     return result
@@ -83,32 +80,30 @@ end
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return string[] normalized absolute paths, sorted
 function M.measurable_files(cwd, excludes)
-  cwd = normalize_dir(cwd)
+  cwd = absolute(cwd)
   local files = {}
-  for name, node_type in
-    vim.fs.dir(cwd, {
-      depth = math.huge,
-      skip = function(rel)
-        if is_hidden(rel) then
+  walk.files(cwd, {
+    descend = function(dir)
+      if is_hidden(dir) then
+        return false
+      end
+      local prefix = dir .. "/"
+      for _, exclude in ipairs(excludes) do
+        if prefix:sub(1, #exclude) == exclude then
           return false
         end
-        local prefix = cwd .. "/" .. rel .. "/"
-        for _, exclude in ipairs(excludes) do
-          if prefix:sub(1, #exclude) == exclude then
-            return false
-          end
-        end
-        return true
-      end,
-    })
-  do
-    if node_type == "file" and name:match("%.lua$") and not is_hidden(name) then
-      local path = measured_path(cwd .. "/" .. name, cwd, excludes)
-      if path and not M.is_meta_file(path) then
-        table.insert(files, path)
       end
-    end
-  end
+      return true
+    end,
+    on_file = function(file, ftype)
+      if ftype == "file" and file:match("%.lua$") and not is_hidden(file) then
+        local path = measured_path(file, cwd, excludes)
+        if path and not M.is_meta_file(path) then
+          table.insert(files, path)
+        end
+      end
+    end,
+  })
   table.sort(files)
   return files
 end
@@ -117,7 +112,7 @@ end
 --- @return fun(event: string, line: integer) # a `debug.sethook` line hook
 --- @return table<string, { max: integer, lines: table<string, integer> }> # filled as the hook records
 function M.line_hook(opts)
-  local cwd = normalize_dir(opts.cwd)
+  local cwd = absolute(opts.cwd)
   local resolve = make_resolver(cwd, opts.excludes or {})
   local data = {}
 

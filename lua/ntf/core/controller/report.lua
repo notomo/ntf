@@ -1,4 +1,5 @@
 local tree = require("ntf.core.tree")
+local normalize = require("ntf.core.path").normalize
 
 local M = {}
 
@@ -27,11 +28,11 @@ local painter = M.painter
 --- @param cwd string?
 --- @return string
 local function strip_cwd(path, cwd)
-  path = vim.fs.normalize(path)
+  path = normalize(path)
   if not cwd then
     return path
   end
-  return (path:gsub("^" .. vim.pesc(vim.fs.normalize(cwd)) .. "/?", ""))
+  return (path:gsub("^" .. vim.pesc(normalize(cwd)) .. "/?", ""))
 end
 
 --- @param trace NtfTrace?

@@ -1,4 +1,5 @@
 local operators = require("ntf.core.mutation.operators")
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -62,7 +63,7 @@ end
 --- @return string[] # what each entry names, as a normalized absolute path
 local function targets_of(entries, cwd)
   return vim.tbl_map(function(entry)
-    return (vim.fs.normalize(vim.fs.joinpath(cwd, entry.path)):gsub("/$", ""))
+    return absolute(vim.fs.joinpath(cwd, entry.path))
   end, entries)
 end
 
@@ -117,7 +118,7 @@ end
 --- @return NtfMutationExcludeEntry[] # only the entries one of those paths holds, the rest never having been looked for
 function M.within(entries, paths, cwd)
   local roots = vim.tbl_map(function(path)
-    return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
+    return absolute(path)
   end, paths)
   local targets = targets_of(entries, cwd)
 

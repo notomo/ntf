@@ -3,6 +3,7 @@ local operators = require("ntf.core.mutation.operators")
 local controller_report = require("ntf.core.controller.report")
 local oneline = controller_report.oneline
 local locator = controller_report.locator
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -106,7 +107,7 @@ end
 --- @param cwd string working directory the entry's path is written relative to
 --- @return NtfMutationBaselineEntry|string # the entry, or what stopped it being built
 function M.build(request, cwd)
-  local file = vim.fs.normalize(vim.fn.fnamemodify(request.path, ":p"))
+  local file = absolute(request.path)
   local f = io.open(file, "r")
   if not f then
     return ("cannot read %s"):format(request.path)
@@ -114,7 +115,7 @@ function M.build(request, cwd)
   local src = f:read("*a")
   f:close()
 
-  local root = vim.fs.normalize(cwd)
+  local root = absolute(cwd)
   if file:sub(1, #root + 1) ~= root .. "/" then
     return ("%s is outside the working directory, which every entry names its file relative to"):format(request.path)
   end

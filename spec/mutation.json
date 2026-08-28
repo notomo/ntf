@@ -32,21 +32,21 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 25,
+      "col": 23,
       "operator": "perturb-number",
       "original": "1",
       "replacement": "2",
-      "line": "          if prefix:sub(1, #exclude) == exclude then",
+      "line": "        if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 20,
+      "col": 18,
       "operator": "swap-boolean",
       "original": "false",
       "replacement": "true",
-      "line": "            return false",
+      "line": "          return false",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
@@ -264,11 +264,11 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 14,
+      "col": 12,
       "operator": "force-branch",
       "original": "prefix:sub(1, #exclude) == exclude",
       "replacement": "false",
-      "line": "          if prefix:sub(1, #exclude) == exclude then",
+      "line": "        if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
@@ -294,21 +294,21 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 13,
+      "col": 11,
       "operator": "force-loop",
       "original": "_, exclude in ipairs(excludes)",
       "replacement": "_ in pairs({})",
-      "line": "        for _, exclude in ipairs(excludes) do",
+      "line": "      for _, exclude in ipairs(excludes) do",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 28,
+      "col": 26,
       "operator": "perturb-length",
       "original": "#exclude",
       "replacement": "(#exclude - 1)",
-      "line": "          if prefix:sub(1, #exclude) == exclude then",
+      "line": "        if prefix:sub(1, #exclude) == exclude then",
       "rationale": "the skip callback only prunes the walk for speed; measured_path filters every file against the same excludes afterwards, so never pruning yields the same measured files",
       "invariant_spec": "ntf.core.coverage.collector.measurable_files skips spec files and an excluded test tree"
     },
@@ -400,7 +400,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/report.lua",
-      "row": 26,
+      "row": 27,
       "col": 18,
       "operator": "swap-boolean",
       "original": "true",
@@ -410,7 +410,7 @@
     },
     {
       "path": "lua/ntf/core/coverage/report.lua",
-      "row": 29,
+      "row": 30,
       "col": 18,
       "operator": "swap-boolean",
       "original": "true",

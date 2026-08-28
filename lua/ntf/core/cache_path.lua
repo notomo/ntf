@@ -1,3 +1,5 @@
+local absolute = require("ntf.core.path").absolute
+
 local M = {}
 
 --- @param kind string what the file holds, which is the directory it is filed under
@@ -5,7 +7,7 @@ local M = {}
 --- @param working_dir string? the directory the file is named for (default: the current one)
 --- @return string # a file named for that directory, so two projects never share one
 local function path(kind, extension, working_dir)
-  local name = vim.fs.normalize(vim.fn.fnamemodify(working_dir or vim.fn.getcwd(), ":p")):gsub("[/\\:]", "%%")
+  local name = absolute(working_dir or vim.fn.getcwd()):gsub("[/\\:]", "%%")
   return vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", kind, name .. extension)
 end
 

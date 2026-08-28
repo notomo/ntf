@@ -1,6 +1,7 @@
 local results = require("ntf.core.mutation.results")
 local cache_path = require("ntf.core.cache_path")
 local oneline = require("ntf.core.controller.report").oneline
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -58,11 +59,11 @@ function M.decorate(opts)
   local path = opts.path or M.results_path()
   local data = results.read(path)
   if not data then
-    local full_path = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+    local full_path = absolute(path)
     error(("[ntf] mutation results file is not found: %s"):format(full_path), 0)
   end
 
-  local file = vim.fs.normalize(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":p"))
+  local file = absolute(vim.api.nvim_buf_get_name(bufnr))
   local records = (data.files or {})[file] or {}
 
   local line_count = vim.api.nvim_buf_line_count(bufnr)

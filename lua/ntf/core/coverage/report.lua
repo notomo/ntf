@@ -1,4 +1,5 @@
 local coverable_lines = require("ntf.core.coverage.lines").coverable
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -63,7 +64,7 @@ end
 --- @return string
 --- @return boolean # whether it found a line to hold the tests to: a run that measured none has no coverage to report, however green it looks
 function M.summary(merged, cwd)
-  cwd = cwd and (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", "")) or nil
+  cwd = cwd and absolute(cwd) or nil
 
   local files = vim.tbl_keys(merged)
   table.sort(files)

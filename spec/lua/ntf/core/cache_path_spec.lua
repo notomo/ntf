@@ -1,11 +1,12 @@
 local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local cache_path = require("ntf.core.cache_path")
+local absolute = require("ntf.core.path").absolute
 
 --- @param dir string
 --- @return string
 local function escaped(dir)
-  return table.concat(vim.split(vim.fs.normalize(vim.fn.fnamemodify(dir, ":p")), "[/\\:]"), "%")
+  return table.concat(vim.split(absolute(dir), "[/\\:]"), "%")
 end
 
 --- @return string

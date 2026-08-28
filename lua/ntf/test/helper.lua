@@ -4,6 +4,7 @@ local root = vim.fn.fnamemodify(vim.api.nvim_get_runtime_file("lua/ntf/init.lua"
 helper.root = root
 
 local data_dir = require("ntf.vendor.misclib.test.data_dir")
+local normalize = require("ntf.core.path").normalize
 local data_root = vim.fs.joinpath(root, "spec")
 
 function helper.before_each()
@@ -43,7 +44,7 @@ local script = vim.fs.joinpath(root, "bin", is_win and "ntf.bat" or "ntf")
 --- @param read fun() calls production code that opens `path` for reading
 --- @return boolean # whether the call left the file open
 function helper.leaves_file_open(path, read)
-  local wanted = vim.fs.normalize(path)
+  local wanted = normalize(path)
   --- @type file*[] handles the call took on `path`, held so that no finalizer closes one before it is read
   local opened = {}
 
@@ -51,7 +52,7 @@ function helper.leaves_file_open(path, read)
   --- @diagnostic disable-next-line: duplicate-set-field
   io.open = function(name, ...)
     local file, err = open(name, ...)
-    if file and vim.fs.normalize(name) == wanted then
+    if file and normalize(name) == wanted then
       table.insert(opened, file)
     end
     return file, err

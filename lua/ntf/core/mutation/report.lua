@@ -3,6 +3,7 @@ local painter = controller_report.painter
 local duration = controller_report.duration
 local oneline = controller_report.oneline
 local locator = controller_report.locator
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -52,7 +53,7 @@ end
 --- @param opts { color: boolean, elapsed: number } seconds the scoring pass took, which the tests it was run from are timed apart from
 --- @return string
 function M.summary(summary, cwd, opts)
-  cwd = cwd and (vim.fs.normalize(vim.fn.fnamemodify(cwd, ":p")):gsub("/$", "")) or nil
+  cwd = cwd and absolute(cwd) or nil
   local paint = painter(opts.color)
   local counts = summary.counts
 

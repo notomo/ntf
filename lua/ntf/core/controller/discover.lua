@@ -1,33 +1,22 @@
 local is_hidden = require("ntf.core.path").is_hidden
-local normalize = require("ntf.core.path").normalize
+local absolute = require("ntf.core.path").absolute
+local walk = require("ntf.core.walk")
 
 local M = {}
-
--- WHY: vim.fs reads a "$VAR" component of a path as the variable it names, and the plain=true that
--- turns that off is on Neovim master only, so a released Neovim finds another directory's specs or
--- none at all. vim.fn.fnamemodify(), vim.fn.simplify() and vim.fn.readdir() read a path as a path
--- on every version.
--- NOT: vim.fs.normalize(path, { plain = true }) here and vim.fs.dir(dir, { plain = true }) in collect()
-
---- @param path string
---- @return string # normalized absolute path
-local function absolute(path)
-  return normalize(vim.fn.simplify(vim.fn.fnamemodify(path, ":p")))
-end
 
 --- @param dir string normalized absolute directory
 --- @param add fun(path: string) takes each spec file found
 local function collect(dir, add)
-  for _, name in ipairs(vim.fn.readdir(dir)) do
-    local file = vim.fs.joinpath(dir, name)
-    if not is_hidden(name) then
-      if vim.fn.getftype(file) == "dir" then
-        collect(file, add)
-      elseif name:match("_spec%.lua$") and vim.fn.filereadable(file) == 1 then
+  walk.files(dir, {
+    descend = function(subdir)
+      return not is_hidden(subdir)
+    end,
+    on_file = function(file)
+      if file:match("_spec%.lua$") and not is_hidden(file) and vim.fn.filereadable(file) == 1 then
         add(file)
       end
-    end
-  end
+    end,
+  })
 end
 
 --- @param paths string[] CLI paths (spec files or directories)

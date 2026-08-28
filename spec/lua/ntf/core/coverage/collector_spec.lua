@@ -1,7 +1,8 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, finally, assert =
-  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
+local describe, before_each, after_each, it, pending, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.pending, ntf.finally, ntf.assert
 local collector = require("ntf.core.coverage.collector")
+local normalize = require("ntf.core.path").normalize
 local helper = require("ntf.test.helper")
 
 --- @return fun() # puts the debug hook installed now back, which the end of the test does too
@@ -320,13 +321,41 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({ vim.fs.normalize(file) }, files)
   end)
 
-  it("lists the files sorted, not in the order the walk reaches them", function()
-    local nested = helper.test_data:create_file("lua/sub/a.lua", "return 1")
-    local top = helper.test_data:create_file("lua/z.lua", "return 1")
+  it("lists the files under a working directory named after an environment variable, not the ones it names", function()
+    vim.env.NTF_TEST_DIR = "expanded"
+    finally(function()
+      vim.env.NTF_TEST_DIR = nil
+    end)
+    local file = helper.test_data:create_file("$NTF_TEST_DIR/lua/mod.lua", "return 1")
+    helper.test_data:create_file("expanded/lua/other.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data:path("$NTF_TEST_DIR"), {})
+
+    assert.same({ normalize(file) }, files)
+  end)
+
+  it("does not list a symlinked lua file, whose target the working directory need not hold", function()
+    if vim.fn.has("win32") == 1 then
+      return pending("a symlink needs a privileged account on windows")
+    end
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    local ok, err = vim.uv.fs_symlink(file, helper.test_data:path("lua/link.lua"))
+    if not ok then
+      error(err)
+    end
 
     local files = collector.measurable_files(helper.test_data.full_path, {})
 
-    assert.same({ vim.fs.normalize(nested), vim.fs.normalize(top) }, files)
+    assert.same({ normalize(file) }, files)
+  end)
+
+  it("lists the files sorted, not in the order the walk reaches them", function()
+    local nested = helper.test_data:create_file("lua/mod/sub.lua", "return 1")
+    local top = helper.test_data:create_file("lua/mod.lua", "return 1")
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ normalize(top), normalize(nested) }, files)
   end)
 
   it("lists only lua files", function()

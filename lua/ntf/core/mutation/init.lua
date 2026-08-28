@@ -4,6 +4,7 @@ local runner = require("ntf.core.mutation.runner")
 local baseline = require("ntf.core.mutation.baseline")
 local exclude = require("ntf.core.mutation.exclude")
 local collector = require("ntf.core.coverage.collector")
+local absolute = require("ntf.core.path").absolute
 
 local M = {}
 
@@ -25,12 +26,6 @@ local M = {}
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed; none where the run took part of the suite, which cannot tell a name that is gone from one it never selected
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
-
---- @param path string any form of a path
---- @return string
-local function normalize(path)
-  return (vim.fs.normalize(vim.fn.fnamemodify(path, ":p")):gsub("/$", ""))
-end
 
 --- @param file string absolute path
 --- @return string?
@@ -66,7 +61,7 @@ local function target_files(cwd, excludes, mutation_target, exclude_entries)
     return files, unused
   end
 
-  local target = normalize(mutation_target)
+  local target = absolute(mutation_target)
   return vim.tbl_filter(function(file)
     return file == target or file:sub(1, #target + 1) == target .. "/"
   end, files),
@@ -168,7 +163,7 @@ end
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
 function M.run(opts, ctx)
-  local cwd = normalize(ctx.cwd)
+  local cwd = absolute(ctx.cwd)
   local durations = baseline_durations(ctx.baseline_results)
   local matcher = baseline.matcher(ctx.baseline or {})
 
@@ -280,7 +275,7 @@ end
 --- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
 --- @return NtfMutantListEntry[]
 function M.list(opts, ctx)
-  local cwd = normalize(ctx.cwd)
+  local cwd = absolute(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
 
   return vim.tbl_map(
