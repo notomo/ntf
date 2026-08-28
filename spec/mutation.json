@@ -362,15 +362,6 @@
     },
     {
       "path": "lua/ntf/helper.lua",
-      "col": 63,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "  return vim.split((file:gsub(\"\\\\\", \"/\")), \"/lua/\", { plain = true })[1]",
-      "rationale": "the separator holds no pattern-magic character, so plain and pattern split agree"
-    },
-    {
-      "path": "lua/ntf/helper.lua",
       "col": 64,
       "operator": "swap-boolean",
       "original": "true",

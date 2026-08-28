@@ -1,11 +1,23 @@
 local ntf = require("ntf")
-local describe, it, assert = ntf.describe, ntf.it, ntf.assert
+local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local plugin_helper = require("ntf.helper")
 local helper = require("ntf.test.helper")
 
 describe("ntf.helper.find_plugin_root", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
   it("returns the plugin root directory for a plugin on runtimepath", function()
     assert.equal(helper.root, plugin_helper.find_plugin_root("ntf"))
+  end)
+
+  it("returns the plugin root for a plugin whose own path has a lua directory above it", function()
+    local plugin_name = "ntf_under_a_lua_directory"
+    local plugin_root = helper.test_data:create_dir(vim.fs.joinpath("lua", "upstream", plugin_name))
+    helper.test_data:create_file(vim.fs.joinpath("lua", "upstream", plugin_name, "lua", plugin_name, "init.lua"))
+    vim.opt.runtimepath:append(plugin_root)
+
+    assert.equal(plugin_root, plugin_helper.find_plugin_root(plugin_name))
   end)
 
   it("takes a first runtime file nvim returns the same whether or not all matches are asked for", function()

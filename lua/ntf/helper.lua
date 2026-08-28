@@ -9,7 +9,7 @@ function M.find_plugin_root(plugin_name)
   if file == nil then
     error("plugin root is not found by pattern: " .. root_pattern)
   end
-  return vim.split((file:gsub("\\", "/")), "/lua/", { plain = true })[1]
+  return vim.fn.fnamemodify(file, ":h:h:h")
 end
 
 --- Returns root module name.
