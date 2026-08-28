@@ -37,7 +37,7 @@ rejects the rest.
   usage line, `mutation baseline add` being the one.
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
-  instead.
+  instead. It has to be Neovim 0.12.0 or later.
 - |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.
 
 ==============================================================================

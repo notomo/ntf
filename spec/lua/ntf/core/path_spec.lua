@@ -16,3 +16,21 @@ describe("ntf.core.path.is_hidden", function()
     assert.is_false(path.is_hidden(".hidden/plain"))
   end)
 end)
+
+describe("ntf.core.path.normalize", function()
+  it("spells the separators as slashes", function()
+    assert.equal("C:/dir/sub", path.normalize("C:\\dir\\sub"))
+  end)
+
+  it("upper-cases a windows drive letter, as the path of a discovered file carries", function()
+    assert.equal("C:/dir", path.normalize("c:/dir"))
+  end)
+
+  it("drops a trailing separator, which a directory path carries", function()
+    assert.equal("/dir/sub", path.normalize("/dir/sub/"))
+  end)
+
+  it("keeps the root, which is a separator on its own", function()
+    assert.equal("/", path.normalize("/"))
+  end)
+end)

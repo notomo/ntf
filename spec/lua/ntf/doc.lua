@@ -567,7 +567,7 @@ rejects the rest.]],
   usage line, `mutation baseline add` being the one.
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
-  instead.
+  instead. It has to be Neovim 0.12.0 or later.
 - |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.]],
         }, "\n")
       end,
@@ -1081,9 +1081,10 @@ Neovim process so state never leaks between tests.
 ## Setup
 
 `bin/ntf` is the CLI (`bin/ntf.bat` on Windows). It runs the `nvim` found on
-`$PATH`, or the one `$NTF_NVIM` names. With ntf installed as a Neovim plugin,
-you can expose the command to `:terminal` (and anything else Neovim spawns) by
-prepending its `bin` directory to `$PATH`:
+`$PATH`, or the one `$NTF_NVIM` names, which has to be Neovim 0.12.0 or later.
+With ntf installed as a Neovim plugin, you can expose the command to
+`:terminal` (and anything else Neovim spawns) by prepending its `bin` directory
+to `$PATH`:
 
 ```lua
 %s```

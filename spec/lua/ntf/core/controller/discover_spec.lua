@@ -3,6 +3,7 @@ local describe, before_each, after_each, it, finally, assert =
   ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local discover = require("ntf.core.controller.discover")
 local helper = require("ntf.test.helper")
+local path = require("ntf.core.path")
 
 describe("ntf.core.controller.discover.specs", function()
   before_each(helper.before_each)
@@ -107,13 +108,21 @@ describe("ntf.core.controller.discover.specs", function()
     assert.match("a_spec%.lua$", files[1])
   end)
 
+  it("collects the specs under a directory path that walks up and back down", function()
+    local file = helper.test_data:create_file("dir/a_spec.lua", "")
+
+    local files = discover.specs({ helper.test_data:path("dir/../dir") })
+
+    assert.same({ path.normalize(file) }, files)
+  end)
+
   it("collects the specs under a bracketed directory, not the ones the brackets would have matched", function()
     local file = helper.test_data:create_file("pr[o]j/a_spec.lua", "")
     helper.test_data:create_file("proj/b_spec.lua", "")
 
     local files = discover.specs({ helper.test_data:path("pr[o]j") })
 
-    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
+    assert.same({ path.normalize(file) }, files)
   end)
 
   it("collects the specs under a braced directory", function()
@@ -121,7 +130,7 @@ describe("ntf.core.controller.discover.specs", function()
 
     local files = discover.specs({ helper.test_data:path("a{b}") })
 
-    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
+    assert.same({ path.normalize(file) }, files)
   end)
 
   it("collects the specs under a directory named after an environment variable, not the ones it names", function()
@@ -134,7 +143,7 @@ describe("ntf.core.controller.discover.specs", function()
 
     local files = discover.specs({ helper.test_data:path("$NTF_TEST_DIR") })
 
-    assert.same({ vim.fs.normalize(file, { plain = true }) }, files)
+    assert.same({ path.normalize(file) }, files)
   end)
 
   it("errors, unprefixed, on a readable file that is not a spec", function()
