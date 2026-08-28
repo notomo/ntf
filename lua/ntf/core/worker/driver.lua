@@ -38,8 +38,13 @@ local function results_of(item, obj, decoded, timed_out_ms)
       timed_out_ms
     )
   else
-    detail = (obj.stderr ~= "" and obj.stderr)
-      or (decoded and decoded.load_error)
+    -- WHY: a load_error block is the worker's own report and stderr may hold
+    -- unrelated user output (headless print lands there), which the outcome
+    -- already carries as captured output.
+    -- NOT: preferring stderr, which is the only clue solely when no block was
+    -- emitted at all.
+    detail = (decoded and decoded.load_error)
+      or (obj.stderr ~= "" and obj.stderr)
       or ("worker exited with code " .. tostring(obj.code))
   end
   return {

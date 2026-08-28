@@ -246,6 +246,18 @@ end)
     assert.match("temp_spec%.lua", outcome.results[1].message)
   end)
 
+  it("keeps the load error of a spec that also wrote noise to stderr, which stays captured output", function()
+    local item = item_of(ONE_TEST)
+    vim.fn.writefile({ 'io.stderr:write("stderr noise")', 'error("the real load failure")' }, item.file)
+
+    local outcome = launch(item)
+
+    assert.equal("error", outcome.results[1].status)
+    assert.match("the real load failure", outcome.results[1].message)
+    assert.no.match("stderr noise", outcome.results[1].message)
+    assert.match("stderr noise", outcome.output.output)
+  end)
+
   it("kills a worker that will not finish and reports its budget and the cleanup the kill skipped", function()
     local outcome = launch(item_of(SPINS), { timeout = 1000 }, 10000)
 
