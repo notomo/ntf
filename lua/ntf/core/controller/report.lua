@@ -93,7 +93,7 @@ end
 --- @return string
 function M.output_block(out, color)
   local paint = painter(color)
-  local rel = relative(out.file, vim.uv.cwd())
+  local rel = relative(out.file, vim.uv.cwd() --[[@as string]])
   local lines = {}
   local header = paint("dim", "OUTPUT ") .. paint("dim", rel)
   if out.name and out.name ~= "" then

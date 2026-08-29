@@ -116,7 +116,9 @@ describe("ntf.core.path.relative", function()
     assert.equal("spec/x_spec.lua", path.relative("/dir/spec/x_spec.lua", "/dir/"))
   end)
 
-  it("leaves the path as it is when no directory is given", function()
-    assert.equal("/dir/spec/x_spec.lua", path.relative("/dir/spec/x_spec.lua", nil))
+  it("resolves a relative directory against the working directory, which is the place it names", function()
+    local file = vim.fs.joinpath(vim.fn.getcwd(), "lua", "ntf", "init.lua")
+
+    assert.equal("ntf/init.lua", path.relative(file, "lua"))
   end)
 end)

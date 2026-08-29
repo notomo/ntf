@@ -5,6 +5,7 @@ local baseline = require("ntf.core.mutation.baseline")
 local exclude = require("ntf.core.mutation.exclude")
 local collector = require("ntf.core.coverage.collector")
 local absolute = require("ntf.core.path").absolute
+local relative = require("ntf.core.path").relative
 
 local M = {}
 
@@ -37,16 +38,6 @@ local function read_file(file)
   local src = f:read("*a")
   f:close()
   return src
-end
-
---- @param cwd string normalized absolute working directory
---- @param file string normalized absolute path
---- @return string
-local function relative_to(cwd, file)
-  if file:sub(1, #cwd + 1) == cwd .. "/" then
-    return file:sub(#cwd + 2)
-  end
-  return file
 end
 
 --- @param cwd string normalized absolute working directory
@@ -89,7 +80,7 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
   for _, file in ipairs(files) do
     local src = read_file(file) or ""
     local src_lines = vim.split(src, "\n", { plain = true })
-    local relative_path = relative_to(cwd, file)
+    local relative_path = relative(file, cwd)
     judged[relative_path] = true
     for _, site in ipairs(operators.enumerate(src)) do
       local mutated = splice.apply(src, site)

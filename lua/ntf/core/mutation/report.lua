@@ -3,7 +3,7 @@ local painter = controller_report.painter
 local duration = controller_report.duration
 local oneline = controller_report.oneline
 local locator = controller_report.locator
-local absolute = require("ntf.core.path").absolute
+local relative = require("ntf.core.path").relative
 
 local M = {}
 
@@ -38,22 +38,11 @@ M.count_labels = {
   { status = "baseline_killable", label = "baseline killable", color = "red" },
 }
 
---- @param file string absolute path
---- @param cwd string? normalized absolute working directory
---- @return string
-local function relative(file, cwd)
-  if cwd and file:sub(1, #cwd + 1) == cwd .. "/" then
-    return file:sub(#cwd + 2)
-  end
-  return file
-end
-
 --- @param summary NtfMutationSummary
---- @param cwd string? working directory, to show file paths relative to it
+--- @param cwd string working directory, to show file paths relative to it
 --- @param opts { color: boolean, elapsed: number } seconds the scoring pass took, which the tests it was run from are timed apart from
 --- @return string
 function M.summary(summary, cwd, opts)
-  cwd = cwd and absolute(cwd) or nil
   local paint = painter(opts.color)
   local counts = summary.counts
 

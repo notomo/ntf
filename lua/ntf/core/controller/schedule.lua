@@ -1,7 +1,6 @@
 local tree = require("ntf.core.tree")
 local write = require("ntf.core.write")
-local normalize = require("ntf.core.path").normalize
-local absolute = require("ntf.core.path").absolute
+local relative = require("ntf.core.path").relative
 
 local M = {}
 
@@ -14,17 +13,6 @@ local VERSION = 1
 --- @class NtfScheduleCache last-run data per test, for slowest-first dispatch
 --- @field version integer
 --- @field files table<string, table<string, NtfScheduleEntry>> relative spec path -> full test name -> entry
-
---- @param file string absolute spec path
---- @param cwd string normalized absolute working directory
---- @return string
-local function relative(file, cwd)
-  file = normalize(file)
-  if file:sub(1, #cwd + 1) == cwd .. "/" then
-    return file:sub(#cwd + 2)
-  end
-  return file
-end
 
 --- @param path string
 --- @return NtfScheduleCache
@@ -58,7 +46,6 @@ end
 --- @param cwd string working directory
 --- @return NtfWorkItem[]
 function M.order(items, cache, cwd)
-  cwd = absolute(cwd)
   local keyed = {}
   for index, item in ipairs(items) do
     local entry = entry_of(cache, item.file, cwd, item.names)
@@ -80,8 +67,6 @@ end
 --- @param cwd string working directory
 --- @param whole_suite boolean? the run ran every test the project has, so the entries it does not report are of tests that are gone
 function M.save(path, results, cwd, whole_suite)
-  cwd = absolute(cwd)
-
   -- WHY: the cache is read again here, rather than the run writing back the one
   -- it ordered its items from, so that a run which saved while this one was
   -- still testing keeps the entries it saved.

@@ -1,5 +1,5 @@
 local coverable_lines = require("ntf.core.coverage.lines").coverable
-local absolute = require("ntf.core.path").absolute
+local relative = require("ntf.core.path").relative
 
 local M = {}
 
@@ -60,12 +60,10 @@ local function ranges(rows)
 end
 
 --- @param merged table<string, { max: integer, lines: table<integer, integer> }>
---- @param cwd string? working directory, to show file paths relative to it
+--- @param cwd string working directory, to show file paths relative to it
 --- @return string
 --- @return boolean # whether it found a line to hold the tests to: a run that measured none has no coverage to report, however green it looks
 function M.summary(merged, cwd)
-  cwd = cwd and absolute(cwd) or nil
-
   local files = vim.tbl_keys(merged)
   table.sort(files)
 
@@ -79,7 +77,7 @@ function M.summary(merged, cwd)
       if coverable > 0 then
         total_covered = total_covered + covered
         total_coverable = total_coverable + coverable
-        local rel = (cwd and file:sub(1, #cwd + 1) == cwd .. "/") and file:sub(#cwd + 2) or file
+        local rel = relative(file, cwd)
         rows[#rows + 1] = { name = rel, covered = covered, coverable = coverable, missed = missed }
         width = math.max(width, #rel)
       end

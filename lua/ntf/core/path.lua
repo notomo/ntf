@@ -36,14 +36,11 @@ function M.absolute(path)
 end
 
 --- @param path string a path in any form
---- @param base string? the directory to write it relative to, in any form; nil leaves the path as it is
+--- @param base string the directory to write it relative to, in any form
 --- @return string # the normalized path below base, cut at base's own separator so that a sibling whose name merely starts with base keeps the path it has; the whole path where base does not hold it
 function M.relative(path, base)
   local normalized = M.normalize(path)
-  if not base then
-    return normalized
-  end
-  local root = M.normalize(base)
+  local root = M.absolute(base)
   if normalized:sub(1, #root + 1) == root .. "/" then
     return normalized:sub(#root + 2)
   end
