@@ -51,10 +51,16 @@ end
 
 --- @param target string? the --target the run narrowed the mutated files to
 --- @param cwd string normalized absolute working directory
+--- @param left_out integer mutants the config's exclude entries and unadopted operators kept out of the run, which is how it comes back empty over code that does hold mutants
 --- @return integer exit_code
-local function no_mutant_found(target, cwd)
+local function no_mutant_found(target, cwd, left_out)
   io.stdout:flush()
-  io.stderr:write(("no mutant found in: %s\n"):format(target or cwd))
+  local where = target or cwd
+  if left_out > 0 then
+    io.stderr:write(("--config leaves out every mutant in: %s\n"):format(where))
+  else
+    io.stderr:write(("no mutant found in: %s\n"):format(where))
+  end
   return 2
 end
 
@@ -119,7 +125,7 @@ function M.mutate(opts, ctx)
       return 2
     end
   elseif #summary.records == 0 then
-    return no_mutant_found(opts.mutation_target, ctx.cwd)
+    return no_mutant_found(opts.mutation_target, ctx.cwd, summary.counts.excluded + summary.counts.unadopted)
   end
 
   local code = 0
@@ -397,7 +403,7 @@ function M.run(root)
       end
       if mode.list then
         local list = require("ntf.core.controller.list")
-        local mutants = require("ntf.core.mutation").list(opts, {
+        local mutants, left_out = require("ntf.core.mutation").list(opts, {
           cwd = cwd,
           baseline = mutation_baseline,
           mutation_exclude = mutation_exclude,
@@ -406,7 +412,7 @@ function M.run(root)
           coverage_excludes = coverage_excludes,
         })
         if #mutants == 0 then
-          return no_mutant_found(opts.mutation_target, cwd)
+          return no_mutant_found(opts.mutation_target, cwd, left_out)
         end
         local tests_text = list.tests(planned_items)
         local mutants_text = list.mutants(mutants)

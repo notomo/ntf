@@ -265,30 +265,28 @@ end
 --- @param opts NtfOptions
 --- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
 --- @return NtfMutantListEntry[]
+--- @return integer # mutants an exclude entry or an unadopted operator kept out, which is how the listing comes back empty over code that does hold mutants
 function M.list(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
 
-  return vim.tbl_map(
-    function(entry)
-      local mutant = entry.mutant
-      return {
-        mutant = mutant,
-        relative_path = entry.relative_path,
-        covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
-        equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
-      }
-    end,
-    (
-      enumerate_mutants(
-        cwd,
-        ctx.coverage_excludes,
-        opts.mutation_target,
-        ctx.mutation_exclude or {},
-        ctx.mutation_operators or "all"
-      )
-    )
+  local entries, _, excluded, unadopted = enumerate_mutants(
+    cwd,
+    ctx.coverage_excludes,
+    opts.mutation_target,
+    ctx.mutation_exclude or {},
+    ctx.mutation_operators or "all"
   )
+  return vim.tbl_map(function(entry)
+    local mutant = entry.mutant
+    return {
+      mutant = mutant,
+      relative_path = entry.relative_path,
+      covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
+      equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
+    }
+  end, entries),
+    excluded + unadopted
 end
 
 return M

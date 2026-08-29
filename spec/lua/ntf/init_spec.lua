@@ -1233,6 +1233,18 @@ describe("ntf mutation", function()
     assert.match("no mutant found in: doc", obj.stderr)
   end)
 
+  it("says the --config left every mutant out, rather than that the code holds none", function()
+    local root = mutation_project()
+    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, operators = { "force-loop" } }))
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("unadopted", obj.stdout)
+    assert.match("%-%-config leaves out every mutant in: ", obj.stderr)
+    assert.no.match("no mutant found", obj.stderr)
+  end)
+
   it("mutates nothing under an --exclude-code path", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/vendor/dep.lua", MUTATION_MODULE)
@@ -2184,6 +2196,17 @@ describe("ntf list", function()
     assert.equal(2, obj.code)
     assert.match("no mutant found in: doc", obj.stderr)
     assert.no.match("mod detects positives", obj.stdout)
+  end)
+
+  it("says the --config left every listed mutant out, rather than that the code holds none", function()
+    local root = mutation_project()
+    helper.test_data:create_file("mutation.json", vim.json.encode({ version = 1, operators = { "force-loop" } }))
+
+    local obj = helper.run_cli({ "mutation", "list", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(2, obj.code)
+    assert.match("%-%-config leaves out every mutant in: ", obj.stderr)
+    assert.no.match("no mutant found", obj.stderr)
   end)
 
   it("skips the mutant list when the tests fail", function()
