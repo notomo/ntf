@@ -18,7 +18,7 @@ local VERSION = 1
 --- @field operator string
 --- @field original string
 --- @field replacement string
---- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"
+--- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable"
 --- @field killed_by string?
 
 --- @param path string output path

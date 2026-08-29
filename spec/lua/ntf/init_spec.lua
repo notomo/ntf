@@ -1409,6 +1409,11 @@ describe("ntf mutation", function()
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(1, results.counts.survived)
+
+    local killable = vim.tbl_filter(function(record)
+      return record.status == "baseline_killable"
+    end, results.files[vim.fs.joinpath(root, "lua/mod.lua")])
+    assert.equal(1, #killable)
   end)
 
   it("holds a baseline entry a trial killed only once, re-running that trial", function()
