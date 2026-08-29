@@ -152,6 +152,18 @@ describe("ntf.core.mutation.config.load", function()
     assert.match("exclude is not an array", config.load(file))
   end)
 
+  it("rejects a baseline written as an object, whose entries an array walk reaches none of", function()
+    local file = create_file({ version = 1, baseline = { ["lua/mod.lua"] = baseline_entry() } })
+
+    assert.match("baseline is not an array", config.load(file))
+  end)
+
+  it("rejects an exclude written as an object, which would leave every path it names mutated", function()
+    local file = create_file({ version = 1, exclude = { ["lua/mod"] = exclude_entry() } })
+
+    assert.match("exclude is not an array", config.load(file))
+  end)
+
   it("reports which baseline entry is invalid", function()
     local incomplete = baseline_entry()
     incomplete.line = nil

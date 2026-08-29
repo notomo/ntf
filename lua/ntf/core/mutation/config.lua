@@ -19,7 +19,7 @@ local function load_section(decoded, key, validate)
   if entries == nil then
     return {}
   end
-  if type(entries) ~= "table" then
+  if not vim.isarray(entries) then
     return ("%s is not an array"):format(key)
   end
   for index, entry in ipairs(entries) do
