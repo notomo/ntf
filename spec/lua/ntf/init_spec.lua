@@ -1123,6 +1123,29 @@ local MUTATION_DOFILE_SPEC = (
   MUTATION_SPEC:gsub('require%("mod"%)', 'dofile(vim.fs.joinpath(vim.fn.getcwd(), "lua/mod.lua"))')
 )
 
+local HANGING_MUTANTS_MODULE = table.concat({
+  "local M = {}",
+  "function M.count(n)",
+  "  local i = 0",
+  "  while i < n do",
+  "    i = i + 1",
+  "  end",
+  "  return i",
+  "end",
+  "return M",
+}, "\n")
+
+--- @param it_opts string? the options the leaf declares, as source
+--- @return string # a spec whose single test the module's hanging mutants are reached by
+local function hanging_mutants_spec(it_opts)
+  return table.concat({
+    'local ntf = require("ntf")',
+    'ntf.it("counts up to n", function()',
+    '  ntf.assert.equal(3, require("loop").count(3))',
+    "end" .. (it_opts and (", " .. it_opts) or "") .. ")",
+  }, "\n")
+end
+
 --- @return string root, string results_file
 local function mutation_project()
   local root = helper.test_data.full_path
@@ -2074,29 +2097,8 @@ describe("ntf mutation", function()
   it("counts the mutants that hang the tests as detected", function()
     local root = helper.test_data.full_path
     local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
-    helper.test_data:create_file(
-      "lua/loop.lua",
-      table.concat({
-        "local M = {}",
-        "function M.count(n)",
-        "  local i = 0",
-        "  while i < n do",
-        "    i = i + 1",
-        "  end",
-        "  return i",
-        "end",
-        "return M",
-      }, "\n")
-    )
-    helper.test_data:create_file(
-      "spec/loop_spec.lua",
-      table.concat({
-        'local ntf = require("ntf")',
-        'ntf.it("counts up to n", function()',
-        '  ntf.assert.equal(3, require("loop").count(3))',
-        "end)",
-      }, "\n")
-    )
+    helper.test_data:create_file("lua/loop.lua", HANGING_MUTANTS_MODULE)
+    helper.test_data:create_file("spec/loop_spec.lua", hanging_mutants_spec())
 
     local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "--timeout=1000", "spec" }, root)
 
@@ -2105,6 +2107,53 @@ describe("ntf mutation", function()
 
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(2, results.counts.timeout)
+  end)
+
+  it("bounds the trials of a test the run leaves untimed, whose hanging mutants would outlast the run", function()
+    local root = helper.test_data.full_path
+    local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
+    helper.test_data:create_file("lua/loop.lua", HANGING_MUTANTS_MODULE)
+    helper.test_data:create_file("spec/loop_spec.lua", hanging_mutants_spec("{ timeout = 0 }"))
+
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(2, results.counts.timeout)
+  end)
+
+  it("gives a slow test's trials the time its own timeout allows, past what the run's would", function()
+    local root = helper.test_data.full_path
+    local results_file = vim.fs.joinpath(root, "ntf-mutation.json")
+    helper.test_data:create_file(
+      "lua/slow.lua",
+      table.concat({
+        "local M = {}",
+        "function M.answer()",
+        "  return true",
+        "end",
+        "return M",
+      }, "\n")
+    )
+    helper.test_data:create_file(
+      "spec/slow_spec.lua",
+      table.concat({
+        'local ntf = require("ntf")',
+        'ntf.it("answers once it has slept longer than the run waits", function()',
+        "  vim.uv.sleep(1200)",
+        '  ntf.assert.is_true(require("slow").answer())',
+        "end, { timeout = 30000 })",
+      }, "\n")
+    )
+
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "--timeout=1000", "spec" }, root)
+
+    assert.equal(0, obj.code)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(0, results.counts.timeout)
+    assert.equal(1, results.counts.killed)
   end)
 
   it("skips the mutation run when the tests fail", function()

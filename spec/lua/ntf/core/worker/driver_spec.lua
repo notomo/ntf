@@ -320,6 +320,16 @@ describe("ntf.core.worker.driver.payload", function()
     assert.is_nil(payload.watchdog_ms)
   end)
 
+  it("gives a worker the timeout its caller computed ahead of the item's own", function()
+    local item = item_of(ONE_TEST)
+    item.timeout = 20000
+
+    local payload, timeout = driver.payload(item, { cwd = helper.root, timeout = 30000, timeout_override = 1000 })
+
+    assert.equal(1000, timeout)
+    assert.equal(watchdog.deadline(1000), payload.watchdog_ms)
+  end)
+
   it("hands a worker what the run planned at the position it asks for", function()
     local item = item_of(ONE_TEST)
 

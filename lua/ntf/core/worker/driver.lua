@@ -60,11 +60,11 @@ local function results_of(item, obj, decoded, timed_out_ms)
 end
 
 --- @param item NtfWorkItem
---- @param opts { cwd: string, timeout: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
+--- @param opts { cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
 --- @return NtfWorkerPayload
 --- @return integer? # ms after which the run kills the worker, nil when it is untimed
 function M.payload(item, opts)
-  local timeout = item.timeout or opts.timeout
+  local timeout = opts.timeout_override or item.timeout or opts.timeout
   if timeout == 0 then
     timeout = nil
   end
@@ -105,7 +105,7 @@ function M.kill_all()
 end
 
 --- @param item NtfWorkItem
---- @param opts { root: string, cwd: string, timeout: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
+--- @param opts { root: string, cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
 --- @param on_done fun(outcome: NtfWorkerOutcome) called from the process-exit callback (a fast event context)
 function M.launch(item, opts, on_done)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")

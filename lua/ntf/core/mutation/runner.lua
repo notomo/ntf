@@ -57,10 +57,11 @@ function M.run(tasks, opts)
       return settle(task_index, verdict.exhausted(progress))
     end
 
+    local ceiling = trial.item.timeout or opts.timeout
     driver.launch(trial.item, {
       root = opts.root,
       cwd = opts.cwd,
-      timeout = budget.trial(trial.baseline_ms, opts.timeout),
+      timeout_override = budget.trial(trial.baseline_ms, ceiling),
       test_hook = opts.test_hook,
       process_hook = opts.process_hook,
       mutation = {

@@ -6,7 +6,10 @@ local M = {}
 --- @class NtfItOption
 --- @field timeout integer? per-process timeout in ms, overriding the
 ---   `--timeout` default; an exceeded worker is killed and reported as an
----   error.
+---   error. A mutation run derives a trial's timeout from what the test took in
+---   its baseline run and takes this one as the ceiling, so a long one does not
+---   make every trial of the test wait that long, and a `0`, which leaves the
+---   test itself untimed, still leaves its trials bounded.
 
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
