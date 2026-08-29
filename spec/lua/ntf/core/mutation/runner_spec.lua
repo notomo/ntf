@@ -30,10 +30,12 @@ local function teardown()
 end
 
 --- @return table # one NtfMutantTask, its only trial the sleeping test
+--- @return string # the mutated module, as a run in the plugin root writes it
 local function sleeping_task()
   local path = helper.test_data:create_file("lua/mod.lua", MODULE)
   local mutant = vim.tbl_extend("force", operators.enumerate(MODULE)[1], { path = vim.fs.normalize(path) })
-  return { mutant = mutant, trials = { { item = work.plan({ helper.write_spec(SLEEPS) })[1], baseline_ms = 0 } } }
+  local task = { mutant = mutant, trials = { { item = work.plan({ helper.write_spec(SLEEPS) })[1], baseline_ms = 0 } } }
+  return task, assert(vim.fs.relpath(helper.root, path))
 end
 
 describe("ntf.core.mutation.runner.run", function()
@@ -43,10 +45,18 @@ describe("ntf.core.mutation.runner.run", function()
   it(
     "gives up on a scoring pass that outlasts its budget, naming the mutants a worker still holds and leaving the launcher's frames out of it",
     function()
+      local task, mutant_path = sleeping_task()
+
       local ok, err = xpcall(function()
-        return runner.run({ sleeping_task() }, {
+        return runner.run({ task }, {
           root = helper.root,
-          cwd = helper.test_data.full_path,
+          -- WHY: giving up SIGKILLs a worker that dies after the run returns,
+          -- and Windows keeps a directory open for as long as a process has it
+          -- as its cwd, so a worker launched in the data dir still holds it
+          -- when the teardown deletes it.
+          -- NOT: helper.test_data.full_path, where the mutant and its trial
+          -- spec sit.
+          cwd = helper.root,
           jobs = 1,
           timeout = 30000,
           budget = 300,
@@ -56,7 +66,10 @@ describe("ntf.core.mutation.runner.run", function()
       assert.is_false(ok)
       local message = report.error_message(err)
       assert.match("^the run gave up after %d+%.%ds: 1 of 1 mutants never reported back", message)
-      assert.match("1 of them from a worker it had launched:\n  lua/mod%.lua:%d+:%d+:swap%-boolean", message)
+      assert.match(
+        ("1 of them from a worker it had launched:\n  %s:%%d+:%%d+:swap%%-boolean"):format(vim.pesc(mutant_path)),
+        message
+      )
       assert.no.match("stack traceback", message)
     end
   )
