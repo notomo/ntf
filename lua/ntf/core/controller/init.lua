@@ -402,7 +402,12 @@ function M.run(root)
           io.stdout:write(text)
         end
         io.stdout:flush()
-        io.stderr:write(("mutation %s skipped: the tests must pass first\n"):format(mode.list and "list" or "run"))
+        io.stderr:write(
+          ("mutation %s skipped: %s\n"):format(
+            mode.list and "list" or "run",
+            gave_up and "the test run gave up first" or "the tests must pass first"
+          )
+        )
         return code
       end
       if mode.list then
