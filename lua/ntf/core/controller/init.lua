@@ -51,7 +51,7 @@ end
 
 --- @param target string? the --target the run narrowed the mutated files to
 --- @param cwd string normalized absolute working directory
---- @param left_out integer mutants the config's exclude entries and unadopted operators kept out of the run, which is how it comes back empty over code that does hold mutants
+--- @param left_out integer what the config kept out of the run: excluded or unadopted mutants, and whole files an exclude entry dropped, which is how it comes back empty over code that does hold mutants
 --- @return integer exit_code
 local function no_mutant_found(target, cwd, left_out)
   io.stdout:flush()
@@ -125,7 +125,11 @@ function M.mutate(opts, ctx)
       return 2
     end
   elseif #summary.records == 0 then
-    return no_mutant_found(opts.mutation_target, ctx.cwd, summary.counts.excluded + summary.counts.unadopted)
+    return no_mutant_found(
+      opts.mutation_target,
+      ctx.cwd,
+      summary.counts.excluded + summary.counts.unadopted + summary.excluded_files
+    )
   end
 
   local code = 0

@@ -20,6 +20,7 @@ local M = {}
 --- @class NtfMutationSummary
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
+--- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
@@ -46,17 +47,18 @@ end
 --- @param exclude_entries NtfMutationExcludeEntry[] paths left unmutated
 --- @return string[] normalized absolute paths, sorted
 --- @return NtfMutationExcludeEntry[] # entries covering none of the measurable files
+--- @return integer # files a whole-file exclude entry dropped, of the ones the target holds
 local function target_files(cwd, excludes, mutation_target, exclude_entries)
-  local files, unused = exclude.partition(collector.measurable_files(cwd, excludes), exclude_entries, cwd)
+  local files, unused, dropped = exclude.partition(collector.measurable_files(cwd, excludes), exclude_entries, cwd)
   if not mutation_target then
-    return files, unused
+    return files, unused, #dropped
   end
 
   local target = absolute(mutation_target)
-  return vim.tbl_filter(function(file)
+  local within = function(file)
     return file == target or file:sub(1, #target + 1) == target .. "/"
-  end, files),
-    unused
+  end
+  return vim.tbl_filter(within, files), unused, #vim.tbl_filter(within, dropped)
 end
 
 --- @param cwd string normalized absolute working directory
@@ -69,10 +71,11 @@ end
 --- @return integer # mutants an exclude entry named an operator of, left out of the run
 --- @return integer # mutants of an operator the config did not adopt, left out of the run
 --- @return table<string, true> # the relative paths the run enumerated, which is what a baseline entry is judged against
+--- @return integer # files a whole-file exclude entry dropped, whose mutants were never enumerated
 local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries, selection)
   local entries = {}
   local judged = {}
-  local files, unused = target_files(cwd, excludes, mutation_target, exclude_entries)
+  local files, unused, dropped = target_files(cwd, excludes, mutation_target, exclude_entries)
   local excluded_operator = exclude.operator_filter(exclude_entries, cwd)
   local adopted = operators.adopted(selection)
   local excluded = 0
@@ -99,7 +102,7 @@ local function enumerate_mutants(cwd, excludes, mutation_target, exclude_entries
       end
     end
   end
-  return entries, unused, excluded, unadopted, judged
+  return entries, unused, excluded, unadopted, judged, dropped
 end
 
 --- @param mutant NtfMutant
@@ -168,7 +171,7 @@ function M.run(opts, ctx)
   local task_verify = {}
 
   local selection = ctx.mutation_operators or "all"
-  local mutant_entries, unused_excludes, excluded, unadopted, judged =
+  local mutant_entries, unused_excludes, excluded, unadopted, judged, excluded_files =
     enumerate_mutants(cwd, ctx.coverage_excludes, opts.mutation_target, ctx.mutation_exclude or {}, selection)
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
@@ -246,6 +249,7 @@ function M.run(opts, ctx)
   return {
     records = records,
     counts = counts,
+    excluded_files = excluded_files,
     score = score_of(counts),
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
     lost = matcher.lost(judged),
@@ -265,12 +269,12 @@ end
 --- @param opts NtfOptions
 --- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
 --- @return NtfMutantListEntry[]
---- @return integer # mutants an exclude entry or an unadopted operator kept out, which is how the listing comes back empty over code that does hold mutants
+--- @return integer # what the config kept out: excluded or unadopted mutants, and whole files an exclude entry dropped, which is how the listing comes back empty over code that does hold mutants
 function M.list(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
 
-  local entries, _, excluded, unadopted = enumerate_mutants(
+  local entries, _, excluded, unadopted, _, excluded_files = enumerate_mutants(
     cwd,
     ctx.coverage_excludes,
     opts.mutation_target,
@@ -286,7 +290,7 @@ function M.list(opts, ctx)
       equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
     }
   end, entries),
-    excluded + unadopted
+    excluded + unadopted + excluded_files
 end
 
 return M

@@ -129,13 +129,23 @@ describe("ntf.core.mutation.exclude.partition", function()
     assert.same({}, narrow_first)
   end)
 
+  it("hands back the files it dropped, in the given order", function()
+    local files = { "/project/lua/a.lua", "/project/other/c.lua", "/project/lua/sub/b.lua" }
+
+    local _, _, dropped = exclude.partition(files, { entry({ path = "lua" }) }, cwd)
+
+    assert.same({ "/project/lua/a.lua", "/project/lua/sub/b.lua" }, dropped)
+  end)
+
   it("keeps a file an entry only names operators of, counting the entry as used", function()
     local files = { "/project/lua/a.lua" }
 
-    local kept, unused = exclude.partition(files, { entry({ path = "lua", operators = { "swap-boolean" } }) }, cwd)
+    local kept, unused, dropped =
+      exclude.partition(files, { entry({ path = "lua", operators = { "swap-boolean" } }) }, cwd)
 
     assert.same(files, kept)
     assert.same({}, unused)
+    assert.same({}, dropped)
   end)
 
   it("drops the file an exclude_spec entry names, which carries no operators", function()

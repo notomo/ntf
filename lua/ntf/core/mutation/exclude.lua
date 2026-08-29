@@ -85,11 +85,13 @@ end
 --- @param cwd string normalized absolute working directory
 --- @return string[] # the files no whole-file entry covers, in the given order
 --- @return NtfMutationExcludeEntry[] # entries covering no file, in the given order
+--- @return string[] # the files a whole-file entry covers, in the given order
 function M.partition(files, entries, cwd)
   local targets = targets_of(entries, cwd)
 
   local covered = {}
   local kept = {}
+  local dropped = {}
   for _, file in ipairs(files) do
     local excluded = false
     for index, target in ipairs(targets) do
@@ -100,6 +102,8 @@ function M.partition(files, entries, cwd)
     end
     if not excluded then
       table.insert(kept, file)
+    else
+      table.insert(dropped, file)
     end
   end
 
@@ -109,7 +113,7 @@ function M.partition(files, entries, cwd)
       table.insert(unused, entry)
     end
   end
-  return kept, unused
+  return kept, unused, dropped
 end
 
 --- @param entries NtfMutationExcludeEntry[] entries covering nothing the run took
