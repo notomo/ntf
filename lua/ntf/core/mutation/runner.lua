@@ -3,6 +3,8 @@ local driver = require("ntf.core.worker.driver")
 local wait = require("ntf.core.worker.wait")
 local verdict = require("ntf.core.mutation.verdict")
 local order = require("ntf.core.mutation.order")
+local locator = require("ntf.core.controller.report").locator
+local relative = require("ntf.core.path").relative
 
 local M = {}
 
@@ -21,7 +23,7 @@ local M = {}
 -- global-state semantics and make a mutant look detected for reasons that have
 -- nothing to do with it.
 --- @param tasks NtfMutantTask[]
---- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, run_timeout: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutantOutcome[] # parallel to tasks
 function M.run(tasks, opts)
   local jobs = opts.jobs or vim.uv.available_parallelism()
@@ -31,7 +33,7 @@ function M.run(tasks, opts)
 
   local outcomes = {}
   local started = 0
-  local state = { finished = 0 } --- @type NtfRunState
+  local state = { finished = 0, running = {} } --- @type NtfRunState
 
   local spawn_next
 
@@ -42,6 +44,7 @@ function M.run(tasks, opts)
     if opts.on_task then
       opts.on_task(outcome)
     end
+    state.running[task_index] = nil
     state.finished = state.finished + 1
     vim.schedule(spawn_next)
   end
@@ -58,6 +61,7 @@ function M.run(tasks, opts)
     end
 
     local ceiling = trial.item.timeout or opts.timeout
+    state.running[task_index] = locator(relative(task.mutant.path, opts.cwd), task.mutant)
     driver.launch(trial.item, {
       root = opts.root,
       cwd = opts.cwd,
@@ -101,7 +105,7 @@ function M.run(tasks, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = budget.run(total), total = total, unit = "mutants" })
+  wait.settle(state, { budget = opts.run_timeout, total = total, unit = "mutants" })
 
   return outcomes
 end

@@ -166,6 +166,36 @@ describe("ntf.core.controller.args.parse", function()
     assert.match("invalid %-%-timeout value", err)
   end)
 
+  it("defaults --run-timeout to 600000ms", function()
+    local opts = args.parse({ "spec" })
+
+    assert.equal(600000, opts.run_timeout)
+  end)
+
+  it("parses --run-timeout into opts.run_timeout", function()
+    local opts = args.parse({ "--run-timeout=1500", "spec" })
+
+    assert.equal(1500, opts.run_timeout)
+  end)
+
+  it("accepts --run-timeout=0 to let the run take as long as it takes", function()
+    local opts = args.parse({ "--run-timeout=0", "spec" })
+
+    assert.equal(0, opts.run_timeout)
+  end)
+
+  it("rejects a non-numeric --run-timeout", function()
+    local err = args.parse({ "--run-timeout=soon", "spec" })
+
+    assert.match("invalid %-%-run%-timeout value", err)
+  end)
+
+  it("rejects a negative --run-timeout", function()
+    local err = args.parse({ "--run-timeout=-5", "spec" })
+
+    assert.match("invalid %-%-run%-timeout value", err)
+  end)
+
   it("leaves opts.jobs nil when --jobs is absent, which is the cpu count", function()
     local opts = args.parse({ "spec" })
 

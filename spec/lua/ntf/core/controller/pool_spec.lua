@@ -106,6 +106,13 @@ local function most_at_once(dir)
   return most
 end
 
+--- @param items table[] the NtfWorkItems of the run
+--- @param opts table run options merged over the defaults
+--- @return table results, table coverage, table timing
+local function run(items, opts)
+  return pool.run(items, vim.tbl_extend("force", { root = helper.root, run_timeout = 30000 }, opts))
+end
+
 describe("ntf.core.controller.pool.run", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -122,7 +129,7 @@ end)
 ]]),
     })
 
-    local results = pool.run(items, { root = helper.root })
+    local results = run(items, { root = helper.root })
 
     assert.equal(#items, #results)
   end)
@@ -138,7 +145,7 @@ end)
 ]]),
     })
 
-    local results = pool.run(items, { root = helper.root, jobs = 1 })
+    local results = run(items, { root = helper.root, jobs = 1 })
 
     assert.equal(#items, #results)
   end)
@@ -146,7 +153,7 @@ end)
   it("waits out a worker slower than a fraction of a second, cutting off only a run that never finishes", function()
     local items = work.plan({ helper.write_spec(slow_test) })
 
-    local results = pool.run(items, { root = helper.root })
+    local results = run(items, { root = helper.root })
 
     assert.equal(1, #results)
     assert.equal("passed", results[1].status)
@@ -165,7 +172,7 @@ end)
 ]]),
     })
 
-    local ok = pcall(pool.run, items, {
+    local ok = pcall(run, items, {
       root = helper.root,
       jobs = 2,
       on_item = function()
@@ -177,11 +184,32 @@ end)
     assert.equal(0, driver.kill_all())
   end)
 
+  it("gives up on a run that outlasts its budget, naming only the tests a worker still holds", function()
+    local items = work.plan({
+      helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("finishes at once", function() end)
+  ntf.it("never returns", function()
+    while true do end
+  end)
+end)
+]]),
+    })
+
+    local ok, err = pcall(run, items, { jobs = 1, run_timeout = 1000 })
+
+    assert.is_false(ok)
+    assert.match("1 of 2 tests never reported back, 1 of them from a worker it had launched", err)
+    assert.match("x never returns", err)
+    assert.no.match("finishes at once", err)
+  end)
+
   it("merges nothing and calls no coverage callback when coverage is off", function()
     local items = work.plan({ helper.write_spec(one_test) })
     local called = false
 
-    local _, coverage = pool.run(items, {
+    local _, coverage = run(items, {
       root = helper.root,
       on_item_coverage = function()
         called = true
@@ -195,7 +223,7 @@ end)
   it("lists every measurable file, keeping the counts of the ones a worker ran", function()
     local items = work.plan({ helper.write_spec(one_test) })
 
-    local _, coverage = pool.run(items, { root = helper.root, coverage = true })
+    local _, coverage = run(items, { root = helper.root, coverage = true })
 
     local the_module_every_spec_requires = vim.fs.joinpath(vim.fs.normalize(vim.fn.getcwd()), "lua/ntf/init.lua")
     assert.is_true(coverage[the_module_every_spec_requires].max > 0)
@@ -206,7 +234,7 @@ end)
   it("leaves the spec tree out of the files it measures", function()
     local items = work.plan({ helper.write_spec(one_test) })
 
-    local _, coverage = pool.run(items, { root = helper.root, coverage = true })
+    local _, coverage = run(items, { root = helper.root, coverage = true })
 
     local under_spec = vim.tbl_filter(function(path)
       return path:find("/spec/", 1, true) ~= nil
@@ -218,7 +246,7 @@ end)
     local items = work.plan({ helper.write_spec(printing_test) })
     local outputs = {}
 
-    pool.run(items, {
+    run(items, {
       root = helper.root,
       on_output = function(out)
         table.insert(outputs, out.output)
@@ -232,7 +260,7 @@ end)
   it("runs a worker that printed even with no on_output to hand it to", function()
     local items = work.plan({ helper.write_spec(printing_test) })
 
-    local results = pool.run(items, { root = helper.root })
+    local results = run(items, { root = helper.root })
 
     assert.equal("passed", results[1].status)
   end)
@@ -247,7 +275,7 @@ end)
     local items = work.plan({ file })
 
     local ok, err = pcall(function()
-      pool.run(items, {
+      run(items, {
         root = helper.root,
         on_item = function()
           error("boom in callback")
@@ -273,7 +301,7 @@ end)
     })
 
     local before = vim.uv.hrtime()
-    local _, _, timing = pool.run(items, { root = helper.root, jobs = 1 })
+    local _, _, timing = run(items, { root = helper.root, jobs = 1 })
     local the_run_took = (vim.uv.hrtime() - before) * 1e-9
 
     assert.is_true(timing.elapsed > 0)
@@ -285,7 +313,7 @@ end)
   it("reports the jobs it ran with", function()
     local items = work.plan({ helper.write_spec(one_test) })
 
-    local _, _, timing = pool.run(items, { root = helper.root, jobs = 1 })
+    local _, _, timing = run(items, { root = helper.root, jobs = 1 })
 
     assert.equal(1, timing.jobs)
   end)
@@ -301,7 +329,7 @@ end)
     local items = work.plan({ file })
 
     local calls = {}
-    pool.run(items, {
+    run(items, {
       root = helper.root,
       coverage = true,
       on_item_coverage = function(item_index, coverage)
@@ -323,7 +351,7 @@ end)
     local dir = helper.test_data:create_dir("slots")
     local items = work.plan({ helper.write_spec(spec_recording_spans(2 * jobs, jobs, dir)) })
 
-    pool.run(items, { root = helper.root, jobs = jobs })
+    run(items, { root = helper.root, jobs = jobs })
 
     assert.equal(jobs, most_at_once(dir))
   end)

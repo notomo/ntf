@@ -38,6 +38,7 @@ Options:
   --global-hook=FILE   run a Lua module providing setup/teardown once around the whole run, in the launcher process
   --exclude-spec=PATH  skip a spec file or directory when discovering tests (repeatable)
   --timeout=MS         kill a worker after MS milliseconds (default: 60000; 0 disables)
+  --run-timeout=MS     give up after MS milliseconds of waiting on the workers (default: 600000; 0 disables)
   --jobs=N             max parallel nvim workers (default: cpu count)
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
   --coverage[=FILE]    measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary

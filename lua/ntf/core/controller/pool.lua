@@ -1,7 +1,7 @@
-local budget = require("ntf.core.controller.budget")
 local driver = require("ntf.core.worker.driver")
 local wait = require("ntf.core.worker.wait")
 local collector = require("ntf.core.coverage.collector")
+local item_locator = require("ntf.core.controller.report").item_locator
 
 local M = {}
 
@@ -11,7 +11,7 @@ local M = {}
 --- @field jobs integer workers run in parallel, whether given or defaulted
 
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, run_timeout: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
 --- @return table coverage merged per-file line hit counts
 --- @return NtfRunTiming timing
@@ -27,7 +27,7 @@ function M.run(items, opts)
   local coverage_excludes = opts.coverage_excludes
     or collector.exclude_paths(require("ntf.core.controller.discover").default_paths())
   local started = 0
-  local state = { finished = 0 } --- @type NtfRunState
+  local state = { finished = 0, running = {} } --- @type NtfRunState
 
   local function spawn_next()
     if started >= total then
@@ -38,6 +38,7 @@ function M.run(items, opts)
     local item = items[item_index]
 
     local item_started = vim.uv.hrtime()
+    state.running[item_index] = item_locator(item)
     driver.launch(item, {
       root = opts.root,
       cwd = cwd,
@@ -48,6 +49,7 @@ function M.run(items, opts)
       coverage_excludes = coverage_excludes,
     }, function(outcome)
       worker_seconds = worker_seconds + (vim.uv.hrtime() - item_started) * 1e-9
+      state.running[item_index] = nil
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
         if opts.coverage then
@@ -75,7 +77,7 @@ function M.run(items, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = budget.run(total), total = total, unit = "tests" })
+  wait.settle(state, { budget = opts.run_timeout, total = total, unit = "tests" })
 
   if opts.coverage then
     for _, path in ipairs(collector.measurable_files(cwd, coverage_excludes)) do

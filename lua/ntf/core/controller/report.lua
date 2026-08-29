@@ -132,6 +132,12 @@ function M.locator(relative_path, mutant)
   return ("%s:%d:%d:%s"):format(relative_path, mutant.row, mutant.col + 1, mutant.operator)
 end
 
+--- @param item NtfWorkItem
+--- @return string # the name every listing prints a test under: where it is declared, then its full name
+function M.item_locator(item)
+  return ("%s %s"):format(rel_source(item.trace), tree.full_name(item.names))
+end
+
 --- @param seconds number
 --- @return string # ms below a second, where one decimal of seconds is all zeroes
 function M.duration(seconds)

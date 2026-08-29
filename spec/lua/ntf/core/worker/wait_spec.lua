@@ -10,9 +10,15 @@ local function timed(f)
   return (vim.uv.hrtime() - before) * 1e-6
 end
 
+--- @param state table what the callbacks would have written
+--- @return table # one NtfRunState
+local function run_state(state)
+  return vim.tbl_extend("keep", state, { finished = 0, running = {} })
+end
+
 describe("ntf.core.worker.wait.settle", function()
   it("returns as soon as the last item reports back, leaving the rest of the budget unspent", function()
-    local state = { finished = 0 }
+    local state = run_state({})
     local budget = 3000
     vim.defer_fn(function()
       state.finished = 2
@@ -27,14 +33,25 @@ describe("ntf.core.worker.wait.settle", function()
 
   it("returns at once for a run with nothing to wait for", function()
     local elapsed_ms = timed(function()
-      wait.settle({ finished = 0 }, { budget = 3000, total = 0, unit = "tests" })
+      wait.settle(run_state({}), { budget = 3000, total = 0, unit = "tests" })
     end)
 
     assert.is_true(elapsed_ms < 1000)
   end)
 
+  it("keeps waiting on a run whose budget is disabled", function()
+    local state = run_state({})
+    vim.defer_fn(function()
+      state.finished = 1
+    end, 200)
+
+    wait.settle(state, { budget = 0, total = 1, unit = "tests" })
+
+    assert.equal(1, state.finished)
+  end)
+
   it("raises the error a callback reported, leaving the rest of the budget unspent", function()
-    local state = { finished = 0, fatal = "aborted by the callback" }
+    local state = run_state({ fatal = "aborted by the callback" })
     local budget = 3000
 
     local ok, err
@@ -48,26 +65,35 @@ describe("ntf.core.worker.wait.settle", function()
   end)
 
   it("raises with the items that never reported back once the budget is out", function()
-    local ok, err = pcall(wait.settle, { finished = 1 }, { budget = 100, total = 3, unit = "tests" })
+    local state = run_state({ finished = 1 })
+
+    local ok, err = pcall(wait.settle, state, { budget = 100, total = 3, unit = "tests" })
 
     assert.is_false(ok)
     assert.equal("the run gave up after 0.1s: 2 of 3 tests never reported back", err)
   end)
 
-  it("names the items of the run that gave up", function()
-    local ok, err = pcall(wait.settle, { finished = 0 }, { budget = 100, total = 1, unit = "mutants" })
+  it("gives up on the shortest budget a run can ask for", function()
+    local state = run_state({})
+
+    local ok, err = pcall(wait.settle, state, { budget = 1, total = 1, unit = "tests" })
 
     assert.is_false(ok)
-    assert.equal("the run gave up after 0.1s: 1 of 1 mutants never reported back", err)
-  end)
-end)
-
-describe("ntf.core.worker.wait.budget", function()
-  it("keeps a ten-minute floor for a run whose items earn less than it", function()
-    assert.equal(600000, wait.budget(3, 10000))
+    assert.match("the run gave up", err)
   end)
 
-  it("grows the budget with the items once they earn more than the floor", function()
-    assert.equal(700000, wait.budget(70, 10000))
+  it("names the launched items of the run that gave up, in one order however they were dispatched", function()
+    local state = run_state({ running = { "lua/b.lua:1:1:drop-call", "lua/a.lua:2:3:swap-logical" } })
+
+    local ok, err = pcall(wait.settle, state, { budget = 100, total = 5, unit = "mutants" })
+
+    assert.is_false(ok)
+    assert.equal(
+      "the run gave up after 0.1s: 5 of 5 mutants never reported back,"
+        .. " 2 of them from a worker it had launched:\n"
+        .. "  lua/a.lua:2:3:swap-logical\n"
+        .. "  lua/b.lua:1:1:drop-call",
+      err
+    )
   end)
 end)

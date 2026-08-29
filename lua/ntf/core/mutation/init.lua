@@ -205,6 +205,7 @@ function M.run(opts, ctx)
     cwd = ctx.cwd,
     jobs = opts.jobs,
     timeout = opts.timeout,
+    run_timeout = opts.run_timeout,
     test_hook = opts.test_hook,
     process_hook = opts.process_hook,
     on_task = ctx.on_task,

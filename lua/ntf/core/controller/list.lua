@@ -1,5 +1,4 @@
 local report = require("ntf.core.controller.report")
-local tree = require("ntf.core.tree")
 
 local M = {}
 
@@ -14,7 +13,7 @@ end
 function M.tests(items)
   local lines = {}
   for _, item in ipairs(items) do
-    table.insert(lines, ("%s %s"):format(report.rel_source(item.trace), tree.full_name(item.names)))
+    table.insert(lines, report.item_locator(item))
   end
   return joined(lines)
 end

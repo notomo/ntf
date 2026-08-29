@@ -29,13 +29,3 @@ describe("ntf.core.mutation.budget.trial", function()
     assert.equal(8000, budget.trial(3000, 60000))
   end)
 end)
-
-describe("ntf.core.mutation.budget.run", function()
-  it("keeps the ten-minute floor for a run of few mutants", function()
-    assert.equal(600000, budget.run(3))
-  end)
-
-  it("gives every mutant ten seconds once they earn more than the floor", function()
-    assert.equal(700000, budget.run(70))
-  end)
-end)
