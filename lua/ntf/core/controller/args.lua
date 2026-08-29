@@ -9,7 +9,6 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify or mutation.baseline.add
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
---- @field run_timeout integer ms the whole run may take before it gives up (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
 --- @field jobs integer? max parallel workers
 --- @field test_hook string? Lua module returning optional setup/teardown, run once per test around its worker's spec
@@ -61,20 +60,6 @@ local timeout = {
       return "invalid --timeout value (expected milliseconds >= 0)"
     end
     opts.timeout = ms
-  end,
-}
-
---- @type NtfFlag
-local run_timeout = {
-  name = "--run-timeout",
-  value = "MS",
-  description = "give up after MS milliseconds of waiting on the workers (default: 600000; 0 disables)",
-  set = function(opts, value)
-    local ms = tonumber(value)
-    if ms == nil or ms < 0 then
-      return "invalid --run-timeout value (expected milliseconds >= 0)"
-    end
-    opts.run_timeout = ms
   end,
 }
 
@@ -308,7 +293,7 @@ local help = {
 local discovery_flags = { filter, process_hook, global_hook, exclude_spec }
 
 --- @type NtfFlag[] taken by every command that starts workers
-local worker_flags = { timeout, run_timeout, jobs, test_hook }
+local worker_flags = { timeout, jobs, test_hook }
 
 --- @type NtfFlag[] taken by every mutation command that enumerates the mutants of the code under test
 local mutation_flags = { exclude_code, target, config }
@@ -632,7 +617,6 @@ function M.parse(argv)
     command = command.id,
     paths = {},
     timeout = 60000,
-    run_timeout = 600000,
     filter = nil,
     jobs = nil,
     test_hook = nil,

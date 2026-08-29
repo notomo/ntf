@@ -357,7 +357,6 @@ function M.run(root)
       root = root,
       jobs = opts.jobs,
       timeout = opts.timeout,
-      run_timeout = opts.run_timeout,
       test_hook = opts.test_hook,
       process_hook = opts.process_hook,
       coverage = opts.coverage or mode.mutation,

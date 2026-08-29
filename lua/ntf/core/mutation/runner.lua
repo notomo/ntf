@@ -23,7 +23,7 @@ local M = {}
 -- global-state semantics and make a mutant look detected for reasons that have
 -- nothing to do with it.
 --- @param tasks NtfMutantTask[]
---- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, run_timeout: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
+--- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, budget?: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutantOutcome[] # parallel to tasks
 function M.run(tasks, opts)
   local jobs = opts.jobs or vim.uv.available_parallelism()
@@ -105,7 +105,7 @@ function M.run(tasks, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = opts.run_timeout, total = total, unit = "mutants" })
+  wait.settle(state, { budget = opts.budget, total = total, unit = "mutants" })
 
   return outcomes
 end

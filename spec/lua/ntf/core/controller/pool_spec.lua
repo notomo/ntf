@@ -110,7 +110,7 @@ end
 --- @param opts table run options merged over the defaults
 --- @return table results, table coverage, table timing
 local function run(items, opts)
-  return pool.run(items, vim.tbl_extend("force", { root = helper.root, run_timeout = 30000 }, opts))
+  return pool.run(items, vim.tbl_extend("force", { root = helper.root, budget = 30000 }, opts))
 end
 
 describe("ntf.core.controller.pool.run", function()
@@ -197,7 +197,7 @@ end)
 ]]),
     })
 
-    local ok, err = pcall(run, items, { jobs = 1, run_timeout = 1000 })
+    local ok, err = pcall(run, items, { jobs = 1, budget = 1000 })
 
     assert.is_false(ok)
     assert.match("1 of 2 tests never reported back, 1 of them from a worker it had launched", err)

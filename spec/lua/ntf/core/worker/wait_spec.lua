@@ -16,6 +16,12 @@ local function run_state(state)
   return vim.tbl_extend("keep", state, { finished = 0, running = {} })
 end
 
+describe("ntf.core.worker.wait.budget_ms", function()
+  it("gives a run fifteen minutes on its workers, which no run of a suite spends", function()
+    assert.equal(900000, wait.budget_ms)
+  end)
+end)
+
 describe("ntf.core.worker.wait.settle", function()
   it("returns as soon as the last item reports back, leaving the rest of the budget unspent", function()
     local state = run_state({})
@@ -39,13 +45,13 @@ describe("ntf.core.worker.wait.settle", function()
     assert.is_true(elapsed_ms < 1000)
   end)
 
-  it("keeps waiting on a run whose budget is disabled", function()
+  it("waits the run budget out for a run that named none of its own", function()
     local state = run_state({})
     vim.defer_fn(function()
       state.finished = 1
     end, 200)
 
-    wait.settle(state, { budget = 0, total = 1, unit = "tests" })
+    wait.settle(state, { total = 1, unit = "tests" })
 
     assert.equal(1, state.finished)
   end)

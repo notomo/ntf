@@ -322,37 +322,6 @@ ntf.it("never gets there", function() end)
     assert.match("invalid %-%-timeout value", obj.stderr)
   end)
 
-  it("gives up on a run that outlasts --run-timeout, naming the tests still in a worker", function()
-    local path = spec(
-      "hang_spec.lua",
-      [[
-local ntf = require("ntf")
-local describe, it = ntf.describe, ntf.it
-
-describe("group", function()
-  it("passes at once", function() end)
-  it("never returns", function()
-    while true do end
-  end)
-end)
-]]
-    )
-    local obj = run({ path }, { "--timeout=0", "--jobs=1", "--run-timeout=1000" })
-
-    assert.equal(1, obj.code)
-    assert.match("the run gave up after 1%.0s: 1 of 2 tests never reported back", obj.stderr)
-    assert.match("1 of them from a worker it had launched:\n  .*hang_spec%.lua:%d+ group never returns", obj.stderr)
-    assert.no.match("passes at once", obj.stderr)
-  end)
-
-  it("exits 2 on an invalid --run-timeout value", function()
-    local path = spec("pass_spec.lua", PASSING)
-    local obj = helper.run_cli({ "--run-timeout=nope", path })
-
-    assert.equal(2, obj.code)
-    assert.match("invalid %-%-run%-timeout value", obj.stderr)
-  end)
-
   it("disables the worker timeout with --timeout=0", function()
     local slow_but_finite = spec("slow_spec.lua", SLOW)
     local obj = run({ slow_but_finite }, { "--timeout=0" })
@@ -2185,29 +2154,6 @@ describe("ntf mutation", function()
     local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
     assert.equal(0, results.counts.timeout)
     assert.equal(1, results.counts.killed)
-  end)
-
-  it("gives up on a scoring pass that outlasts --run-timeout, naming the mutants still in a worker", function()
-    local root = helper.test_data.full_path
-    helper.test_data:create_file("lua/mod.lua", MUTATION_MODULE)
-    helper.test_data:create_file(
-      "spec/slow_spec.lua",
-      table.concat({
-        'local ntf = require("ntf")',
-        'ntf.it("takes its time over every mutant", function()',
-        "  vim.uv.sleep(600)",
-        '  local mod = require("mod")',
-        "  ntf.assert.is_true(mod.is_positive(1))",
-        "  ntf.assert.equal(1, mod.min(1, 2))",
-        "end)",
-      }, "\n")
-    )
-
-    local obj = helper.run_cli({ "mutation", "--jobs=1", "--run-timeout=2000", "spec" }, root)
-
-    assert.equal(1, obj.code)
-    assert.match("the run gave up after 2%.0s: %d+ of %d+ mutants never reported back", obj.stderr)
-    assert.match("1 of them from a worker it had launched:\n  lua/mod%.lua:%d+:%d+:%a", obj.stderr)
   end)
 
   it("skips the mutation run when the tests fail", function()

@@ -11,7 +11,7 @@ local M = {}
 --- @field jobs integer workers run in parallel, whether given or defaulted
 
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, run_timeout: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
 --- @return table coverage merged per-file line hit counts
 --- @return NtfRunTiming timing
@@ -77,7 +77,7 @@ function M.run(items, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = opts.run_timeout, total = total, unit = "tests" })
+  wait.settle(state, { budget = opts.budget, total = total, unit = "tests" })
 
   if opts.coverage then
     for _, path in ipairs(collector.measurable_files(cwd, coverage_excludes)) do
