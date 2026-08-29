@@ -15,6 +15,7 @@ local M = {}
 --- @return NtfResult[] results
 --- @return table coverage merged per-file line hit counts
 --- @return NtfRunTiming timing
+--- @return NtfRunGiveUp? # what the run was still waiting on when its budget ran out
 function M.run(items, opts)
   local cwd = vim.fn.getcwd()
   local jobs = opts.jobs or vim.uv.available_parallelism()
@@ -77,7 +78,7 @@ function M.run(items, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = opts.budget, total = total, unit = "tests" })
+  local gave_up = wait.settle(state, { budget = opts.budget, total = total, unit = "tests" })
 
   if opts.coverage then
     for _, path in ipairs(collector.measurable_files(cwd, coverage_excludes)) do
@@ -92,7 +93,7 @@ function M.run(items, opts)
     worker = worker_seconds,
     jobs = jobs,
   }
-  return results, merged_coverage, timing
+  return results, merged_coverage, timing, gave_up
 end
 
 return M

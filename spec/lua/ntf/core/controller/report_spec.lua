@@ -102,6 +102,30 @@ describe("ntf.core.controller.report.build", function()
     assert.equal(0, code)
   end)
 
+  it("counts the tests a run that gave up never heard from, so its count line stays the planned one", function()
+    local results = {
+      { status = "passed", names = { "a" } },
+    }
+    local gave_up = {
+      budget = 900000,
+      unfinished = 2,
+      total = 3,
+      unit = "tests",
+      launched = { "spec/a_spec.lua:3 a hangs" },
+    }
+
+    local text, code = report.build(results, {}, { color = false, gave_up = gave_up })
+
+    assert.equal(
+      "GAVE UP after 900.0s: 2 of 3 tests never reported back, 1 of them from a worker it had launched:\n"
+        .. "  spec/a_spec.lua:3 a hangs\n"
+        .. "\n"
+        .. "3 tests: 1 passed  2 never reported back\n",
+      text
+    )
+    assert.equal(1, code)
+  end)
+
   it("counts failed, errors and pending alongside passed", function()
     local results = {
       { status = "passed", names = { "a" } },

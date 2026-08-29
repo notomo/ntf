@@ -10,29 +10,35 @@ M.budget_ms = 15 * 60 * 1000
 --- @field running table<any, string> what every item a worker was launched for is called, until it reports back
 --- @field fatal any? the error a callback raised, which ends the run before its items are done
 
---- @param state NtfRunState
---- @param budget integer ms the wait was given
---- @param opts { budget: integer?, total: integer, unit: string }
---- @return string # what the run raises, naming the items it was still waiting on
-local function gave_up(state, budget, opts)
-  local message = ("the run gave up after %.1fs: %d of %d %s never reported back"):format(
-    budget * 1e-3,
-    opts.total - state.finished,
-    opts.total,
-    opts.unit
-  )
+--- @class NtfRunGiveUp what a run that spent its budget was still waiting on
+--- @field budget integer ms the wait was given
+--- @field unfinished integer items that never reported back
+--- @field total integer items the run waited on
+--- @field unit string what one of them is called
+--- @field launched string[] what the ones a worker had been launched for are called, in one order however they were dispatched
 
-  local launched = vim.tbl_values(state.running)
-  if #launched == 0 then
+--- @param gave_up NtfRunGiveUp
+--- @return string # what a report or an error says the run came to
+function M.message(gave_up)
+  local message = ("after %.1fs: %d of %d %s never reported back"):format(
+    gave_up.budget * 1e-3,
+    gave_up.unfinished,
+    gave_up.total,
+    gave_up.unit
+  )
+  if #gave_up.launched == 0 then
     return message
   end
-  table.sort(launched)
   return message
-    .. (", %d of them from a worker it had launched:\n  %s"):format(#launched, table.concat(launched, "\n  "))
+    .. (", %d of them from a worker it had launched:\n  %s"):format(
+      #gave_up.launched,
+      table.concat(gave_up.launched, "\n  ")
+    )
 end
 
 --- @param state NtfRunState the callbacks keep writing to it while the wait runs
---- @param opts { budget: integer?, total: integer, unit: string } ms this wait may take before it gives up (the run budget when left out), items that must report back, and what one of them is called in the message a run that ran out raises
+--- @param opts { budget: integer?, total: integer, unit: string } ms this wait may take before it gives up (the run budget when left out), items that must report back, and what one of them is called in what the run comes to
+--- @return NtfRunGiveUp? # nil for the run every item reported back to
 function M.settle(state, opts)
   local budget = opts.budget or M.budget_ms
   vim.wait(budget, function()
@@ -44,9 +50,19 @@ function M.settle(state, opts)
     error(state.fatal, 0)
   end
 
-  if state.finished < opts.total then
-    error(gave_up(state, budget, opts), 0)
+  if state.finished >= opts.total then
+    return nil
   end
+
+  local launched = vim.tbl_values(state.running)
+  table.sort(launched)
+  return {
+    budget = budget,
+    unfinished = opts.total - state.finished,
+    total = opts.total,
+    unit = opts.unit,
+    launched = launched,
+  }
 end
 
 return M

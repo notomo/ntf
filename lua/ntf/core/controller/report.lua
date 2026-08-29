@@ -1,5 +1,6 @@
 local tree = require("ntf.core.tree")
 local relative = require("ntf.core.path").relative
+local wait = require("ntf.core.worker.wait")
 
 local M = {}
 
@@ -170,7 +171,7 @@ end
 
 --- @param results NtfResult[]
 --- @param load_errors NtfLoadError[]
---- @param opts { color: boolean }
+--- @param opts { color: boolean, gave_up: NtfRunGiveUp? }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)
   load_errors = load_errors or {}
@@ -207,7 +208,13 @@ function M.build(results, load_errors, opts)
     table.insert(lines, "")
   end
 
-  local total = counts.passed + counts.failed + counts.error + counts.pending
+  local gave_up = opts.gave_up
+  if gave_up then
+    table.insert(lines, ("%s %s"):format(paint("red", "GAVE UP"), wait.message(gave_up)))
+    table.insert(lines, "")
+  end
+
+  local total = counts.passed + counts.failed + counts.error + counts.pending + (gave_up and gave_up.unfinished or 0)
   local parts = {
     paint("green", ("%d passed"):format(counts.passed)),
   }
@@ -220,9 +227,12 @@ function M.build(results, load_errors, opts)
   if counts.pending > 0 then
     table.insert(parts, paint("yellow", ("%d pending"):format(counts.pending)))
   end
+  if gave_up then
+    table.insert(parts, paint("red", ("%d never reported back"):format(gave_up.unfinished)))
+  end
   table.insert(lines, ("%d tests: %s"):format(total, table.concat(parts, "  ")))
 
-  local code = (counts.failed > 0 or counts.error > 0 or #load_errors > 0) and 1 or 0
+  local code = (counts.failed > 0 or counts.error > 0 or #load_errors > 0 or gave_up ~= nil) and 1 or 0
   return table.concat(lines, "\n") .. "\n", code
 end
 

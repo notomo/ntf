@@ -105,7 +105,15 @@ function M.run(tasks, opts)
     spawn_next()
   end
 
-  wait.settle(state, { budget = opts.budget, total = total, unit = "mutants" })
+  -- WHY: a score over the mutants that did report back is a percentage of a
+  -- denominator the run picked by running out of time, which reads as a
+  -- measurement and is not one.
+  -- NOT: returning what was scored so far and letting the summary print it, as
+  -- the tests do, where every result it prints is one a worker really produced.
+  local gave_up = wait.settle(state, { budget = opts.budget, total = total, unit = "mutants" })
+  if gave_up then
+    error("the run gave up " .. wait.message(gave_up), 0)
+  end
 
   return outcomes
 end

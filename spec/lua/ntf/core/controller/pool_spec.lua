@@ -3,6 +3,7 @@ local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_e
 local work = require("ntf.core.controller.work")
 local pool = require("ntf.core.controller.pool")
 local driver = require("ntf.core.worker.driver")
+local tree = require("ntf.core.tree")
 local helper = require("ntf.test.helper")
 
 local one_test = [[
@@ -108,7 +109,7 @@ end
 
 --- @param items table[] the NtfWorkItems of the run
 --- @param opts table run options merged over the defaults
---- @return table results, table coverage, table timing
+--- @return table results, table coverage, table timing, table? gave_up
 local function run(items, opts)
   return pool.run(items, vim.tbl_extend("force", { root = helper.root, budget = 30000 }, opts))
 end
@@ -184,7 +185,7 @@ end)
     assert.equal(0, driver.kill_all())
   end)
 
-  it("gives up on a run that outlasts its budget, naming only the tests a worker still holds", function()
+  it("hands back the results of a run that outlasts its budget, naming only the tests a worker still holds", function()
     local items = work.plan({
       helper.write_spec([[
 local ntf = require("ntf")
@@ -197,12 +198,16 @@ end)
 ]]),
     })
 
-    local ok, err = pcall(run, items, { jobs = 1, budget = 1000 })
+    local results, _, _, gave_up = run(items, { jobs = 1, budget = 1000 })
+    assert(gave_up, "the run reported back for every test")
 
-    assert.is_false(ok)
-    assert.match("1 of 2 tests never reported back, 1 of them from a worker it had launched", err)
-    assert.match("x never returns", err)
-    assert.no.match("finishes at once", err)
+    assert.equal(1, #results)
+    assert.equal("x finishes at once", tree.full_name(results[1].names))
+    assert.equal(1, gave_up.unfinished)
+    assert.equal(2, gave_up.total)
+    assert.equal("tests", gave_up.unit)
+    assert.equal(1, #gave_up.launched)
+    assert.match("x never returns", gave_up.launched[1])
   end)
 
   it("merges nothing and calls no coverage callback when coverage is off", function()
