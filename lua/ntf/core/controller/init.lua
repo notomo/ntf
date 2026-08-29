@@ -379,7 +379,7 @@ function M.run(root)
       prog.finish()
     end
 
-    schedule.save(schedule_cache_path, results, cwd, whole_suite)
+    schedule.save(schedule_cache_path, results, cwd, whole_suite and not gave_up)
 
     local text, code = report.build(results, load_errors, { color = color, gave_up = gave_up })
     if not mode.list then
