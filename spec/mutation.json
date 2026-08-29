@@ -429,15 +429,6 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 6,
-      "operator": "force-branch",
-      "original": "not cwd",
-      "replacement": "false",
-      "line": "  if not cwd then",
-      "rationale": "every caller hands strip_cwd a working directory, so the nil guard is never taken"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
       "col": 68,
       "operator": "swap-boolean",
       "original": "true",
@@ -489,15 +480,6 @@
       "replacement": "1",
       "line": "    counts[result.status] = (counts[result.status] or 0) + 1",
       "rationale": "the four counted statuses are seeded in the table, so the fallback only ever starts a count nothing reads"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
-      "col": 12,
-      "operator": "drop-return-value",
-      "original": "path",
-      "replacement": "nil",
-      "line": "    return path",
-      "rationale": "every caller hands strip_cwd a working directory, so the nil guard this return sits in is never taken"
     },
     {
       "path": "lua/ntf/core/controller/pool.lua",

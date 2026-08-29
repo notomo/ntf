@@ -90,3 +90,33 @@ describe("ntf.core.path.absolute", function()
     assert.equal("/dir/$NTF_TEST_DIR", path.absolute("/dir/$NTF_TEST_DIR"))
   end)
 end)
+
+describe("ntf.core.path.relative", function()
+  it("cuts the directory off a path below it", function()
+    assert.equal("spec/x_spec.lua", path.relative("/dir/spec/x_spec.lua", "/dir"))
+  end)
+
+  it("keeps the path of a sibling whose name merely starts with the directory", function()
+    assert.equal("/dir-other/spec/x_spec.lua", path.relative("/dir-other/spec/x_spec.lua", "/dir"))
+  end)
+
+  it("keeps the directory itself, which sits at no depth below it", function()
+    assert.equal("/dir", path.relative("/dir", "/dir"))
+  end)
+
+  it("keeps a path the directory does not hold at all", function()
+    assert.equal("/elsewhere/x_spec.lua", path.relative("/elsewhere/x_spec.lua", "/dir"))
+  end)
+
+  it("normalizes the path before cutting, so an unnormalized one is still recognized as below", function()
+    assert.equal("spec/x_spec.lua", path.relative("/dir//spec/./x_spec.lua", "/dir"))
+  end)
+
+  it("normalizes the directory too, which a caller may hand over with its trailing separator", function()
+    assert.equal("spec/x_spec.lua", path.relative("/dir/spec/x_spec.lua", "/dir/"))
+  end)
+
+  it("leaves the path as it is when no directory is given", function()
+    assert.equal("/dir/spec/x_spec.lua", path.relative("/dir/spec/x_spec.lua", nil))
+  end)
+end)

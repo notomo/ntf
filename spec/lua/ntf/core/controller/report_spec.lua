@@ -194,6 +194,22 @@ describe("ntf.core.controller.report.build", function()
     assert.match("\n  spec/x_spec%.lua:1", text)
   end)
 
+  it("keeps the source of a sibling directory whose name merely starts with the working directory's", function()
+    local sibling = require("ntf.core.path").normalize(vim.fn.getcwd()) .. "-other"
+    local results = {
+      {
+        status = "failed",
+        names = { "sibling" },
+        message = "x",
+        trace = { source = "@" .. sibling .. "/spec/x_spec.lua", line = 1 },
+      },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.match(vim.pesc(sibling .. "/spec/x_spec.lua:1"), text)
+  end)
+
   it("renders with no load errors given, which the caller may leave out", function()
     local results = {
       { status = "passed", names = { "a" } },

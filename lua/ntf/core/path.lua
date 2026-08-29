@@ -35,4 +35,19 @@ function M.absolute(path)
   return M.normalize(vim.fn.fnamemodify(path, ":p"))
 end
 
+--- @param path string a path in any form
+--- @param base string? the directory to write it relative to, in any form; nil leaves the path as it is
+--- @return string # the normalized path below base, cut at base's own separator so that a sibling whose name merely starts with base keeps the path it has; the whole path where base does not hold it
+function M.relative(path, base)
+  local normalized = M.normalize(path)
+  if not base then
+    return normalized
+  end
+  local root = M.normalize(base)
+  if normalized:sub(1, #root + 1) == root .. "/" then
+    return normalized:sub(#root + 2)
+  end
+  return normalized
+end
+
 return M
