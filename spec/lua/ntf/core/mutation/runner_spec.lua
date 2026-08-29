@@ -4,6 +4,7 @@ local runner = require("ntf.core.mutation.runner")
 local operators = require("ntf.core.mutation.operators")
 local work = require("ntf.core.controller.work")
 local driver = require("ntf.core.worker.driver")
+local report = require("ntf.core.controller.report")
 local helper = require("ntf.test.helper")
 
 local MODULE = table.concat({
@@ -39,17 +40,24 @@ describe("ntf.core.mutation.runner.run", function()
   before_each(helper.before_each)
   after_each(teardown)
 
-  it("gives up on a scoring pass that outlasts its budget, naming the mutants a worker still holds", function()
-    local ok, err = pcall(runner.run, { sleeping_task() }, {
-      root = helper.root,
-      cwd = helper.test_data.full_path,
-      jobs = 1,
-      timeout = 30000,
-      budget = 300,
-    })
+  it(
+    "gives up on a scoring pass that outlasts its budget, naming the mutants a worker still holds and leaving the launcher's frames out of it",
+    function()
+      local ok, err = xpcall(function()
+        return runner.run({ sleeping_task() }, {
+          root = helper.root,
+          cwd = helper.test_data.full_path,
+          jobs = 1,
+          timeout = 30000,
+          budget = 300,
+        })
+      end, debug.traceback)
 
-    assert.is_false(ok)
-    assert.match("1 of 1 mutants never reported back, 1 of them from a worker it had launched", err)
-    assert.match("lua/mod%.lua:%d+:%d+:swap%-boolean", err)
-  end)
+      assert.is_false(ok)
+      local message = report.error_message(err)
+      assert.match("^the run gave up after %d+%.%ds: 1 of 1 mutants never reported back", message)
+      assert.match("1 of them from a worker it had launched:\n  lua/mod%.lua:%d+:%d+:swap%-boolean", message)
+      assert.no.match("stack traceback", message)
+    end
+  )
 end)

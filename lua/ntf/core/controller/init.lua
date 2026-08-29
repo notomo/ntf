@@ -442,7 +442,7 @@ function M.run(root)
   local ok_run, code = xpcall(tested, debug.traceback)
   if not ok_run then
     io.stdout:flush()
-    io.stderr:write("ntf error: " .. tostring(code) .. "\n")
+    io.stderr:write("ntf error: " .. require("ntf.core.controller.report").error_message(code) .. "\n")
     code = 1
   end
   finish(code)

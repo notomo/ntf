@@ -65,6 +65,27 @@ describe("ntf.core.controller.report.output_block", function()
   end)
 end)
 
+describe("ntf.core.controller.report.reported_error", function()
+  it("carries its message where the traceback handler of a catch-all hands it back undecorated", function()
+    local ok, err = xpcall(function()
+      error(report.reported_error("the run gave up after 1.0s"), 0)
+    end, debug.traceback)
+
+    assert.is_false(ok)
+    assert.equal("the run gave up after 1.0s", report.error_message(err))
+  end)
+end)
+
+describe("ntf.core.controller.report.error_message", function()
+  it("prints a raise that carries no message of its own as it is", function()
+    assert.equal("spec/a_spec.lua:3: boom", report.error_message("spec/a_spec.lua:3: boom"))
+  end)
+
+  it("prints a table raise that names no message as it is, rather than as its own message", function()
+    assert.match("^table: ", report.error_message({ mistaken = "for a reported error" }))
+  end)
+end)
+
 describe("ntf.core.controller.report.build", function()
   it("keeps a name spelled over several lines on the FAIL heading line", function()
     local results = {

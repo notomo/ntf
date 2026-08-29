@@ -81,6 +81,24 @@ function M.load_error_block(load_error, paint)
   }
 end
 
+--- @class NtfReportedError a raise the run means as an outcome, which the launcher prints without the traceback it gives a crash
+--- @field message string what ntf prints after its own name
+
+--- @param message string
+--- @return NtfReportedError
+function M.reported_error(message)
+  return { message = message }
+end
+
+--- @param err any the value a raise carried
+--- @return string # what ntf prints for it
+function M.error_message(err)
+  if type(err) == "table" and type(err.message) == "string" then
+    return err.message
+  end
+  return tostring(err)
+end
+
 --- @return boolean
 function M.resolve_color()
   local ok, handle = pcall(function()

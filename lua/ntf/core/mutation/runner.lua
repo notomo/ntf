@@ -3,7 +3,7 @@ local driver = require("ntf.core.worker.driver")
 local wait = require("ntf.core.worker.wait")
 local verdict = require("ntf.core.mutation.verdict")
 local order = require("ntf.core.mutation.order")
-local locator = require("ntf.core.controller.report").locator
+local report = require("ntf.core.controller.report")
 local relative = require("ntf.core.path").relative
 
 local M = {}
@@ -61,7 +61,7 @@ function M.run(tasks, opts)
     end
 
     local ceiling = trial.item.timeout or opts.timeout
-    state.running[task_index] = locator(relative(task.mutant.path, opts.cwd), task.mutant)
+    state.running[task_index] = report.locator(relative(task.mutant.path, opts.cwd), task.mutant)
     driver.launch(trial.item, {
       root = opts.root,
       cwd = opts.cwd,
@@ -112,7 +112,7 @@ function M.run(tasks, opts)
   -- the tests do, where every result it prints is one a worker really produced.
   local gave_up = wait.settle(state, { budget = opts.budget, total = total, unit = "mutants" })
   if gave_up then
-    error("the run gave up " .. wait.message(gave_up), 0)
+    error(report.reported_error("the run gave up " .. wait.message(gave_up)), 0)
   end
 
   return outcomes
