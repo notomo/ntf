@@ -274,6 +274,9 @@ function M.run(root)
 
   local ok_setup, global_hook = xpcall(function()
     local hook = require("ntf.core.hook").load(opts.global_hook)
+    if type(hook) == "string" then
+      error(hook, 0)
+    end
     hook.setup()
     return hook
   end, debug.traceback)

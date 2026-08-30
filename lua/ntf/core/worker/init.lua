@@ -17,6 +17,9 @@ local function main()
   end
 
   local hook = require("ntf.core.hook").load(payload.test_hook)
+  if type(hook) == "string" then
+    error(hook, 0)
+  end
   hook.setup()
 
   --- @return { message: string, traceback: string? }?

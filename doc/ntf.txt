@@ -103,7 +103,10 @@ test that took the position.
 HOOKS                                                              *ntf-HOOKS*
 
 A hook module returns an optional `setup` and an optional `teardown`. Which
-process runs them, and how often, is what the three flags differ in.
+process runs them, and how often, is what the three flags differ in. A module
+that returns anything else -- the function itself, rather than a table holding
+it -- or that carries a key neither hook is read from, is rejected naming what
+it returned, rather than loading as a hook that does nothing.
 
 --test-hook=FILE                                               *ntf-hook-test*
 

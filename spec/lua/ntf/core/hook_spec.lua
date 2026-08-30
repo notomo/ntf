@@ -47,12 +47,58 @@ describe("ntf.core.hook.load", function()
     assert.equal("setup", vim.g.ntf_hook_spec)
   end)
 
-  it("returns noops when the module does not return a table", function()
-    local path = helper.test_data:create_file("hook.lua", "return 42")
+  it("rejects a module that returns a function rather than a table of hooks", function()
+    local path = helper.test_data:create_file("hook.lua", "return function() end")
 
-    local loaded = hook.load(path)
-    loaded.setup()
-    loaded.teardown()
+    local rejected = hook.load(path)
+
+    assert.match(vim.pesc(path), rejected)
+    assert.match("returns a function", rejected)
+    assert.match("returns a table of hooks", rejected)
+  end)
+
+  it("rejects a module that returns nothing at all", function()
+    local path = helper.test_data:create_file("hook.lua", "local unused = 1")
+
+    local rejected = hook.load(path)
+
+    assert.match("returns a nil", rejected)
+  end)
+
+  it("rejects a module carrying a single key no hook is read from", function()
+    local path = helper.test_data:create_file("hook.lua", "return { setUp = function() end }")
+
+    local rejected = hook.load(path)
+
+    assert.match("returns keys no hook is read from: setUp", rejected)
+  end)
+
+  it("names the keys no hook is read from sorted, not in the order the table hands them back", function()
+    local path = helper.test_data:create_file(
+      "hook.lua",
+      "return { setUp = function() end, tearDown = function() end, beforeAll = function() end }"
+    )
+
+    local rejected = hook.load(path)
+
+    assert.match("returns keys no hook is read from: beforeAll, setUp, tearDown", rejected)
+    assert.match("takes setup and teardown", rejected)
+  end)
+
+  it("rejects a module whose setup is not a function", function()
+    local path = helper.test_data:create_file("hook.lua", "return { setup = 42 }")
+
+    local rejected = hook.load(path)
+
+    assert.match("gives its setup a number", rejected)
+  end)
+
+  it("rejects a module whose teardown is not a function", function()
+    local path = helper.test_data:create_file("hook.lua", "return { teardown = 42 }")
+
+    local rejected = hook.load(path)
+
+    assert.match("gives its teardown a number", rejected)
   end)
 
   it("returns noops when the path is nil or empty", function()
@@ -106,6 +152,14 @@ describe("ntf.core.hook.load_setup", function()
     assert.match("%-%-test%-hook", rejected)
     assert.match("%-%-global%-hook", rejected)
     assert.is_nil(vim.g.ntf_hook_spec)
+  end)
+
+  it("rejects a module that returns no table, before it looks for a teardown", function()
+    local path = helper.test_data:create_file("process_hook.lua", "return function() end")
+
+    local rejected = hook.load_setup(path)
+
+    assert.match("returns a table of hooks", rejected)
   end)
 
   it("returns a noop for a module without a setup, and for no module at all", function()

@@ -620,7 +620,10 @@ test that took the position.]],
         return table.concat({
           [[
 A hook module returns an optional `setup` and an optional `teardown`. Which
-process runs them, and how often, is what the three flags differ in.]],
+process runs them, and how often, is what the three flags differ in. A module
+that returns anything else -- the function itself, rather than a table holding
+it -- or that carries a key neither hook is read from, is rejected naming what
+it returned, rather than loading as a hook that does nothing.]],
           "\n" .. util.help_tagged(ctx, "--test-hook=FILE", "ntf-hook-test"),
           [[
 Loaded in every worker (via `dofile`). Each test runs in its own worker, so the
