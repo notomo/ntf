@@ -2,12 +2,14 @@ local tree = require("ntf.core.tree")
 
 local M = {}
 
+--- @alias NtfResultStatus "passed"|"failed"|"error"|"pending"
+
 --- @class NtfResult
 --- @field id string leaf node id
 --- @field name string? leaf node name
 --- @field names string[] describe/it name chain
 --- @field trace NtfTrace? declaration site
---- @field status "passed"|"failed"|"error"|"pending"
+--- @field status NtfResultStatus
 --- @field message string? failure/error message
 --- @field traceback string? captured traceback (failed/error)
 --- @field duration number? wall time in seconds
@@ -57,6 +59,26 @@ local function too_late(err)
     return TOO_LATE_TO_PEND, nil
   end
   return err.message, err.traceback
+end
+
+--- @type table<string, true> the statuses a report prints the message of, so a raise folded into one is read
+local reported = { failed = true, error = true }
+
+--- @param status NtfResultStatus what the body and the hooks before it decided
+--- @param message string?
+--- @param traceback string?
+--- @param err table what `handler` returned for a raise from an after_each or a finally
+--- @return NtfResultStatus
+--- @return string?
+--- @return string?
+local function with_too_late(status, message, traceback, err)
+  local late_message, late_traceback = too_late(err)
+  if not reported[status] then
+    return "error", late_message, late_traceback
+  end
+  return status,
+    ("%s\nthen raised after the result was decided: %s"):format(message or "", late_message or ""),
+    traceback
 end
 
 local function run_hooks(hooks)
@@ -144,15 +166,13 @@ function M.run(root, selected)
       end
     end)
     local finally_err = run_finallies(finallies)
-    if finally_err and status == "passed" then
-      status = "error"
-      message, traceback = too_late(finally_err)
+    if finally_err then
+      status, message, traceback = with_too_late(status, message, traceback, finally_err)
     end
 
     local after_err = run_hooks(after_chain)
-    if after_err and status == "passed" then
-      status = "error"
-      message, traceback = too_late(after_err)
+    if after_err then
+      status, message, traceback = with_too_late(status, message, traceback, after_err)
     end
 
     result.status = status

@@ -35,7 +35,9 @@ end
 --- Mark a test as pending. As a declaration it records a skipped node; called
 --- from a running test body or from a before_each it aborts the test as
 --- pending. An after_each or a finally runs once the result is decided, so
---- calling it there is an error instead.
+--- calling it there never skips the test: the run reports it as an error
+--- against whatever result the test already reached, as it does any other raise
+--- from those two.
 --- @param name string: pending reason
 --- @param fn fun()?: optional body (ignored; pending is never executed)
 function M.pending(name, fn)
