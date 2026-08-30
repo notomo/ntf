@@ -201,6 +201,31 @@ describe("ntf.core.mutation.config.load", function()
 
     assert.match("exclude_spec%[2%] needs a string rationale", config.load(file))
   end)
+
+  it("rejects a key no run reads, which a write would otherwise drop without a word", function()
+    local file = create_file({ version = 1, note = "kept for the next reviewer" })
+
+    assert.match("spells keys no run reads: note", config.load(file))
+  end)
+
+  it("rejects a misspelled section name, whose entries would otherwise be left out of every run", function()
+    local file = create_file({ version = 1, excludes = { exclude_entry() } })
+
+    assert.match("spells keys no run reads: excludes", config.load(file))
+  end)
+
+  it("rejects a baseline entry field no run reads", function()
+    local file =
+      create_file({ version = 1, baseline = { baseline_entry(), baseline_entry({ reviewed_by = "someone" }) } })
+
+    assert.match("baseline%[2%] spells fields no run reads: reviewed_by", config.load(file))
+  end)
+
+  it("rejects an exclude entry field no run reads", function()
+    local file = create_file({ version = 1, exclude = { exclude_entry({ note = "why" }) } })
+
+    assert.match("exclude%[1%] spells fields no run reads: note", config.load(file))
+  end)
 end)
 
 describe("ntf.core.mutation.config.format", function()

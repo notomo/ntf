@@ -576,6 +576,15 @@
       "replacement": "false",
       "line": "  local src_lines = vim.split(src, \"\\n\", { plain = true })",
       "rationale": "the separator is a lone newline, which is the same string read as a Lua pattern as read plainly, so both ways of splitting cut the source at the same places"
+    },
+    {
+      "path": "lua/ntf/core/mutation/config.lua",
+      "col": 3,
+      "operator": "drop-call",
+      "original": "table.sort(names)",
+      "replacement": "do end",
+      "line": "  table.sort(names)",
+      "rationale": "the names come out of a Lua table's key iteration, an order the runtime leaves undefined and does not repeat between processes, so the message a dropped sort produces is in no order a test can assert; the sort only settles what the message already names"
     }
   ],
   "exclude": [

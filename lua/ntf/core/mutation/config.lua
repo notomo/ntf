@@ -10,6 +10,55 @@ local VERSION = 1
 --- @field exclude NtfMutationExcludeEntry[] paths whose mutants the run leaves out, whole or by operator
 --- @field exclude_spec NtfMutationExcludeEntry[] spec paths the run still runs, but never picks as a mutant's trial
 
+--- @type { key: string, fields: string[], to_document: (fun(entry: table): table)? }[] the sections in the order the document carries them, each with the fields its entries are read and written from, in the order they spell them, and what a run's entry has to be taken back to to be written
+M.sections = {
+  {
+    key = "baseline",
+    fields = { "path", "row", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
+    to_document = function(entry)
+      return require("ntf.core.mutation.baseline").to_document(entry)
+    end,
+  },
+  { key = "exclude", fields = { "path", "operators", "rationale" } },
+  { key = "exclude_spec", fields = { "path", "rationale" } },
+}
+
+--- @type string[] what the document carries outside its sections
+local TOP_LEVEL_FIELDS = vim.list_extend(
+  { "version", "operators" },
+  vim.tbl_map(function(section)
+    return section.key
+  end, M.sections)
+)
+
+--- @type table<string, string[]> what each section's entries are spelled from, keyed by the section's name
+local SECTION_FIELDS = {}
+for _, section in ipairs(M.sections) do
+  SECTION_FIELDS[section.key] = section.fields
+end
+
+--- @param subject table<string, any>
+--- @param fields string[] what the schema spells the subject from
+--- @param noun string what the names it carries are called in a message
+--- @return string? # what the subject spells that no run reads
+local function unread_names(subject, fields, noun)
+  local known = {}
+  for _, field in ipairs(fields) do
+    known[field] = true
+  end
+  local names = {}
+  for name in pairs(subject) do
+    if not known[name] then
+      table.insert(names, name)
+    end
+  end
+  if #names == 0 then
+    return nil
+  end
+  table.sort(names)
+  return ("spells %s no run reads: %s"):format(noun, table.concat(names, ", "))
+end
+
 --- @param decoded table
 --- @param key string name of the section in the document
 --- @param validate fun(entry: any): string? what is wrong with one of its entries
@@ -23,7 +72,7 @@ local function load_section(decoded, key, validate)
     return ("%s is not an array"):format(key)
   end
   for index, entry in ipairs(entries) do
-    local err = validate(entry)
+    local err = validate(entry) or unread_names(entry, SECTION_FIELDS[key], "fields")
     if err then
       return ("%s[%d] %s"):format(key, index, err)
     end
@@ -51,6 +100,11 @@ function M.load(path)
   end
   if type(decoded) ~= "table" or decoded.version ~= VERSION then
     return invalid(("expected version %d"):format(VERSION))
+  end
+
+  local unread = unread_names(decoded, TOP_LEVEL_FIELDS, "keys")
+  if unread then
+    return invalid(unread)
   end
 
   local selection_err = require("ntf.core.mutation.operators").validate_selection(
@@ -81,19 +135,6 @@ function M.load(path)
 end
 
 local INDENT = "  "
-
---- @type { key: string, fields: string[], to_document: (fun(entry: table): table)? }[] the sections in the order the document carries them, each with the order its entries spell their fields in and what a run's entry has to be taken back to to be written
-M.sections = {
-  {
-    key = "baseline",
-    fields = { "path", "row", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
-    to_document = function(entry)
-      return require("ntf.core.mutation.baseline").to_document(entry)
-    end,
-  },
-  { key = "exclude", fields = { "path", "operators", "rationale" } },
-  { key = "exclude_spec", fields = { "path", "rationale" } },
-}
 
 --- @param value string|number|string[]
 --- @param indent string what the line the value starts on is indented by

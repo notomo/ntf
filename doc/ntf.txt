@@ -522,6 +522,12 @@ operators it holds its tests to:
 - A name no operator answers to is rejected before the tests run: a set that
   runs less than it says is the one mistake this file must not keep to itself.
 
+Nothing outside those sections is read, so nothing outside them is kept: a key
+none of them names — a misspelled `excludes`, say — is rejected before the
+tests run, rather than being applied by nothing and then dropped the next time
+`baseline add` writes the file. An entry is held to its own fields the same
+way.
+
 The other two sections are |ntf-MUTATION-BASELINE| and |ntf-MUTATION-EXCLUDE|.
 
 ==============================================================================
