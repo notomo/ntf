@@ -438,33 +438,6 @@
     },
     {
       "path": "lua/ntf/core/controller/report.lua",
-      "col": 44,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "    local drop = line:find(\"/lua/ntf/\", 1, true)",
-      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
-      "col": 47,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "      or line:find(\"in function 'xpcall'\", 1, true)",
-      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
-      "col": 46,
-      "operator": "swap-boolean",
-      "original": "true",
-      "replacement": "false",
-      "line": "      or line:find(\"in function 'error'\", 1, true)",
-      "rationale": "the needle holds no pattern-magic character, so plain and pattern find agree"
-    },
-    {
-      "path": "lua/ntf/core/controller/report.lua",
       "col": 55,
       "operator": "swap-boolean",
       "original": "true",

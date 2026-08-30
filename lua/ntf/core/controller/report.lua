@@ -43,13 +43,30 @@ local function full_name(result)
   return tree.full_name(result.names or { result.name })
 end
 
+--- @type string[] substrings of a frame the run itself put on the stack, rather than one the test wrote
+local own_frames = {
+  "/lua/ntf/",
+  "in function 'xpcall'",
+  "in function 'error'",
+  "in function 'luafile'",
+  '[string ":lua"]',
+}
+
+--- @param line string
+--- @return boolean
+local function is_own_frame(line)
+  for _, frame in ipairs(own_frames) do
+    if line:find(frame, 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
 local function clean_traceback(traceback)
   local kept = {}
   for _, line in ipairs(vim.split(traceback or "", "\n", { plain = true })) do
-    local drop = line:find("/lua/ntf/", 1, true)
-      or line:find("in function 'xpcall'", 1, true)
-      or line:find("in function 'error'", 1, true)
-    if not drop then
+    if not is_own_frame(line) then
       table.insert(kept, line)
     end
   end

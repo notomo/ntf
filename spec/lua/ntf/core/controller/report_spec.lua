@@ -283,6 +283,24 @@ describe("ntf.core.controller.report.build", function()
     assert.no.match("xpcall", text)
   end)
 
+  it("drops the frames the worker launcher leaves under the test's own", function()
+    local traceback = table.concat({
+      "stack traceback:",
+      "\tspec/math_spec.lua:12: in function <spec/math_spec.lua:11>",
+      "\t[C]: in function 'luafile'",
+      '\t[string ":lua"]:1: in main chunk',
+    }, "\n")
+    local results = {
+      { status = "failed", names = { "math" }, message = "boom", traceback = traceback },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.match("spec/math_spec.lua:12", text)
+    assert.no.match("luafile", text)
+    assert.no.match("in main chunk", text)
+  end)
+
   it("drops an ntf, xpcall or error frame that starts at the line's very first byte", function()
     local traceback = table.concat({
       "stack traceback:",
