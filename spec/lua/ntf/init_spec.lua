@@ -58,6 +58,9 @@ local describe, it, pending = ntf.describe, ntf.it, ntf.pending
 describe("group", function()
   it("passes", function() end)
   pending("not yet")
+  it("stops early", function()
+    return pending("the fixture is not available here")
+  end)
 end)
 ]]
 
@@ -131,12 +134,21 @@ describe("bin/ntf end-to-end", function()
     assert.match("boom", obj.stdout)
   end)
 
-  it("exits 0 and counts pending declarations", function()
+  it("exits 0 and counts the pending tests", function()
     local path = spec("pending_spec.lua", PENDING)
     local obj = run({ path })
 
     assert.equal(0, obj.code)
-    assert.match("1 pending", obj.stdout)
+    assert.match("2 pending", obj.stdout)
+  end)
+
+  it("lists each pending test with the reason a running one pended with", function()
+    local path = spec("pending_spec.lua", PENDING)
+    local obj = run({ path })
+
+    assert.match("PENDING .*pending_spec%.lua:6 group not yet", obj.stdout)
+    assert.match("PENDING .*pending_spec%.lua:7 group stops early", obj.stdout)
+    assert.match("\n    the fixture is not available here\n", obj.stdout)
   end)
 
   it("runs only leaves matching --filter", function()

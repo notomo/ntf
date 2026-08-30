@@ -192,6 +192,95 @@ describe("ntf.core.controller.report.build", function()
     assert.equal(1, code)
   end)
 
+  it("renders a declared pending as one PENDING line, its reason being the name it carries", function()
+    local results = {
+      {
+        status = "pending",
+        names = { "walk", "not implemented yet" },
+        trace = { source = "@spec/walk_spec.lua", line = 62 },
+      },
+    }
+
+    local text, code = report.build(results, {}, { color = false })
+
+    assert.equal(
+      table.concat({
+        "PENDING spec/walk_spec.lua:62 walk not implemented yet",
+        "",
+        "1 tests: 0 passed  1 pending",
+        "",
+      }, "\n"),
+      text
+    )
+    assert.equal(0, code)
+  end)
+
+  it("prints the reason a running test pended with, which its name does not carry", function()
+    local results = {
+      {
+        status = "pending",
+        names = { "walk", "follows a symlink" },
+        message = "a symlink needs a privileged account on windows",
+        trace = { source = "@spec/walk_spec.lua", line = 62 },
+      },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.equal(
+      table.concat({
+        "PENDING spec/walk_spec.lua:62 walk follows a symlink",
+        "    a symlink needs a privileged account on windows",
+        "",
+        "1 tests: 0 passed  1 pending",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("lists the pending tests below the failures, so what has to be acted on is read first", function()
+    local results = {
+      { status = "pending", names = { "group", "skipped" }, trace = { source = "@spec/a_spec.lua", line = 9 } },
+      {
+        status = "failed",
+        names = { "group", "broken" },
+        message = "nope",
+        trace = { source = "@spec/a_spec.lua", line = 4 },
+      },
+    }
+
+    local text = report.build(results, {}, { color = false })
+
+    assert.equal(
+      table.concat({
+        "FAIL group broken",
+        "  spec/a_spec.lua:4",
+        "    nope",
+        "",
+        "PENDING spec/a_spec.lua:9 group skipped",
+        "",
+        "2 tests: 0 passed  1 failed  1 pending",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("paints a PENDING line yellow, dim at its source and bold at its name", function()
+    local results = {
+      { status = "pending", names = { "skipped" }, trace = { source = "@spec/a_spec.lua", line = 9 } },
+    }
+
+    local text = report.build(results, {}, { color = true })
+
+    local yellow, dim, bold, reset = "\27[33m", "\27[90m", "\27[1m", "\27[0m"
+    assert.match(
+      vim.pesc(("%sPENDING%s %sspec/a_spec.lua:9%s %sskipped%s"):format(yellow, reset, dim, reset, bold, reset)),
+      text
+    )
+  end)
+
   it("renders a problem that carries no message without a blank message line", function()
     local results = {
       { status = "error", names = { "broken" }, trace = { source = "@spec/x_spec.lua", line = 3 } },

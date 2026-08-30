@@ -231,11 +231,14 @@ function M.build(results, load_errors, opts)
 
   local counts = { passed = 0, failed = 0, error = 0, pending = 0 }
   local problems = {}
+  local pendings = {}
 
   for _, result in ipairs(results) do
     counts[result.status] = (counts[result.status] or 0) + 1
     if result.status == "failed" or result.status == "error" then
       table.insert(problems, result)
+    elseif result.status == "pending" then
+      table.insert(pendings, result)
     end
   end
 
@@ -256,6 +259,23 @@ function M.build(results, load_errors, opts)
     if traceback then
       table.insert(lines, paint("dim", indent(traceback:gsub("^\n", ""), "    ")))
     end
+    table.insert(lines, "")
+  end
+
+  for _, result in ipairs(pendings) do
+    table.insert(
+      lines,
+      ("%s %s %s"):format(
+        paint("yellow", "PENDING"),
+        paint("dim", rel_source(result.trace)),
+        paint("bold", full_name(result))
+      )
+    )
+    if result.message then
+      table.insert(lines, indent(result.message, "    "))
+    end
+  end
+  if #pendings > 0 then
     table.insert(lines, "")
   end
 

@@ -352,7 +352,7 @@ end)
     assert.match("finally blew up", results[1].message)
   end)
 
-  it("reports a pending test whose finally errored as an error, since a pending message is never printed", function()
+  it("reports a pending test whose finally errored as an error, since a pending leaves the run green", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")
 ntf.it("pends", function()

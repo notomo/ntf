@@ -61,8 +61,8 @@ local function too_late(err)
   return err.message, err.traceback
 end
 
---- @type table<string, true> the statuses a report prints the message of, so a raise folded into one is read
-local reported = { failed = true, error = true }
+--- @type table<string, true> the statuses that already fail the run, so a raise folded into one still reaches the exit code
+local failing = { failed = true, error = true }
 
 --- @param status NtfResultStatus what the body and the hooks before it decided
 --- @param message string?
@@ -73,7 +73,7 @@ local reported = { failed = true, error = true }
 --- @return string?
 local function with_too_late(status, message, traceback, err)
   local late_message, late_traceback = too_late(err)
-  if not reported[status] then
+  if not failing[status] then
     return "error", late_message, late_traceback
   end
   return status,
