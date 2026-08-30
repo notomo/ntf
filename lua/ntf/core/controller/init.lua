@@ -334,7 +334,6 @@ function M.run(root)
 
       return #load_errors > 0 and 1 or 0
     end
-    local planned_items = items
 
     local whole_suite = not opts.filter and require("ntf.core.controller.discover").holds_every_spec(files)
 
@@ -355,6 +354,7 @@ function M.run(root)
 
     local report = require("ntf.core.controller.report")
     local color = report.resolve_color()
+    local run_stream = mode.list and io.stderr or io.stdout
 
     local cwd = vim.fn.getcwd()
     local collector = require("ntf.core.coverage.collector")
@@ -377,13 +377,13 @@ function M.run(root)
       coverage_excludes = coverage_excludes,
       on_item = prog and prog.on_item or nil,
       on_item_coverage = mode.mutation and coverage_map.add or nil,
-      on_output = not mode.list and function(out)
+      on_output = function(out)
         if prog then
           prog.newline()
         end
-        io.stdout:write(report.output_block(out, color))
-        io.stdout:flush()
-      end or nil,
+        run_stream:write(report.output_block(out, color))
+        run_stream:flush()
+      end,
     })
     if prog then
       prog.finish()
@@ -393,8 +393,8 @@ function M.run(root)
 
     local text, code = report.build(results, load_errors, { color = color, gave_up = gave_up })
     if not mode.list then
-      io.stdout:write(text)
-      io.stdout:write("\n" .. report.timing(results, timing))
+      run_stream:write(text)
+      run_stream:write("\n" .. report.timing(results, timing))
     end
 
     if opts.coverage then
@@ -409,9 +409,9 @@ function M.run(root)
     if mode.mutation then
       if code ~= 0 then
         if mode.list then
-          io.stdout:write(text)
+          run_stream:write(text)
         end
-        io.stdout:flush()
+        run_stream:flush()
         io.stderr:write(
           ("mutation %s skipped: %s\n"):format(
             mode.list and "list" or "run",
@@ -436,10 +436,7 @@ function M.run(root)
         if #mutants == 0 then
           return no_mutant_found(opts.mutation_target, cwd, left_out)
         end
-        local tests_text = list.tests(planned_items)
-        local mutants_text = list.mutants(mutants)
-        local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
-        io.stdout:write(tests_text .. separator .. mutants_text)
+        io.stdout:write(list.mutants(mutants))
         io.stdout:write(require("ntf.core.mutation.report").stale(staleness, { color = color }))
         code = stale_gate(staleness)
       else

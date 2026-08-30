@@ -2239,19 +2239,30 @@ describe("ntf list", function()
     assert.no.match("LOAD ERROR", obj.stdout)
   end)
 
-  it("runs the tests and lists the mutants with their coverage", function()
+  it("runs the tests and lists the mutants alone, leaving the test list to `ntf list`", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
 
     local obj = helper.run_cli({ "mutation", "list", "spec" }, root)
 
     assert.equal(0, obj.code)
-    assert.match("spec/mod_spec%.lua:%d+ mod detects positives at the boundary\n", obj.stdout)
     assert.match("lua/mod%.lua:6:%d+:swap%-relational < %-> <= %(covered by 1 test%)\n", obj.stdout)
     assert.match("lua/dead%.lua:%d+:%d+:[%w-]+ .* %(no coverage%)\n", obj.stdout)
+    assert.no.match("mod detects positives at the boundary", obj.stdout)
     assert.no.match("Mutation:", obj.stdout)
     assert.no.match("passed", obj.stdout)
     assert.equal(0, vim.fn.filereadable(results_file))
+  end)
+
+  it("writes what a test printed to stderr, keeping stdout to the mutant list", function()
+    local root = mutation_project()
+    helper.test_data:create_file("spec/noisy_spec.lua", NOISY)
+
+    local obj = helper.run_cli({ "mutation", "list", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("from print", obj.stderr)
+    assert.no.match("from print", obj.stdout)
   end)
 
   it("exits 2 when the mutant list would hold nothing under --target", function()
@@ -2294,7 +2305,7 @@ describe("ntf list", function()
     assert.no.match("no mutant found", obj.stderr)
   end)
 
-  it("skips the mutant list when the tests fail", function()
+  it("skips the mutant list when the tests fail, reporting the failure on stderr", function()
     local root, results_file = mutation_project()
     helper.test_data:create_file("spec/fail_spec.lua", FAILING)
 
@@ -2302,7 +2313,8 @@ describe("ntf list", function()
 
     assert.equal(1, obj.code)
     assert.match("mutation list skipped", obj.stderr)
-    assert.match("FAIL", obj.stdout)
+    assert.match("FAIL", obj.stderr)
+    assert.equal("", obj.stdout)
     assert.equal(0, vim.fn.filereadable(results_file))
   end)
 
