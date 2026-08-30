@@ -1606,6 +1606,31 @@ describe("ntf mutation", function()
     assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
   end)
 
+  it("writes an entry no test reaches with --uncovered, which verify then stands behind", function()
+    local root = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file("mutation.json", '{\n  "version": 1,\n  "operators": "all"\n}\n')
+
+    local added = helper.run_cli({
+      "mutation",
+      "baseline",
+      "add",
+      "--config=mutation.json",
+      "--mutant=lua/dead.lua:3:12:swap-relational",
+      "--rationale=no test reaches this file at all",
+      "--uncovered",
+    }, root)
+
+    assert.equal(0, added.code)
+    local config = vim.json.decode(table.concat(vim.fn.readfile(helper.test_data:path("mutation.json")), "\n"))
+    assert.is_true(config.baseline[1].uncovered)
+
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("Baseline: 0/1 entries re%-run, 1 uncovered", obj.stdout)
+  end)
+
   it("exits non-zero when the baseline it would add the entry to already carries it", function()
     local root = mutation_project()
     helper.test_data:create_file("mutation.json", '{\n  "version": 1,\n  "operators": "all"\n}\n')
@@ -1623,6 +1648,128 @@ describe("ntf mutation", function()
 
     assert.equal(2, obj.code)
     assert.match("already in the baseline: lua/mod%.lua swap%-relational < %-> <=", obj.stderr)
+  end)
+
+  it("exits non-zero when a --config baseline entry no test reaches claims nothing about it", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/dead.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "no test here tells the boundary apart",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("UNCOVERED BASELINE lua/dead%.lua swap%-relational: > %-> >= is reached by no test", obj.stdout)
+    assert.match("mutation gate failed: 1 baseline entry reached by no test", obj.stderr)
+  end)
+
+  it("stands behind a --config baseline entry that takes itself as uncovered", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/dead.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "no test reaches this file at all",
+            uncovered = true,
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("UNCOVERED BASELINE", obj.stdout)
+    assert.no.match("COVERED BASELINE", obj.stdout)
+  end)
+
+  it("exits non-zero when a --config baseline entry taken as uncovered is reached by a test", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "stale: a test reaches this line now",
+            uncovered = true,
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "--config=mutation.json", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("COVERED BASELINE lua/mod%.lua swap%-relational: < %-> <= is reached by a test now", obj.stdout)
+    assert.match("mutation gate failed: 1 uncovered baseline entry reached by a test", obj.stderr)
+  end)
+
+  it("leaves a baseline entry unjudged for coverage where the run took part of the suite", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/other_spec.lua", MUTATION_SPEC)
+    helper.test_data:create_file("lua/dead.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/dead.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "no test of this run reaches the file",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--config=mutation.json",
+      "--results=" .. results_file,
+      "spec/mod_spec.lua",
+    }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("UNCOVERED BASELINE", obj.stdout)
   end)
 
   it("exits non-zero when a --config baseline entry matches nothing", function()

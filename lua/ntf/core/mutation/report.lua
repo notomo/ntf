@@ -21,6 +21,8 @@ M.entry_labels = {
   unused_exclude = "UNUSED EXCLUDE",
   unused_exclude_spec = "UNUSED EXCLUDE SPEC",
   unpinned = "UNPINNED BASELINE",
+  uncovered = "UNCOVERED BASELINE",
+  covered = "COVERED BASELINE",
   lost = "LOST BASELINE",
   ambiguous = "AMBIGUOUS BASELINE",
 }
@@ -48,9 +50,17 @@ function M.summary(summary, cwd, opts)
 
   local lines = {}
   if summary.verified then
+    local uncovered = ""
+    if summary.baseline_uncovered > 0 then
+      uncovered = (", %d uncovered"):format(summary.baseline_uncovered)
+    end
     table.insert(
       lines,
-      ("Baseline: %d/%d entries re-run"):format(summary.verified, counts.equivalent + counts.baseline_killable)
+      ("Baseline: %d/%d entries re-run%s"):format(
+        summary.verified,
+        counts.equivalent + counts.baseline_killable,
+        uncovered
+      )
     )
   else
     if summary.score then
@@ -125,6 +135,32 @@ function M.stale(staleness, opts)
         oneline(entry.original),
         oneline(entry.replacement),
         entry.invariant_spec
+      )
+    )
+  end
+
+  for _, entry in ipairs(staleness.uncovered or {}) do
+    table.insert(
+      lines,
+      ("%s %s %s: %s -> %s is reached by no test; reach it with a spec, or take it as uncovered"):format(
+        paint("red", M.entry_labels.uncovered),
+        entry.path,
+        entry.operator,
+        oneline(entry.original),
+        oneline(entry.replacement)
+      )
+    )
+  end
+
+  for _, entry in ipairs(staleness.covered or {}) do
+    table.insert(
+      lines,
+      ("%s %s %s: %s -> %s is reached by a test now; drop its uncovered"):format(
+        paint("red", M.entry_labels.covered),
+        entry.path,
+        entry.operator,
+        oneline(entry.original),
+        oneline(entry.replacement)
       )
     )
   end

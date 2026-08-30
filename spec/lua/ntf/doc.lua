@@ -468,6 +468,11 @@ local baseline_fields = enumeration({
     { label = "line", description = "the text of the line, matched instead of a row" },
     { label = "rationale", description = "why no test can detect it (required)" },
     { label = "invariant_spec", description = "full name of the test the rationale rests on" },
+    {
+      label = "uncovered",
+      description = "true where no test reaches it, so nothing re-runs it",
+      absent = true,
+    },
   },
 })
 
@@ -513,6 +518,8 @@ local report_labels = enumeration({
     { label = "LOST BASELINE", description = "a baseline entry whose `line` is no longer there" },
     { label = "AMBIGUOUS BASELINE", description = "its content names two mutants and it carries no `row`" },
     { label = "UNPINNED BASELINE", description = "its `invariant_spec` names no test that passed" },
+    { label = "UNCOVERED BASELINE", description = "no test reaches it and it carries no `uncovered`" },
+    { label = "COVERED BASELINE", description = "it carries `uncovered`, but a test reaches it" },
     { label = "UNUSED EXCLUDE", description = "an `exclude` entry covering no measurable file" },
     { label = "UNUSED EXCLUDE SPEC", description = "an `exclude_spec` entry covering no spec file" },
   },
@@ -931,6 +938,22 @@ scoring run, verifying the entries in the same pass that scores the rest, so a
 gate that wants both answers pays for one run of the suite instead of two:]],
           util.help_code_block(mutation_verify_baseline_with_score_command, { language = "sh" }),
           [[
+An entry is re-run by the tests that reach its mutant, so one no test reaches
+has nothing to re-run and would otherwise pass by saying nothing at all. Such
+an entry makes the second claim itself: `uncovered`, which
+`ntf mutation baseline add --uncovered` writes, says no test runs the line —
+a different statement from the rest of the baseline's "the tests cannot tell the
+difference". Both halves are held to the suite, and both fail the run:
+UNCOVERED BASELINE, once an entry without the mark is reached by no test, and
+COVERED BASELINE, once an entry carrying it is reached by one, which leaves the
+mark something to be verified by after all. Reaching the mutant with a spec is
+still what a NO COVERAGE mutant asks for; the mark is for the line a spec
+cannot reach. Only the whole suite can say that nothing reaches a mutant, so
+UNCOVERED BASELINE is answered for only where the run takes every test the
+project has, while a test that does reach one says so however few were
+selected. Verify's own line counts the entries it stood behind apart from the
+ones it re-ran.
+
 Two report lines answer for an entry that has gone stale, and both fail the
 run: LOST BASELINE, once the `line` it marks is no longer there, and UNPINNED
 BASELINE, once no test named by `invariant_spec` passes. A rationale usually

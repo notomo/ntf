@@ -28,6 +28,7 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @field mutation_replacement string? what the mutant puts in place of the original, naming one of several mutants a position holds
 --- @field mutation_rationale string? why no test can detect the mutant the entry is written for
 --- @field mutation_invariant_spec string? full name of the test that fails once that rationale stops holding
+--- @field mutation_uncovered boolean write the entry as one no test reaches, which is what leaves a verifying run nothing to re-run for it
 --- @field help boolean show usage and exit
 
 --- @class NtfFlag
@@ -280,6 +281,15 @@ local invariant_spec = {
 }
 
 --- @type NtfFlag
+local uncovered = {
+  name = "--uncovered",
+  description = "write the entry as one no test reaches, so a verifying run stands behind it instead of re-running it; the run fails once a test does reach it",
+  set = function(opts)
+    opts.mutation_uncovered = true
+  end,
+}
+
+--- @type NtfFlag
 local help = {
   name = "--help",
   aliases = { "-h" },
@@ -378,7 +388,7 @@ local mutation_baseline_add_command = {
   name = "add",
   description = "write the entry for one mutant into the baseline, leaving the tests unrun",
   id = "mutation.baseline.add",
-  flags = command_flags({ written_config, mutant, replacement, rationale, invariant_spec }),
+  flags = command_flags({ written_config, mutant, replacement, rationale, invariant_spec, uncovered }),
   validate = function(opts)
     if not opts.mutation_config then
       return "baseline add requires --config, which is the file the entry is written into"
@@ -636,6 +646,7 @@ function M.parse(argv)
     mutation_replacement = nil,
     mutation_rationale = nil,
     mutation_invariant_spec = nil,
+    mutation_uncovered = false,
     help = false,
   }
   for key, value in pairs(command.defaults or {}) do

@@ -14,7 +14,18 @@ local VERSION = 1
 M.sections = {
   {
     key = "baseline",
-    fields = { "path", "row", "col", "operator", "original", "replacement", "line", "rationale", "invariant_spec" },
+    fields = {
+      "path",
+      "row",
+      "col",
+      "operator",
+      "original",
+      "replacement",
+      "line",
+      "rationale",
+      "invariant_spec",
+      "uncovered",
+    },
     to_document = function(entry)
       return require("ntf.core.mutation.baseline").to_document(entry)
     end,

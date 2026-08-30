@@ -21,6 +21,8 @@ local M = {}
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field ambiguous NtfMutationBaselineAmbiguity[] positions whose content named more than one mutant, with no row to tell them apart
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed; none where the run took part of the suite, which cannot tell a name that is gone from one it never selected
+--- @field uncovered NtfMutationBaselineEntry[] baseline entries no test reaches, carrying no `uncovered` to say so; none where the run took part of the suite, whose coverage is not the suite's
+--- @field covered NtfMutationBaselineEntry[] baseline entries carrying `uncovered` that a test does reach, told from any run, since a test that reaches one is reached however few were selected
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
 
@@ -30,6 +32,7 @@ local M = {}
 --- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
 --- @field score number? percent detected; nil when nothing was scoreable
 --- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
+--- @field baseline_uncovered integer baseline entries whose `uncovered` the run stood behind, which is what the rest of the entries were not re-run for
 
 --- @param file string absolute path
 --- @return string?
@@ -159,12 +162,15 @@ end
 --- @param matcher NtfMutationBaselineMatcher every mutant of the enumeration has been offered to it
 --- @param judged table<string, true> the relative paths the enumeration reached
 --- @param unused_excludes NtfMutationExcludeEntry[] exclude entries covering none of the measurable files
+--- @param claims NtfMutationBaselineClaims every paired mutant has been recorded with its coverage
 --- @return NtfMutationStaleness
-local function staleness_of(ctx, matcher, judged, unused_excludes)
+local function staleness_of(ctx, matcher, judged, unused_excludes, claims)
   return {
     lost = matcher.lost(judged),
     ambiguous = matcher.ambiguous(),
     unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results, ctx.whole_suite),
+    uncovered = ctx.whole_suite and claims.uncovered() or {},
+    covered = claims.covered(),
     unused_excludes = unused_excludes,
     unused_spec_excludes = ctx.unused_spec_excludes or {},
   }
@@ -177,6 +183,7 @@ function M.run(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local durations = baseline_durations(ctx.baseline_results)
   local matcher = baseline.matcher(ctx.baseline or {})
+  local claims = baseline.claims()
 
   --- @type NtfMutationRecord[]
   local records = {}
@@ -193,16 +200,16 @@ function M.run(opts, ctx)
   for _, entry in ipairs(mutant_entries) do
     local mutant = entry.mutant
 
-    if matcher.match(entry.relative_path, entry.line_text, mutant) then
+    local matched = matcher.match(entry.relative_path, entry.line_text, mutant)
+    if matched then
       table.insert(records, { mutant = mutant, status = "equivalent" })
 
-      if opts.mutation_verify_baseline then
-        local trials = covering_trials(ctx, durations, mutant)
-        if #trials > 0 then
-          table.insert(tasks, { mutant = mutant, trials = trials, confirm_kill = true })
-          table.insert(task_records, #records)
-          table.insert(task_verify, true)
-        end
+      local trials = covering_trials(ctx, durations, mutant)
+      claims.record(matched, #trials > 0)
+      if opts.mutation_verify_baseline and #trials > 0 then
+        table.insert(tasks, { mutant = mutant, trials = trials, confirm_kill = true })
+        table.insert(task_records, #records)
+        table.insert(task_verify, true)
       end
     elseif not opts.mutation_verify_baseline_only then
       table.insert(records, { mutant = mutant, status = "no_coverage" })
@@ -263,12 +270,13 @@ function M.run(opts, ctx)
     counts[record.status] = counts[record.status] + 1
   end
 
-  return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes), {
+  return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes, claims), {
     records = records,
     counts = counts,
     excluded_files = excluded_files,
     score = score_of(counts),
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
+    baseline_uncovered = claims.acknowledged(),
   })
 end
 
@@ -286,6 +294,7 @@ end
 function M.list(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
+  local claims = baseline.claims()
 
   local entries, unused_excludes, excluded, unadopted, judged, excluded_files = enumerate_mutants(
     cwd,
@@ -296,14 +305,19 @@ function M.list(opts, ctx)
   )
   local listed = vim.tbl_map(function(entry)
     local mutant = entry.mutant
+    local covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant))
+    local matched = matcher.match(entry.relative_path, entry.line_text, mutant)
+    if matched then
+      claims.record(matched, covered_count > 0)
+    end
     return {
       mutant = mutant,
       relative_path = entry.relative_path,
-      covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
-      equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
+      covered_count = covered_count,
+      equivalent = matched,
     }
   end, entries)
-  return listed, excluded + unadopted + excluded_files, staleness_of(ctx, matcher, judged, unused_excludes)
+  return listed, excluded + unadopted + excluded_files, staleness_of(ctx, matcher, judged, unused_excludes, claims)
 end
 
 return M

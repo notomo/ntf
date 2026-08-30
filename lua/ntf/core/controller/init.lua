@@ -24,6 +24,7 @@ local function add_baseline(opts, config)
     replacement = opts.mutation_replacement,
     rationale = assert(opts.mutation_rationale),
     invariant_spec = opts.mutation_invariant_spec,
+    uncovered = opts.mutation_uncovered or nil,
   }, vim.fn.getcwd())
   if type(entry) == "string" then
     io.stderr:write(entry .. "\n")
@@ -126,6 +127,26 @@ local function stale_gate(staleness)
     )
     code = 1
   end
+  if #staleness.uncovered > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d baseline entr%s reached by no test\n"):format(
+        #staleness.uncovered,
+        #staleness.uncovered == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  if #staleness.covered > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d uncovered baseline entr%s reached by a test\n"):format(
+        #staleness.covered,
+        #staleness.covered == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
   return code
 end
 
@@ -169,7 +190,7 @@ function M.mutate(opts, ctx)
   )
 
   if opts.mutation_verify_baseline_only then
-    local listed = #(ctx.baseline or {})
+    local listed = #(ctx.baseline or {}) - summary.baseline_uncovered
     if listed > 0 and summary.verified == 0 then
       io.stdout:flush()
       io.stderr:write(

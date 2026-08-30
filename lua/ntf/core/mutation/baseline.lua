@@ -17,6 +17,7 @@ local M = {}
 --- @field line string exact text of the mutant's start line
 --- @field rationale string why no test can detect the mutant
 --- @field invariant_spec string? full name of the test that fails once the rationale stops holding
+--- @field uncovered true? what the entry claims when no test reaches the mutant, which is what leaves a verifying run nothing to re-run for it
 
 --- @param entry NtfMutationBaselineEntry as the document spells it, its col 1-based like the one a report prints
 --- @return NtfMutationBaselineEntry # the entry a run matches against sites, its col 0-based like a site's
@@ -79,6 +80,9 @@ function M.validate(entry)
       return "needs a non-empty string invariant_spec, or none at all"
     end
   end
+  if entry.uncovered ~= nil and entry.uncovered ~= true then
+    return "needs an uncovered of true, or none at all"
+  end
   return nil
 end
 
@@ -103,6 +107,7 @@ end
 --- @field replacement string? what it puts in place of the original, naming one of several mutants the position holds
 --- @field rationale string why no test can detect it
 --- @field invariant_spec string? full name of the test that fails once the rationale stops holding
+--- @field uncovered true? claims no test reaches it
 
 --- @param relative string working-directory-relative path every site is in
 --- @param sites NtfMutantSite[]
@@ -179,6 +184,7 @@ function M.build(request, cwd)
     line = line,
     rationale = request.rationale,
     invariant_spec = request.invariant_spec,
+    uncovered = request.uncovered,
   }
   local err = M.validate(entry)
   if err then
@@ -240,6 +246,46 @@ function M.unpinned(entries, results, whole_suite)
   return vim.tbl_filter(function(entry)
     return entry.invariant_spec ~= nil and not passed[entry.invariant_spec]
   end, entries)
+end
+
+--- @class NtfMutationBaselineClaims the entries an enumeration paired with a mutant, told apart by whether the coverage they claim is the coverage the suite has
+--- @field record fun(entry: NtfMutationBaselineEntry, covered: boolean) take one paired mutant, and whether a test reaches it
+--- @field uncovered fun(): NtfMutationBaselineEntry[] entries no test reaches, carrying no `uncovered` to say so, so verifying them re-runs nothing
+--- @field covered fun(): NtfMutationBaselineEntry[] entries carrying `uncovered` that a test does reach, so there is something to verify them by after all
+--- @field acknowledged fun(): integer entries whose `uncovered` the suite bears out
+
+--- @return NtfMutationBaselineClaims
+function M.claims()
+  local uncovered = {}
+  local covered = {}
+  local acknowledged = 0
+  local seen = {}
+  return {
+    record = function(entry, is_covered)
+      if seen[entry] then
+        return
+      end
+      seen[entry] = true
+      if not entry.uncovered then
+        if not is_covered then
+          table.insert(uncovered, entry)
+        end
+      elseif is_covered then
+        table.insert(covered, entry)
+      else
+        acknowledged = acknowledged + 1
+      end
+    end,
+    uncovered = function()
+      return uncovered
+    end,
+    covered = function()
+      return covered
+    end,
+    acknowledged = function()
+      return acknowledged
+    end,
+  }
 end
 
 --- @class NtfMutationBaselineAmbiguity a position whose entries the run cannot pair with one mutant each

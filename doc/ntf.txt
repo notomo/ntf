@@ -555,6 +555,7 @@ An entry names its mutant with the report's own words for it:
   line            the text of the line, matched instead of a row
   rationale       why no test can detect it (required)
   invariant_spec  full name of the test the rationale rests on
+  uncovered       true where no test reaches it, so nothing re-runs it
 <
 So `ntf mutation baseline add` writes the entry for you. It takes the mutant as
 the report spells it and the judgement you have to supply, and runs no test —
@@ -604,6 +605,22 @@ gate that wants both answers pays for one run of the suite instead of two:
 >sh
   ntf mutation --config=spec/mutation.json --strict --verify-baseline
 <
+An entry is re-run by the tests that reach its mutant, so one no test reaches
+has nothing to re-run and would otherwise pass by saying nothing at all. Such
+an entry makes the second claim itself: `uncovered`, which
+`ntf mutation baseline add --uncovered` writes, says no test runs the line —
+a different statement from the rest of the baseline's "the tests cannot tell the
+difference". Both halves are held to the suite, and both fail the run:
+UNCOVERED BASELINE, once an entry without the mark is reached by no test, and
+COVERED BASELINE, once an entry carrying it is reached by one, which leaves the
+mark something to be verified by after all. Reaching the mutant with a spec is
+still what a NO COVERAGE mutant asks for; the mark is for the line a spec
+cannot reach. Only the whole suite can say that nothing reaches a mutant, so
+UNCOVERED BASELINE is answered for only where the run takes every test the
+project has, while a test that does reach one says so however few were
+selected. Verify's own line counts the entries it stood behind apart from the
+ones it re-ran.
+
 Two report lines answer for an entry that has gone stale, and both fail the
 run: LOST BASELINE, once the `line` it marks is no longer there, and UNPINNED
 BASELINE, once no test named by `invariant_spec` passes. A rationale usually
@@ -686,6 +703,8 @@ mutant as `PATH:ROW:COL:OPERATOR` or the config entry as its path:
   LOST BASELINE        a baseline entry whose `line` is no longer there
   AMBIGUOUS BASELINE   its content names two mutants and it carries no `row`
   UNPINNED BASELINE    its `invariant_spec` names no test that passed
+  UNCOVERED BASELINE   no test reaches it and it carries no `uncovered`
+  COVERED BASELINE     it carries `uncovered`, but a test reaches it
   UNUSED EXCLUDE       an `exclude` entry covering no measurable file
   UNUSED EXCLUDE SPEC  an `exclude_spec` entry covering no spec file
 <

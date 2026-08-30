@@ -405,6 +405,73 @@ describe("ntf.core.mutation.report.summary", function()
     )
   end)
 
+  it("lists the baseline entries no test reaches, which carry no uncovered to say so", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+      uncovered = {
+        {
+          path = "lua/b.lua",
+          col = 3,
+          operator = "swap-boolean",
+          original = "true",
+          replacement = "false",
+          line = "  local x = true",
+          rationale = "unused",
+        },
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("UNCOVERED BASELINE lua/b%.lua swap%-boolean: true %-> false is reached by no test", text)
+  end)
+
+  it("lists the uncovered baseline entries a test does reach", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed") },
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      score = 100,
+      covered = {
+        {
+          path = "lua/b.lua",
+          col = 3,
+          operator = "swap-boolean",
+          original = "true",
+          replacement = "false",
+          line = "  local x = true",
+          rationale = "unused",
+          uncovered = true,
+        },
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("COVERED BASELINE lua/b%.lua swap%-boolean: true %-> false is reached by a test now", text)
+  end)
+
   it("lists a baseline-killable mutant apart from the score", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "baseline_killable") },
@@ -446,6 +513,7 @@ describe("ntf.core.mutation.report.summary", function()
         baseline_killable = 1,
       },
       verified = 1,
+      baseline_uncovered = 0,
     }
 
     local text = report.summary(summary, root, { color = false, elapsed = 0 })
@@ -475,6 +543,7 @@ describe("ntf.core.mutation.report.summary", function()
         baseline_killable = 1,
       },
       verified = 2,
+      baseline_uncovered = 0,
     }
 
     local text = report.summary(summary, root, { color = false, elapsed = 12.34 })
@@ -483,6 +552,32 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("BASELINE KILLABLE lua/a%.lua:3:1:swap%-relational < %-> <=", text)
     local score_line = "Mutation:"
     assert.no.match(score_line, text)
+  end)
+
+  it("counts the entries it stood behind apart from the ones it re-ran", function()
+    local summary = {
+      records = {
+        record(abs("lua/a.lua"), 1, "equivalent"),
+        record(abs("lua/a.lua"), 2, "equivalent"),
+      },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 2,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+      verified = 1,
+      baseline_uncovered = 1,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("Baseline: 1/2 entries re%-run, 1 uncovered,", text)
   end)
 
   it("reports n/a when there is no mutant to score", function()

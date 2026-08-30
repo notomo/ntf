@@ -69,6 +69,14 @@ describe("ntf.core.mutation.baseline.validate", function()
     assert.match("needs a non%-empty string invariant_spec", baseline.validate(entry({ invariant_spec = " " })))
   end)
 
+  it("accepts the optional uncovered", function()
+    assert.is_nil(baseline.validate(entry({ uncovered = true })))
+  end)
+
+  it("rejects an uncovered that is not true, which would claim coverage the field cannot say", function()
+    assert.match("needs an uncovered of true", baseline.validate(entry({ uncovered = false })))
+  end)
+
   it("rejects a blank rationale", function()
     assert.match("needs a non%-empty rationale", baseline.validate(entry({ rationale = " " })))
   end)
@@ -254,6 +262,22 @@ describe("ntf.core.mutation.baseline.build", function()
     local built = baseline.build(request({ invariant_spec = "mod takes the min" }), cwd)
 
     assert.equal("mod takes the min", built.invariant_spec)
+  end)
+
+  it("carries the uncovered into the entry", function()
+    local cwd = project()
+
+    local built = baseline.build(request({ uncovered = true }), cwd)
+
+    assert.is_true(built.uncovered)
+  end)
+
+  it("leaves an entry no uncovered where the request makes no such claim", function()
+    local cwd = project()
+
+    local built = baseline.build(request(), cwd)
+
+    assert.is_nil(built.uncovered)
   end)
 
   it("names the file relative to the working directory, whatever form the request spells", function()
@@ -481,6 +505,56 @@ describe("ntf.core.mutation.baseline.unpinned", function()
     local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, false)
 
     assert.equal(0, #unpinned)
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.claims", function()
+  it("reports an entry no test reaches, which carries no uncovered to say so", function()
+    local claims = baseline.claims()
+
+    claims.record(entry(), false)
+
+    assert.equal(1, #claims.uncovered())
+    assert.equal(0, #claims.covered())
+    assert.equal(0, claims.acknowledged())
+  end)
+
+  it("leaves an entry a test reaches alone", function()
+    local claims = baseline.claims()
+
+    claims.record(entry(), true)
+
+    assert.equal(0, #claims.uncovered())
+    assert.equal(0, #claims.covered())
+  end)
+
+  it("stands behind an uncovered entry no test reaches", function()
+    local claims = baseline.claims()
+
+    claims.record(entry({ uncovered = true }), false)
+
+    assert.equal(1, claims.acknowledged())
+    assert.equal(0, #claims.uncovered())
+    assert.equal(0, #claims.covered())
+  end)
+
+  it("reports an uncovered entry a test does reach", function()
+    local claims = baseline.claims()
+
+    claims.record(entry({ uncovered = true }), true)
+
+    assert.equal(1, #claims.covered())
+    assert.equal(0, claims.acknowledged())
+  end)
+
+  it("takes one entry once, however many mutants its content named", function()
+    local claims = baseline.claims()
+    local recorded = entry()
+
+    claims.record(recorded, false)
+    claims.record(recorded, false)
+
+    assert.equal(1, #claims.uncovered())
   end)
 end)
 

@@ -599,6 +599,14 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_nil(args.parse(argv()).mutation_invariant_spec)
     end)
 
+    it("takes the entry as one no test reaches", function()
+      assert.is_true(args.parse(argv({ "--uncovered" })).mutation_uncovered)
+    end)
+
+    it("claims no such thing without --uncovered", function()
+      assert.is_false(args.parse(argv()).mutation_uncovered)
+    end)
+
     it("rejects a --mutant that does not name a position and an operator", function()
       local file = helper.test_data:create_file("mutation.json", "{}")
 
