@@ -247,6 +247,12 @@ end
 
 --- @param root string ntf repository root (used to locate the worker script)
 function M.run(root)
+  local unsupported = require("ntf.core.version").unsupported(vim.version())
+  if unsupported then
+    io.stderr:write(unsupported .. "\n")
+    os.exit(2)
+  end
+
   local args = require("ntf.core.controller.args")
 
   local opts = args.parse(arg)

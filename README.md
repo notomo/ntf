@@ -7,6 +7,8 @@ ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
 It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
 Neovim process so state never leaks between tests.
 
+It requires Neovim 0.12.0 or later.
+
 ## Setup
 
 `bin/ntf` is the CLI (`bin/ntf.bat` on Windows). It runs the `nvim` found on

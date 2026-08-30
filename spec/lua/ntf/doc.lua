@@ -7,6 +7,7 @@ local operators = require("ntf.core.mutation.operators")
 local splice = require("ntf.core.mutation.splice")
 local report = require("ntf.core.mutation.report")
 local config = require("ntf.core.mutation.config")
+local required_nvim = require("ntf.core.version").required_text()
 local plugin_name = vim.env.PLUGIN_NAME
 
 local usage = args.usage("run")
@@ -565,7 +566,7 @@ lists them without running them, and `mutation` mutation-tests the covered code
 with commands of its own. A command takes exactly the options it can act on and
 rejects the rest.]],
           util.help_code_block(usage),
-          [[
+          ([[
 - `ntf CMD --help` prints the options of any other command, such as
   `ntf mutation --help` or `ntf mutation baseline add --help`.
 - Only leading tokens name a command, so a path is never taken for one:
@@ -574,8 +575,8 @@ rejects the rest.]],
   usage line, `mutation baseline add` being the one.
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
-  instead. It has to be Neovim 0.12.0 or later.
-- |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.]],
+  instead. It has to be Neovim %s or later.
+- |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.]]):format(required_nvim),
         }, "\n")
       end,
     },
@@ -1116,10 +1117,12 @@ ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
 It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
 Neovim process so state never leaks between tests.
 
+It requires Neovim %s or later.
+
 ## Setup
 
 `bin/ntf` is the CLI (`bin/ntf.bat` on Windows). It runs the `nvim` found on
-`$PATH`, or the one `$NTF_NVIM` names, which has to be Neovim 0.12.0 or later.
+`$PATH`, or the one `$NTF_NVIM` names, which has to be Neovim %s or later.
 With ntf installed as a Neovim plugin, you can expose the command to
 `:terminal` (and anything else Neovim spawns) by prepending its `bin` directory
 to `$PATH`:
@@ -1140,7 +1143,7 @@ mutation testing are documented in [doc/ntf.txt](doc/ntf.txt).
 
 ```lua
 %s```
-]]):format(plugin_name, setup, usage, example)
+]]):format(plugin_name, required_nvim, required_nvim, setup, usage, example)
 
   util.write("README.md", content)
 end
