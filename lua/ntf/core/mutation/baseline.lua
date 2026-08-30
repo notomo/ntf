@@ -54,7 +54,7 @@ end
 
 local STRING_FIELDS = { "path", "operator", "original", "replacement", "line", "rationale" }
 
---- @param entry any
+--- @param entry any as a run holds it, its col 0-based like a site's
 --- @return string? # what is wrong with the entry
 function M.validate(entry)
   if type(entry) ~= "table" then
@@ -78,6 +78,19 @@ function M.validate(entry)
     if type(entry.invariant_spec) ~= "string" or not entry.invariant_spec:find("%S") then
       return "needs a non-empty string invariant_spec, or none at all"
     end
+  end
+  return nil
+end
+
+--- @param entry any as the document spells it, its col 1-based like the one a report prints
+--- @return string? # what is wrong with the entry
+function M.validate_document(entry)
+  local err = M.validate(entry)
+  if err then
+    return err
+  end
+  if entry.col < 1 then
+    return "needs a col of 1 or more"
   end
   return nil
 end

@@ -80,6 +80,28 @@ describe("ntf.core.mutation.baseline.validate", function()
   it("rejects a non-number col", function()
     assert.match("needs a number col", baseline.validate(entry({ col = "seven" })))
   end)
+
+  it("accepts the leftmost column a run holds, which is 0 there", function()
+    assert.is_nil(baseline.validate(entry({ col = 0 })))
+  end)
+end)
+
+describe("ntf.core.mutation.baseline.validate_document", function()
+  it("accepts an entry", function()
+    assert.is_nil(baseline.validate_document(entry()))
+  end)
+
+  it("accepts a col on the first column, which a document spells 1", function()
+    assert.is_nil(baseline.validate_document(entry({ col = 1 })))
+  end)
+
+  it("rejects a col below the first column, rather than leaving it to be reported lost", function()
+    assert.equal("needs a col of 1 or more", baseline.validate_document(entry({ col = 0 })))
+  end)
+
+  it("rejects what the run form rejects too", function()
+    assert.match("needs a number col", baseline.validate_document(entry({ col = "seven" })))
+  end)
 end)
 
 describe("ntf.core.mutation.baseline.twinned", function()

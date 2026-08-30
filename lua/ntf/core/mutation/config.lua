@@ -62,7 +62,7 @@ function M.load(path)
   end
 
   local baseline_module = require("ntf.core.mutation.baseline")
-  local baseline = load_section(decoded, "baseline", baseline_module.validate)
+  local baseline = load_section(decoded, "baseline", baseline_module.validate_document)
   if type(baseline) == "string" then
     return invalid(baseline)
   end
