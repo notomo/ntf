@@ -60,6 +60,17 @@ describe("ntf.core.mutation.verdict.step", function()
     assert.same({ applied = false }, next_progress)
   end)
 
+  it(
+    "leaves a failing trial that never loaded the mutated source to the next trial, rather than calling it a kill",
+    function()
+      local settled, next_progress =
+        verdict.step(outcome({ results = { result("failed", "adds") }, mutation_applied = false }), progress())
+
+      assert.is_nil(settled)
+      assert.same({ applied = false }, next_progress)
+    end
+  )
+
   it("keeps an earlier trial's applied mark through one that could not load the mutated source", function()
     local settled, next_progress = verdict.step(outcome({ mutation_applied = false }), progress({ applied = true }))
 

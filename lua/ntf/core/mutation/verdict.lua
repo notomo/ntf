@@ -34,13 +34,13 @@ function M.step(outcome, progress)
     return { status = "timeout" }, progress
   end
 
+  if outcome.mutation_applied == false then
+    return nil, progress
+  end
+
   local killed_by = detected_by(outcome.results)
   if killed_by then
     return { status = "killed", killed_by = killed_by }, { applied = true }
-  end
-
-  if outcome.mutation_applied == false then
-    return nil, progress
   end
 
   return nil, { applied = true }
