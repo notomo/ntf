@@ -2,7 +2,7 @@ local M = {}
 
 --- @class NtfWalkHandlers
 --- @field descend fun(dir: string): boolean whether the walk goes on into that subdirectory
---- @field on_file fun(file: string, ftype: string) takes each entry that is not a directory, with its `vim.fn.getftype`
+--- @field on_file fun(file: string) takes each entry that is not a directory, a symlink included
 
 --- @param dir string normalized absolute directory
 --- @param opts NtfWalkHandlers
@@ -15,7 +15,7 @@ function M.files(dir, opts)
         M.files(child, opts)
       end
     else
-      opts.on_file(child, ftype)
+      opts.on_file(child)
     end
   end
 end

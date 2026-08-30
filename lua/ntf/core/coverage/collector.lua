@@ -95,8 +95,8 @@ function M.measurable_files(cwd, excludes)
       end
       return true
     end,
-    on_file = function(file, ftype)
-      if ftype == "file" and file:match("%.lua$") and not is_hidden(file) then
+    on_file = function(file)
+      if file:match("%.lua$") and not is_hidden(file) and vim.fn.filereadable(file) == 1 then
         local path = measured_path(file, cwd, excludes)
         if path and not M.is_meta_file(path) then
           table.insert(files, path)

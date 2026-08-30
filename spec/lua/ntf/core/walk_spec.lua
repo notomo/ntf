@@ -59,27 +59,20 @@ describe("ntf.core.walk.files", function()
     assert.same({ path.normalize(file) }, files)
   end)
 
-  it("gives each file its type, so a caller can take the regular files alone", function()
+  it("visits a symlinked file the same as the one it points at", function()
     if vim.fn.has("win32") == 1 then
       return pending("a symlink needs a privileged account on windows")
     end
     local file = helper.test_data:create_file("target.lua", "")
-    local ok, err = vim.uv.fs_symlink(file, helper.test_data:path("link.lua"))
+    local link = helper.test_data:path("link.lua")
+    local ok, err = vim.uv.fs_symlink(file, link)
     if not ok then
       error(err)
     end
 
-    local types = {}
-    walk.files(helper.test_data.full_path, {
-      descend = function()
-        return true
-      end,
-      on_file = function(visited_file, ftype)
-        types[vim.fs.basename(visited_file)] = ftype
-      end,
-    })
+    local files = visited(helper.test_data.full_path)
 
-    assert.same({ ["link.lua"] = "link", ["target.lua"] = "file" }, types)
+    assert.same({ path.normalize(link), path.normalize(file) }, files)
   end)
 
   it("hands a symlinked directory over as an entry instead of walking into it", function()

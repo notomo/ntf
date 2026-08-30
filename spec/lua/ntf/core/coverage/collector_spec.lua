@@ -334,12 +334,43 @@ describe("ntf.core.coverage.collector.measurable_files", function()
     assert.same({ normalize(file) }, files)
   end)
 
-  it("does not list a symlinked lua file, whose target the working directory need not hold", function()
+  it("lists a symlinked lua file under the path the link is at, which is what a chunk names", function()
     if vim.fn.has("win32") == 1 then
       return pending("a symlink needs a privileged account on windows")
     end
     local file = helper.test_data:create_file("lua/mod.lua", "return 1")
-    local ok, err = vim.uv.fs_symlink(file, helper.test_data:path("lua/link.lua"))
+    local link = helper.test_data:path("lua/link.lua")
+    local ok, err = vim.uv.fs_symlink(file, link)
+    if not ok then
+      error(err)
+    end
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ normalize(link), normalize(file) }, files)
+  end)
+
+  it("does not list a symlink pointing at nothing", function()
+    if vim.fn.has("win32") == 1 then
+      return pending("a symlink needs a privileged account on windows")
+    end
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    local ok, err = vim.uv.fs_symlink(helper.test_data:path("lua/gone.lua"), helper.test_data:path("lua/link.lua"))
+    if not ok then
+      error(err)
+    end
+
+    local files = collector.measurable_files(helper.test_data.full_path, {})
+
+    assert.same({ normalize(file) }, files)
+  end)
+
+  it("does not list a symlinked directory as a file of its own", function()
+    if vim.fn.has("win32") == 1 then
+      return pending("a symlink needs a privileged account on windows")
+    end
+    local file = helper.test_data:create_file("lua/mod.lua", "return 1")
+    local ok, err = vim.uv.fs_symlink(helper.test_data:path("lua"), helper.test_data:path("linked.lua"))
     if not ok then
       error(err)
     end
