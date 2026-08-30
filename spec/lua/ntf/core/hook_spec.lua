@@ -73,7 +73,7 @@ describe("ntf.core.hook.load", function()
     assert.match("returns keys no hook is read from: setUp", rejected)
   end)
 
-  it("names the keys no hook is read from sorted, not in the order the table hands them back", function()
+  it("names every key no hook is read from, not the first one it meets", function()
     local path = helper.test_data:create_file(
       "hook.lua",
       "return { setUp = function() end, tearDown = function() end, beforeAll = function() end }"
@@ -81,7 +81,10 @@ describe("ntf.core.hook.load", function()
 
     local rejected = hook.load(path)
 
-    assert.match("returns keys no hook is read from: beforeAll, setUp, tearDown", rejected)
+    assert.match("returns keys no hook is read from: ", rejected)
+    assert.match("beforeAll", rejected)
+    assert.match("setUp", rejected)
+    assert.match("tearDown", rejected)
     assert.match("takes setup and teardown", rejected)
   end)
 

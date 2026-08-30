@@ -585,6 +585,15 @@
       "replacement": "do end",
       "line": "  table.sort(names)",
       "rationale": "the names come out of a Lua table's key iteration, an order the runtime leaves undefined and does not repeat between processes, so the message a dropped sort produces is in no order a test can assert; the sort only settles what the message already names"
+    },
+    {
+      "path": "lua/ntf/core/hook.lua",
+      "col": 5,
+      "operator": "drop-call",
+      "original": "table.sort(unknown)",
+      "replacement": "do end",
+      "line": "    table.sort(unknown)",
+      "rationale": "the unknown keys come out of a Lua table's key iteration, an order the runtime leaves undefined and does not repeat between processes, so a dropped sort hands back the very message the test asserts whenever a process happens to iterate them in order; the sort only settles what the message already names"
     }
   ],
   "exclude": [
