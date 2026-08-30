@@ -31,6 +31,15 @@ ntf.describe("x", function()
 end)
 ]]
 
+local hanging_test = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("hangs", function()
+    vim.uv.sleep(60000)
+  end)
+end)
+]]
+
 --- @param coverage table merged per-file line hit counts
 --- @return integer measured, integer seeded
 local function counted(coverage)
@@ -313,6 +322,19 @@ end)
     assert.is_true(timing.elapsed <= the_run_took)
     assert.is_true(timing.worker > 0)
     assert.is_true(timing.worker <= timing.elapsed)
+    assert.equal(0, timing.killed.workers)
+    assert.equal(0, timing.killed.seconds)
+  end)
+
+  it("counts a worker a timeout killed as killed time, which is neither startup nor a test", function()
+    local items = work.plan({ helper.write_spec(hanging_test) })
+
+    local _, _, timing = run(items, { root = helper.root, jobs = 1, timeout = 200 })
+
+    assert.equal(0, timing.worker)
+    assert.equal(1, timing.killed.workers)
+    assert.is_true(timing.killed.seconds > 0)
+    assert.is_true(timing.killed.seconds <= timing.elapsed)
   end)
 
   it("reports the jobs it ran with", function()

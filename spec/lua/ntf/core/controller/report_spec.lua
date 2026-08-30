@@ -427,13 +427,15 @@ describe("ntf.core.controller.report.duration", function()
 end)
 
 describe("ntf.core.controller.report.timing", function()
+  local no_kill = { seconds = 0, workers = 0 }
+
   it("splits the time the workers spent into the startup each test pays and the time in the tests", function()
     local results = {
       { id = "1", names = { "x", "one" }, status = "passed", duration = 0.5 },
       { id = "2", names = { "x", "two" }, status = "passed", duration = 1.5 },
     }
 
-    local text = report.timing(results, { elapsed = 3.0, worker = 6.0, jobs = 4 })
+    local text = report.timing(results, { elapsed = 3.0, worker = 6.0, killed = no_kill, jobs = 4 })
 
     assert.equal(
       table.concat({
@@ -452,7 +454,7 @@ describe("ntf.core.controller.report.timing", function()
       { id = "2", names = { "x", "two" }, status = "passed", duration = 0.008 },
     }
 
-    local text = report.timing(results, { elapsed = 0.043, worker = 0.054, jobs = 8 })
+    local text = report.timing(results, { elapsed = 0.043, worker = 0.054, killed = no_kill, jobs = 8 })
 
     assert.equal(
       table.concat({
@@ -466,7 +468,7 @@ describe("ntf.core.controller.report.timing", function()
   end)
 
   it("reports the elapsed time alone when no test ran, having no test to average over", function()
-    local text = report.timing({}, { elapsed = 1.5, worker = 0, jobs = 2 })
+    local text = report.timing({}, { elapsed = 1.5, worker = 0, killed = no_kill, jobs = 2 })
 
     assert.equal("Time: 1.5s elapsed, 2 jobs\n", text)
   end)
@@ -474,9 +476,49 @@ describe("ntf.core.controller.report.timing", function()
   it("counts the whole life of a worker that reported no duration as startup", function()
     local results = { { id = "1", names = { "x", "one" }, status = "error" } }
 
-    local text = report.timing(results, { elapsed = 2.0, worker = 2.0, jobs = 1 })
+    local text = report.timing(results, { elapsed = 2.0, worker = 2.0, killed = no_kill, jobs = 1 })
 
     assert.match("nvim startup: 2%.0s avg per test", text)
     assert.match("test execution: 0ms total", text)
+  end)
+
+  it("keeps the time a timeout killed out of the startup it would otherwise swallow, showing it on its own", function()
+    local results = {
+      { id = "1", names = { "x", "one" }, status = "passed", duration = 0.4 },
+      { id = "2", names = { "x", "two" }, status = "error", message = "worker timed out" },
+    }
+
+    local text =
+      report.timing(results, { elapsed = 30.6, worker = 0.5, killed = { seconds = 30.0, workers = 1 }, jobs = 2 })
+
+    assert.equal(
+      table.concat({
+        "Time: 30.6s elapsed, 2 jobs",
+        "  nvim startup: 100ms avg per test",
+        "  test execution: 400ms total",
+        "  timed out: 30.0s in 1 worker",
+        "",
+      }, "\n"),
+      text
+    )
+  end)
+
+  it("reports the killed workers alone when a timeout took every one of them", function()
+    local results = {
+      { id = "1", names = { "x", "one" }, status = "error", message = "worker timed out" },
+      { id = "2", names = { "x", "two" }, status = "error", message = "worker timed out" },
+    }
+
+    local text =
+      report.timing(results, { elapsed = 1.2, worker = 0, killed = { seconds = 2.0, workers = 2 }, jobs = 2 })
+
+    assert.equal(
+      table.concat({
+        "Time: 1.2s elapsed, 2 jobs",
+        "  timed out: 2.0s in 2 workers",
+        "",
+      }, "\n"),
+      text
+    )
   end)
 end)

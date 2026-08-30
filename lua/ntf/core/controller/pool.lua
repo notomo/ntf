@@ -7,8 +7,13 @@ local M = {}
 
 --- @class NtfRunTiming
 --- @field elapsed number seconds the whole run took
---- @field worker number seconds summed over every worker process, spawn to exit; jobs of them run at once, so this exceeds elapsed
+--- @field worker number seconds summed over every worker process that reached its own exit, spawn to exit; jobs of them run at once, so this exceeds elapsed
+--- @field killed NtfRunKilled the workers a timeout killed, whose seconds `worker` leaves out
 --- @field jobs integer workers run in parallel, whether given or defaulted
+
+--- @class NtfRunKilled
+--- @field seconds number seconds summed over the workers a timeout killed
+--- @field workers integer how many workers that was, each of which reported exactly one result
 
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
@@ -22,6 +27,7 @@ function M.run(items, opts)
   local total = #items
   local run_started = vim.uv.hrtime()
   local worker_seconds = 0
+  local killed = { seconds = 0, workers = 0 }
 
   local results = {}
   local merged_coverage = {}
@@ -49,7 +55,18 @@ function M.run(items, opts)
       coverage = opts.coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
-      worker_seconds = worker_seconds + (vim.uv.hrtime() - item_started) * 1e-9
+      local seconds = (vim.uv.hrtime() - item_started) * 1e-9
+      -- WHY: a killed worker's life measures the timeout the run chose, not the
+      -- startup it paid or the test it ran, so the split the report makes of
+      -- `worker` has nothing to take from it.
+      -- NOT: adding it to `worker`, where the whole timeout lands in the startup
+      -- that split leaves over.
+      if outcome.timed_out then
+        killed.seconds = killed.seconds + seconds
+        killed.workers = killed.workers + 1
+      else
+        worker_seconds = worker_seconds + seconds
+      end
       state.running[item_index] = nil
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
@@ -91,6 +108,7 @@ function M.run(items, opts)
   local timing = {
     elapsed = (vim.uv.hrtime() - run_started) * 1e-9,
     worker = worker_seconds,
+    killed = killed,
     jobs = jobs,
   }
   return results, merged_coverage, timing, gave_up

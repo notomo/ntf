@@ -195,10 +195,26 @@ function M.timing(results, timing)
     test_seconds = test_seconds + (result.duration or 0)
   end
 
-  if #results > 0 then
-    local startup_seconds = (timing.worker - test_seconds) / #results
+  -- WHY: `timing.worker` leaves out the workers a timeout killed, and each of
+  -- those reported exactly one result, so this is what the startup the split
+  -- leaves over is spread over.
+  -- NOT: every result, which would thin that startup by the tests no worker
+  -- lived to run.
+  local measured = #results - timing.killed.workers
+  if measured > 0 then
+    local startup_seconds = (timing.worker - test_seconds) / measured
     table.insert(lines, ("  nvim startup: %s avg per test"):format(duration(startup_seconds)))
     table.insert(lines, ("  test execution: %s total"):format(duration(test_seconds)))
+  end
+  if timing.killed.workers > 0 then
+    table.insert(
+      lines,
+      ("  timed out: %s in %d worker%s"):format(
+        duration(timing.killed.seconds),
+        timing.killed.workers,
+        timing.killed.workers == 1 and "" or "s"
+      )
+    )
   end
 
   return table.concat(lines, "\n") .. "\n"
