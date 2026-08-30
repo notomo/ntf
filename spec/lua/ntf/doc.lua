@@ -809,6 +809,12 @@ a score of `n/a` that reads like a clean gate.
 To see what a run would cover before paying for it, `ntf mutation list` runs
 the tests once and lists the mutants with the number of tests that reach each:]],
           util.help_code_block(mutation_list_command, { language = "sh" }),
+          [[
+A listing holds its `--config` to the same account a scoring run does, since
+none of that judgement waits on a mutant being run: an entry of `baseline`,
+`exclude` or `exclude_spec` that the code no longer holds is reported and fails
+the listing, rather than being left for the run the listing was to be read
+before.]],
         }, "\n")
       end,
     },

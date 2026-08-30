@@ -2305,4 +2305,113 @@ describe("ntf list", function()
     assert.match("FAIL", obj.stdout)
     assert.equal(0, vim.fn.filereadable(results_file))
   end)
+
+  it("exits non-zero when a --config baseline entry matches no listed mutant", function()
+    local root = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a <= b then",
+            rationale = "stale: the marked line has changed",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "list", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("lua/mod%.lua:6:%d+:swap%-relational < %-> <= %(covered by 1 test%)\n", obj.stdout)
+    assert.match("LOST BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
+    assert.match("mutation gate failed: 1 baseline entry matched no mutant", obj.stderr)
+  end)
+
+  it("exits non-zero when a --config baseline invariant_spec names no passing test of the listed run", function()
+    local root = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a < b then",
+            rationale = "min(1, 2) is 1 on either side of the boundary",
+            invariant_spec = "mod names a test that was renamed away",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "list", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("UNPINNED BASELINE lua/mod%.lua swap%-relational: < %-> <=", obj.stdout)
+    assert.match("mutation gate failed: 1 unpinned baseline entry", obj.stderr)
+  end)
+
+  it("exits non-zero when a --config exclude or exclude_spec entry covers nothing listed", function()
+    local root = mutation_project()
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        exclude = {
+          { path = "lua/gone.lua", operators = "all", rationale = "stale: the file it names is no longer there" },
+        },
+        exclude_spec = { { path = "spec/gone_spec.lua", rationale = "stale: the spec it names is no longer there" } },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "list", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("UNUSED EXCLUDE lua/gone%.lua", obj.stdout)
+    assert.match("UNUSED EXCLUDE SPEC spec/gone_spec%.lua", obj.stdout)
+    assert.match("1 exclude entry covering nothing", obj.stderr)
+    assert.match("1 exclude_spec entry covering nothing", obj.stderr)
+  end)
+
+  it("leaves a --config baseline entry for a file outside the --target unjudged", function()
+    local root = mutation_project()
+    helper.test_data:create_file("lua/elsewhere.lua", MUTATION_MODULE)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/elsewhere.lua",
+            col = 8,
+            operator = "swap-relational",
+            original = "<",
+            replacement = "<=",
+            line = "  if a <= b then",
+            rationale = "stale, but this listing never enumerated the file it names",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "list", "--config=mutation.json", "--target=lua/mod.lua", "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.no.match("LOST BASELINE", obj.stdout)
+  end)
 end)

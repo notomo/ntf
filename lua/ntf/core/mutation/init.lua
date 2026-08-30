@@ -17,17 +17,19 @@ local M = {}
 --- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable"
 --- @field killed_by string? full name of the test that detected the mutant
 
---- @class NtfMutationSummary
---- @field records NtfMutationRecord[]
---- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
---- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
---- @field score number? percent detected; nil when nothing was scoreable
---- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
+--- @class NtfMutationStaleness what the --config asks for that the code no longer holds, which enumerating the mutants tells without running one
 --- @field lost NtfMutationBaselineEntry[] baseline entries that matched no mutant
 --- @field ambiguous NtfMutationBaselineAmbiguity[] positions whose content named more than one mutant, with no row to tell them apart
 --- @field unpinned NtfMutationBaselineEntry[] baseline entries whose invariant_spec names no test that passed; none where the run took part of the suite, which cannot tell a name that is gone from one it never selected
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
+
+--- @class NtfMutationSummary : NtfMutationStaleness
+--- @field records NtfMutationRecord[]
+--- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
+--- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
+--- @field score number? percent detected; nil when nothing was scoreable
+--- @field verified integer? baseline entries re-run; nil unless `mutation baseline verify` left the rest unrun
 
 --- @param file string absolute path
 --- @return string?
@@ -153,6 +155,21 @@ local function covering_trials(ctx, durations, mutant)
   return trials
 end
 
+--- @param ctx { baseline: NtfMutationBaselineEntry[]?, baseline_results: NtfResult[], whole_suite: boolean, unused_spec_excludes: NtfMutationExcludeEntry[]? }
+--- @param matcher NtfMutationBaselineMatcher every mutant of the enumeration has been offered to it
+--- @param judged table<string, true> the relative paths the enumeration reached
+--- @param unused_excludes NtfMutationExcludeEntry[] exclude entries covering none of the measurable files
+--- @return NtfMutationStaleness
+local function staleness_of(ctx, matcher, judged, unused_excludes)
+  return {
+    lost = matcher.lost(judged),
+    ambiguous = matcher.ambiguous(),
+    unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results, ctx.whole_suite),
+    unused_excludes = unused_excludes,
+    unused_spec_excludes = ctx.unused_spec_excludes or {},
+  }
+end
+
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], baseline_results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], on_start?: fun(total: integer), on_task?: fun(outcome: NtfMutantOutcome) }
 --- @return NtfMutationSummary
@@ -246,18 +263,13 @@ function M.run(opts, ctx)
     counts[record.status] = counts[record.status] + 1
   end
 
-  return {
+  return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes), {
     records = records,
     counts = counts,
     excluded_files = excluded_files,
     score = score_of(counts),
     verified = opts.mutation_verify_baseline_only and #tasks or nil,
-    lost = matcher.lost(judged),
-    ambiguous = matcher.ambiguous(),
-    unpinned = baseline.unpinned(ctx.baseline or {}, ctx.baseline_results, ctx.whole_suite),
-    unused_excludes = unused_excludes,
-    unused_spec_excludes = ctx.unused_spec_excludes or {},
-  }
+  })
 end
 
 --- @class NtfMutantListEntry
@@ -267,21 +279,22 @@ end
 --- @field equivalent boolean matched by a --config baseline entry
 
 --- @param opts NtfOptions
---- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
+--- @param ctx { cwd: string, baseline: NtfMutationBaselineEntry[]?, baseline_results: NtfResult[], whole_suite: boolean, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[] }
 --- @return NtfMutantListEntry[]
 --- @return integer # what the config kept out: excluded or unadopted mutants, and whole files an exclude entry dropped, which is how the listing comes back empty over code that does hold mutants
+--- @return NtfMutationStaleness # what the config asks for that the listing found nothing for, told from the same enumeration a run judges it by
 function M.list(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local matcher = baseline.matcher(ctx.baseline or {})
 
-  local entries, _, excluded, unadopted, _, excluded_files = enumerate_mutants(
+  local entries, unused_excludes, excluded, unadopted, judged, excluded_files = enumerate_mutants(
     cwd,
     ctx.coverage_excludes,
     opts.mutation_target,
     ctx.mutation_exclude or {},
     ctx.mutation_operators or "all"
   )
-  return vim.tbl_map(function(entry)
+  local listed = vim.tbl_map(function(entry)
     local mutant = entry.mutant
     return {
       mutant = mutant,
@@ -289,8 +302,8 @@ function M.list(opts, ctx)
       covered_count = #ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)),
       equivalent = matcher.match(entry.relative_path, entry.line_text, mutant),
     }
-  end, entries),
-    excluded + unadopted + excluded_files
+  end, entries)
+  return listed, excluded + unadopted + excluded_files, staleness_of(ctx, matcher, judged, unused_excludes)
 end
 
 return M

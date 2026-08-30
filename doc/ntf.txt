@@ -322,6 +322,11 @@ the tests once and lists the mutants with the number of tests that reach each:
 >sh
   ntf mutation list
 <
+A listing holds its `--config` to the same account a scoring run does, since
+none of that judgement waits on a mutant being run: an entry of `baseline`,
+`exclude` or `exclude_spec` that the code no longer holds is reported and fails
+the listing, rather than being left for the run the listing was to be read
+before.
 
 ==============================================================================
 MUTATION OPERATORS                                    *ntf-MUTATION-OPERATORS*

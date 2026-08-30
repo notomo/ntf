@@ -257,8 +257,13 @@ local function all_rowed(bucket)
   return true
 end
 
+--- @class NtfMutationBaselineMatcher the entries as the run pairs them with the mutants it enumerates
+--- @field match fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry? the entry the mutant is one of, taking it as paired
+--- @field lost fun(judged: table<string, true>): NtfMutationBaselineEntry[] entries no mutant of the files it enumerated was paired with
+--- @field ambiguous fun(): NtfMutationBaselineAmbiguity[] positions whose entries it cannot pair with one mutant each
+
 --- @param entries NtfMutationBaselineEntry[]
---- @return { match: (fun(relative_path: string, line: string, site: NtfMutantSite): NtfMutationBaselineEntry?), lost: (fun(judged: table<string, true>): NtfMutationBaselineEntry[]), ambiguous: (fun(): NtfMutationBaselineAmbiguity[]) }
+--- @return NtfMutationBaselineMatcher
 function M.matcher(entries)
   local by_key = {} --- @type table<string, NtfMutationBaselineEntry[]>
   local rows_of = {} --- @type table<string, integer[]> the rows the run's mutants of that key landed on

@@ -72,6 +72,63 @@ local function no_measured_line(cwd)
   return 2
 end
 
+--- @param staleness NtfMutationStaleness
+--- @return integer exit_code
+local function stale_gate(staleness)
+  local code = 0
+  if #staleness.lost > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d baseline entr%s matched no mutant\n"):format(
+        #staleness.lost,
+        #staleness.lost == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  if #staleness.unused_excludes > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d exclude entr%s covering nothing\n"):format(
+        #staleness.unused_excludes,
+        #staleness.unused_excludes == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  if #staleness.unused_spec_excludes > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d exclude_spec entr%s covering nothing\n"):format(
+        #staleness.unused_spec_excludes,
+        #staleness.unused_spec_excludes == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  if #staleness.ambiguous > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d ambiguous baseline position%s\n"):format(
+        #staleness.ambiguous,
+        #staleness.ambiguous == 1 and "" or "s"
+      )
+    )
+    code = 1
+  end
+  if #staleness.unpinned > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d unpinned baseline entr%s\n"):format(
+        #staleness.unpinned,
+        #staleness.unpinned == 1 and "y" or "ies"
+      )
+    )
+    code = 1
+  end
+  return code
+end
+
 --- @param opts NtfOptions
 --- @param ctx { root: string, cwd: string, items: NtfWorkItem[], results: NtfResult[], whole_suite: boolean, baseline: NtfMutationBaselineEntry[]?, mutation_exclude: NtfMutationExcludeEntry[]?, mutation_operators: NtfMutationOperatorSelection?, unused_spec_excludes: NtfMutationExcludeEntry[]?, coverage_map: NtfMutationCoverageMap, coverage_excludes: string[], color: boolean }
 --- @return integer exit_code
@@ -132,57 +189,7 @@ function M.mutate(opts, ctx)
     )
   end
 
-  local code = 0
-  if #summary.lost > 0 then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation gate failed: %d baseline entr%s matched no mutant\n"):format(
-        #summary.lost,
-        #summary.lost == 1 and "y" or "ies"
-      )
-    )
-    code = 1
-  end
-  if #summary.unused_excludes > 0 then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation gate failed: %d exclude entr%s covering nothing\n"):format(
-        #summary.unused_excludes,
-        #summary.unused_excludes == 1 and "y" or "ies"
-      )
-    )
-    code = 1
-  end
-  if #summary.unused_spec_excludes > 0 then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation gate failed: %d exclude_spec entr%s covering nothing\n"):format(
-        #summary.unused_spec_excludes,
-        #summary.unused_spec_excludes == 1 and "y" or "ies"
-      )
-    )
-    code = 1
-  end
-  if #summary.ambiguous > 0 then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation gate failed: %d ambiguous baseline position%s\n"):format(
-        #summary.ambiguous,
-        #summary.ambiguous == 1 and "" or "s"
-      )
-    )
-    code = 1
-  end
-  if #summary.unpinned > 0 then
-    io.stdout:flush()
-    io.stderr:write(
-      ("mutation gate failed: %d unpinned baseline entr%s\n"):format(
-        #summary.unpinned,
-        #summary.unpinned == 1 and "y" or "ies"
-      )
-    )
-    code = 1
-  end
+  local code = stale_gate(summary)
   local killable = summary.counts.baseline_killable
   if killable > 0 then
     io.stdout:flush()
@@ -415,11 +422,14 @@ function M.run(root)
       end
       if mode.list then
         local list = require("ntf.core.controller.list")
-        local mutants, left_out = require("ntf.core.mutation").list(opts, {
+        local mutants, left_out, staleness = require("ntf.core.mutation").list(opts, {
           cwd = cwd,
+          baseline_results = results,
+          whole_suite = whole_suite,
           baseline = mutation_baseline,
           mutation_exclude = mutation_exclude,
           mutation_operators = mutation_operators,
+          unused_spec_excludes = unused_spec_excludes,
           coverage_map = coverage_map,
           coverage_excludes = coverage_excludes,
         })
@@ -430,6 +440,8 @@ function M.run(root)
         local mutants_text = list.mutants(mutants)
         local separator = (#tests_text > 0 and #mutants_text > 0) and "\n" or ""
         io.stdout:write(tests_text .. separator .. mutants_text)
+        io.stdout:write(require("ntf.core.mutation.report").stale(staleness, { color = color }))
+        code = stale_gate(staleness)
       else
         code = M.mutate(opts, {
           root = root,

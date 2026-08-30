@@ -97,15 +97,25 @@ function M.summary(summary, cwd, opts)
     end
   end
 
-  for _, entry in ipairs(summary.unused_excludes or {}) do
+  return table.concat(lines, "\n") .. "\n" .. M.stale(summary, opts)
+end
+
+--- @param staleness NtfMutationStaleness
+--- @param opts { color: boolean }
+--- @return string # a line per entry the config cannot stand behind, empty where it can
+function M.stale(staleness, opts)
+  local paint = painter(opts.color)
+
+  local lines = {}
+  for _, entry in ipairs(staleness.unused_excludes or {}) do
     table.insert(lines, ("%s %s"):format(paint("red", M.entry_labels.unused_exclude), entry.path))
   end
 
-  for _, entry in ipairs(summary.unused_spec_excludes or {}) do
+  for _, entry in ipairs(staleness.unused_spec_excludes or {}) do
     table.insert(lines, ("%s %s"):format(paint("red", M.entry_labels.unused_exclude_spec), entry.path))
   end
 
-  for _, entry in ipairs(summary.unpinned or {}) do
+  for _, entry in ipairs(staleness.unpinned or {}) do
     table.insert(
       lines,
       ("%s %s %s: %s -> %s wants a passing %q"):format(
@@ -119,7 +129,7 @@ function M.summary(summary, cwd, opts)
     )
   end
 
-  for _, ambiguity in ipairs(summary.ambiguous or {}) do
+  for _, ambiguity in ipairs(staleness.ambiguous or {}) do
     local entry = ambiguity.entry
     table.insert(
       lines,
@@ -134,7 +144,7 @@ function M.summary(summary, cwd, opts)
     )
   end
 
-  for _, entry in ipairs(summary.lost or {}) do
+  for _, entry in ipairs(staleness.lost or {}) do
     table.insert(
       lines,
       ("%s %s %s: %s -> %s at %q"):format(
@@ -148,6 +158,9 @@ function M.summary(summary, cwd, opts)
     )
   end
 
+  if #lines == 0 then
+    return ""
+  end
   return table.concat(lines, "\n") .. "\n"
 end
 
