@@ -695,18 +695,18 @@ return {
     assert.match(luacov_header, vim.fn.readfile(stats_file)[1])
   end)
 
-  it("fails a --coverage run whose --test-hook already holds the debug hook slot", function()
+  it("measures a --coverage run whose --test-hook holds the debug hook slot", function()
     local path = spec("pass_spec.lua", PASSING)
     local hook = spec("hook.lua", [[return { setup = function() debug.sethook(function() end, "l") end }]])
     local stats_file = vim.fs.joinpath(helper.test_data.full_path, "cov.stats.out")
 
     local obj = run({ path }, { "--coverage=" .. stats_file, "--test-hook=" .. hook })
 
-    assert.equal(1, obj.code)
-    assert.match("coverage was not measured", obj.stdout)
+    assert.equal(0, obj.code)
+    assert.match("Coverage:", obj.stdout)
   end)
 
-  it("fails a --coverage run whose test takes the debug hook slot over, instead of reporting partial counts", function()
+  it("measures a --coverage run whose test takes the debug hook slot over", function()
     local path = spec(
       "hooky_spec.lua",
       [[
@@ -722,8 +722,8 @@ end)
 
     local obj = run({ path }, { "--coverage=" .. stats_file })
 
-    assert.equal(1, obj.code)
-    assert.match("was replaced while the test ran", obj.stdout)
+    assert.equal(0, obj.code)
+    assert.match("Coverage:", obj.stdout)
   end)
 
   it("counts module-level lines of code required at spec load time", function()

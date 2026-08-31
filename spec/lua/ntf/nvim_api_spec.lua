@@ -24,3 +24,11 @@ describe("nvim_buf_clear_namespace", function()
     assert.same({}, vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {}))
   end)
 end)
+
+describe("nvim_get_runtime_file", function()
+  it("names the same first file whether it is asked for one match or for all of them", function()
+    local pattern = "lua/ntf/init.lua"
+
+    assert.equal(vim.api.nvim_get_runtime_file(pattern, false)[1], vim.api.nvim_get_runtime_file(pattern, true)[1])
+  end)
+end)

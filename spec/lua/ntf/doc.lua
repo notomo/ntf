@@ -715,9 +715,9 @@ your module.]],
         return table.concat({
           [[
 `--coverage` measures line coverage of the code under test while the specs run.
-It needs no extra install: ntf sets a Lua line hook in each worker, merges the
-per-worker counts, prints a short summary, and writes the counts in the
-`luacov.stats.out` format:]],
+It needs no extra install: each worker loads the code under test with a counter
+on every statement of it, and ntf merges the per-worker counts, prints a short
+summary, and writes the counts in the `luacov.stats.out` format:]],
           util.help_code_block(coverage_command, { language = "sh" }),
           [[
 The stats go to a cache file named for the working directory (under
@@ -735,6 +735,9 @@ What it measures:
   paths you name pick which specs run, never which code is measured, so code
   that sits beside its own specs is measured like any other
 - a measured file no test executed, which shows up at 0%
+- a measured file however the run reaches it: `require`, `dofile` and `loadfile`
+  all load the counted copy, though a chunk built out of source text by
+  `loadstring` is measured no more than the text it was built from
 - but never a LuaCATS meta file, which by definition never runs
 
 A run that measured no line at all fails rather than reporting a coverage of
@@ -747,8 +750,10 @@ or directory out of the code under test; repeat it for each one. The `mutation`
 commands take it too, since they measure the same code:]],
           util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
-The built-in summary is intentionally simple (its line classification is a
-heuristic). For an authoritative or HTML report, hand the stats to LuaCov —
+The built-in summary is intentionally simple: a line is one to hold the tests to
+when a statement starts on it, which is where the counting goes, so a line a
+statement is merely continued onto counts for neither side of the ratio. For an
+authoritative or HTML report, hand the stats to LuaCov —
 which ntf does not depend on — by writing them where it looks:]],
           util.help_code_block(
             table.concat({
@@ -759,8 +764,10 @@ which ntf does not depend on — by writing them where it looks:]],
             { language = "sh" }
           ),
           [[
-A `--coverage` run is slower than a plain one: the line hook has to be reached
-on every line.]],
+The instrumented copy of each measured file is kept under
+`stdpath("cache")/ntf/instrumented/` and made again whenever the source it was
+read from changes, so what a `--coverage` run adds to a plain one is the
+counting itself.]],
         }, "\n")
       end,
     },

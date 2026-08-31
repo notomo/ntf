@@ -2,8 +2,16 @@ local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local lines = require("ntf.core.coverage.lines")
 
-describe("ntf.core.coverage.lines.coverable", function()
-  it("counts a control statement's own opening line", function()
+--- @param src string
+--- @return integer[] # the rows a statement starts on, ascending
+local function rows(src)
+  return vim.tbl_map(function(statement)
+    return statement.row
+  end, lines.statements(src))
+end
+
+describe("ntf.core.coverage.lines.statements", function()
+  it("takes each statement of a block in the order it is written", function()
     local src = table.concat({
       "local function f(t)",
       "  if t.a then",
@@ -21,110 +29,89 @@ describe("ntf.core.coverage.lines.coverable", function()
       "  for _, v in pairs(t) do",
       "    t.d = v",
       "  end",
-      "  goto done",
+      "  do",
+      "    goto done",
+      "  end",
       "  ::done::",
       "end",
     }, "\n")
 
-    local coverable = lines.coverable(src)
-    assert.same(
-      { true, true, true, true, true, true, true },
-      vim.tbl_map(function(row)
-        return coverable[row]
-      end, { 2, 5, 6, 8, 11, 14, 17 })
-    )
+    assert.same({ 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20 }, rows(src))
   end)
 
-  it("keeps a return of a plain binary expression coverable", function()
+  it("takes a statement of the chunk itself, which no block holds", function()
     local src = table.concat({
-      "local function f(a, b)",
+      "local M = {}",
+      "return M",
+    }, "\n")
+
+    assert.same({ 1, 2 }, rows(src))
+  end)
+
+  it("takes each of the statements a single row holds", function()
+    assert.same({ 1, 1 }, rows("local a = 1 return a"))
+  end)
+
+  it("takes a statement at the byte it starts at, ascending, as splicing counters in relies on", function()
+    local src = table.concat({
+      "local function f()",
+      "  return 1",
+      "end",
+      "return f",
+    }, "\n")
+
+    local bytes = vim.tbl_map(function(statement)
+      return statement.byte
+    end, lines.statements(src))
+
+    assert.same({ 0, 21, 34 }, bytes)
+  end)
+
+  it("takes no statement out of an expression that only looks like one", function()
+    local call_of_a_call = "local x = f(g())"
+
+    assert.same({ 1 }, rows(call_of_a_call))
+  end)
+
+  it("takes a bare `;` as the statement it is", function()
+    local src = table.concat({
+      "local x = 1",
+      ";",
+      "return x",
+    }, "\n")
+
+    assert.same({ 1, 2, 3 }, rows(src))
+  end)
+
+  it("takes nothing out of a source that holds no statement", function()
+    assert.same({}, rows("-- nothing to run here"))
+  end)
+end)
+
+describe("ntf.core.coverage.lines.coverable", function()
+  it("counts the row each statement starts on, once however many start there", function()
+    local src = table.concat({
+      "local a = 1 local b = 2",
+      "local function f()",
       "  return a + b",
       "end",
+      "return f",
     }, "\n")
 
-    assert.is_true(lines.coverable(src)[2])
+    assert.same({ [1] = true, [2] = true, [3] = true, [5] = true }, lines.coverable(src))
   end)
 
-  it("does not count a line whose only values are closures", function()
+  it("counts no row a statement merely continues onto", function()
     local src = table.concat({
-      "local x",
-      "x = nil or function()",
-      "  return 1",
-      "end",
-    }, "\n")
-
-    assert.is_nil(lines.coverable(src)[2])
-  end)
-
-  it("does not count a line whose comma-separated values are all closures", function()
-    local src = table.concat({
-      "local a, b = function()",
-      "  return 1",
-      "end, function()",
-      "  return 2",
-      "end",
-    }, "\n")
-
-    assert.is_nil(lines.coverable(src)[1])
-  end)
-
-  it("counts a line that mixes a non-closure value with a closure", function()
-    local src = table.concat({
-      "local a, b = 1, function()",
-      "  return 1",
-      "end",
-    }, "\n")
-
-    assert.is_true(lines.coverable(src)[1])
-  end)
-
-  it("does not count a return whose call chain opens its first arguments on a later line", function()
-    local src = table.concat({
-      "local function f(names)",
-      "  return vim",
-      "    .iter(names)",
-      "    :totable()",
-      "end",
+      "local x = vim",
+      "  .iter({})",
+      "  :totable()",
     }, "\n")
 
     local coverable = lines.coverable(src)
+    assert.is_true(coverable[1])
     assert.is_nil(coverable[2])
-    assert.is_true(coverable[3])
-  end)
-
-  it("counts a return whose call chain opens its first arguments on its own line", function()
-    local src = table.concat({
-      "local function f(names)",
-      "  return vim.iter(names)",
-      "    :totable()",
-      "end",
-    }, "\n")
-
-    assert.is_true(lines.coverable(src)[2])
-  end)
-
-  it("does not count an assignment whose binary expression calls on a later line", function()
-    local src = table.concat({
-      "local function f(t)",
-      "  local x = t.a",
-      "    + vim.fn.strlen(t.b)",
-      "  return x",
-      "end",
-    }, "\n")
-
-    local coverable = lines.coverable(src)
-    assert.is_nil(coverable[2])
-    assert.is_true(coverable[3])
-  end)
-
-  it("counts an assignment whose closure is parenthesized", function()
-    local src = table.concat({
-      "local x = (function()",
-      "  return 1",
-      "end)",
-    }, "\n")
-
-    assert.is_true(lines.coverable(src)[1])
+    assert.is_nil(coverable[3])
   end)
 end)
 
@@ -136,7 +123,7 @@ describe("ntf.core.coverage.lines.anchor_rows", function()
     return assert(node)
   end
 
-  it("anchors a constant table field to the call's `(` line", function()
+  it("anchors a constant table field to the row the statement holding it starts on", function()
     local src = table.concat({
       "f({",
       "  strict = false,",
@@ -146,7 +133,7 @@ describe("ntf.core.coverage.lines.anchor_rows", function()
     assert.same({ 1 }, lines.anchor_rows(node_at(src, 1, 11)))
   end)
 
-  it("anchors a constant table field to the returning statement's line", function()
+  it("anchors a value of a multi-row statement to the row the statement starts on", function()
     local src = table.concat({
       "local function f()",
       "  return {",
@@ -158,21 +145,26 @@ describe("ntf.core.coverage.lines.anchor_rows", function()
     assert.same({ 2 }, lines.anchor_rows(node_at(src, 2, 13)))
   end)
 
-  it(
-    "anchors a closure-only statement to its own closing `end`, not to an enclosing block that runs whether or not the closure is called",
-    function()
-      local src = table.concat({
-        "local x",
-        "x = nil or function()",
-        "  return 1",
-        "end",
-      }, "\n")
+  it("anchors a statement of a closure to itself, not to the statement the closure is written in", function()
+    local src = table.concat({
+      "local x = function()",
+      "  return 1",
+      "end",
+    }, "\n")
 
-      assert.same({ 4 }, lines.anchor_rows(node_at(src, 1, 4)))
-    end
-  )
+    assert.same({ 2 }, lines.anchor_rows(node_at(src, 1, 9)))
+  end)
 
-  it("returns no anchor without a hit-receiving ancestor", function()
-    assert.same({}, lines.anchor_rows(node_at("local x", 0, 6)))
+  it("anchors a call that is a statement of its own to its own row", function()
+    local src = table.concat({
+      "f(1)",
+      "g(2)",
+    }, "\n")
+
+    assert.same({ 2 }, lines.anchor_rows(node_at(src, 1, 2)))
+  end)
+
+  it("returns no anchor for what no statement holds", function()
+    assert.same({}, lines.anchor_rows(node_at("-- a comment", 0, 3)))
   end)
 end)

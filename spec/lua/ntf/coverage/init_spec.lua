@@ -134,18 +134,18 @@ describe("ntf.coverage.decorate", function()
     assert.same(expected_signs(MODULE), signs(bufnr))
   end)
 
-  it("does not flag multi-line closure header lines as missed", function()
+  it("does not flag the `end` a closure is closed by as missed", function()
     --- @type CoverageLine[]
-    local closure_headers = {
-      { code = "local a = function()", hit = false },
+    local closures = {
+      { code = "local a = function()", hit = true, sign = COVERED },
       { code = "  return 1", hit = false, sign = MISSED },
-      { code = "end", hit = true, sign = COVERED },
-      { code = "return function()", hit = false },
+      { code = "end", hit = false },
+      { code = "return function()", hit = true, sign = COVERED },
       { code = "  return 2", hit = false, sign = MISSED },
-      { code = "end", hit = true, sign = COVERED },
+      { code = "end", hit = false },
     }
 
-    assert.same(expected_signs(closure_headers), decorated_signs(closure_headers))
+    assert.same(expected_signs(closures), decorated_signs(closures))
   end)
 
   it("does not flag explicit `= nil` assignment lines as missed", function()
@@ -160,31 +160,26 @@ describe("ntf.coverage.decorate", function()
     assert.same(expected_signs(nil_field), decorated_signs(nil_field))
   end)
 
-  it("does not flag table fields, bare locals, or opener braces as missed", function()
+  it("does not flag a table field, or the brace closing the table, as missed", function()
     --- @type CoverageLine[]
-    local fields_and_locals = {
-      { code = "local t1 = {", hit = true, sign = COVERED },
+    local fields = {
+      { code = "local t = {", hit = true, sign = COVERED },
       { code = '  one = "one",', hit = false },
-      { code = '  two = "two",', hit = false },
+      { code = "  f(),", hit = false },
       { code = "}", hit = false },
-      { code = "local x", hit = true, sign = COVERED },
-      { code = "local y", hit = false },
-      { code = "local t2 = {", hit = true, sign = COVERED },
-      { code = "  f(),", hit = false, sign = MISSED },
-      { code = "}", hit = false },
-      { code = "return t1, t2, x, y", hit = true, sign = COVERED },
+      { code = "return t", hit = true, sign = COVERED },
     }
 
-    assert.same(expected_signs(fields_and_locals), decorated_signs(fields_and_locals))
+    assert.same(expected_signs(fields), decorated_signs(fields))
   end)
 
-  it("does not flag the receiver line of a multi-line method chain as missed", function()
+  it("does not flag the rows a multi-line method chain runs on as missed", function()
     --- @type CoverageLine[]
     local method_chain = {
       { code = "local t = {", hit = true, sign = COVERED },
       { code = "  vim", hit = false },
-      { code = "    .iter(x)", hit = true, sign = COVERED },
-      { code = "    :totable(),", hit = false, sign = MISSED },
+      { code = "    .iter(x)", hit = false },
+      { code = "    :totable(),", hit = false },
       { code = "}", hit = false },
       { code = "return t", hit = true, sign = COVERED },
     }
@@ -192,11 +187,11 @@ describe("ntf.coverage.decorate", function()
     assert.same(expected_signs(method_chain), decorated_signs(method_chain))
   end)
 
-  it("does not flag a `x = a or function() end` header as missed", function()
+  it("does not flag the rows a `x = a or function() end` is continued onto as missed", function()
     --- @type CoverageLine[]
     local or_closure = {
-      { code = "local cb = existing", hit = false },
-      { code = "  or function()", hit = true, sign = COVERED },
+      { code = "local cb = existing", hit = true, sign = COVERED },
+      { code = "  or function()", hit = false },
       { code = "    return 1", hit = false, sign = MISSED },
       { code = "  end", hit = false },
       { code = "return cb", hit = true, sign = COVERED },

@@ -90,7 +90,7 @@ describe("ntf.core.coverage.report.summary", function()
       { code = '  two = "two",', hit = false, coverable = false },
       { code = "}", hit = false, coverable = false },
       { code = "local t2 = {", hit = true, coverable = true },
-      { code = "  f(),", hit = false, coverable = true },
+      { code = "  f(),", hit = false, coverable = false },
       { code = "}", hit = false, coverable = false },
       { code = "return t1", hit = true, coverable = true },
     }
@@ -103,7 +103,7 @@ describe("ntf.core.coverage.report.summary", function()
   it("lists a never-executed file at 0%, naming none of its lines, since every one of them is missed", function()
     --- @type SummaryLine[]
     local lines = {
-      { code = "local function f()", hit = false, coverable = false },
+      { code = "local function f()", hit = false, coverable = true },
       { code = "  return 1", hit = false, coverable = true },
       { code = "end", hit = false, coverable = false },
       { code = "return f", hit = false, coverable = true },
@@ -119,7 +119,7 @@ describe("ntf.core.coverage.report.summary", function()
     --- @type SummaryLine[]
     local lines = {
       { code = "local M = {}", hit = true, coverable = true },
-      { code = "function M.f(x)", hit = false, coverable = false },
+      { code = "function M.f(x)", hit = false, coverable = true },
       { code = "  print(x)", hit = false, coverable = true },
       { code = "  if x then", hit = false, coverable = true },
       { code = "    return 1", hit = false, coverable = true },
@@ -131,7 +131,7 @@ describe("ntf.core.coverage.report.summary", function()
 
     local text = summary_of(lines)
 
-    assert.match(file_pattern("mod.lua", lines) .. "%s+missed: 3%-5,7", text)
+    assert.match(file_pattern("mod.lua", lines) .. "%s+missed: 2%-5,7", text)
   end)
 
   it("names the missed lines ascending, whatever order the keys come out of the table in", function()

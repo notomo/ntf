@@ -1,120 +1,74 @@
 local M = {}
 
-local EXEC_STMT = {
+--- @type table<string, true> the node kinds that hold statements of their own
+local HOLDS_STATEMENTS = {
+  chunk = true,
+  block = true,
+}
+
+--- @type table<string, true> the node kinds one statement of a block is spelled as
+local STATEMENT = {
+  variable_declaration = true,
+  assignment_statement = true,
+  function_call = true,
+  function_declaration = true,
   if_statement = true,
   while_statement = true,
   repeat_statement = true,
   for_statement = true,
+  do_statement = true,
+  return_statement = true,
   break_statement = true,
   goto_statement = true,
+  label_statement = true,
+  empty_statement = true,
 }
 
---- @param node TSNode a `function_call`
---- @return integer # 0-based row of the `(` that opens its arguments
-local function call_hit_row(node)
-  return (node:field("arguments")[1]:start())
-end
-
---- @param node TSNode a value expression
---- @return integer? # 0-based row the value's own hit lands on, nil when it lands on the statement's line
-local function value_hit_row(node)
-  local kind = node:type()
-  if kind == "function_definition" then
-    return (node:end_())
-  end
-  if kind == "function_call" then
-    return call_hit_row(node)
-  end
-  if kind == "binary_expression" then
-    for child in node:iter_children() do
-      if child:named() then
-        local row = value_hit_row(child)
-        if row then
-          return row
-        end
-      end
-    end
-  end
-  return nil
-end
-
---- @param node TSNode an `assignment_statement` or `return_statement`
---- @return integer[]? # 0-based rows, nil when any value receives its hit on the statement's own line
-local function value_rows(node)
-  for child in node:iter_children() do
-    if child:type() == "expression_list" then
-      local rows = {}
-      for value in child:iter_children() do
-        if value:named() then
-          local row = value_hit_row(value)
-          if not row then
-            return nil
-          end
-          table.insert(rows, row)
-        end
-      end
-      return rows[1] and rows or nil
-    end
-  end
-  return nil
-end
-
---- @param node TSNode
---- @return integer? # 0-based row where the hit lands when `node` executes, nil
---- when the node is not a hit receiver of its own
-local function hit_row(node)
-  local kind = node:type()
-  if kind == "function_call" then
-    return call_hit_row(node)
-  end
-  if kind == "assignment_statement" or kind == "return_statement" then
-    if value_rows(node) then
-      return nil
-    end
-    return (node:start())
-  end
-  if EXEC_STMT[kind] then
-    return (node:start())
-  end
-  return nil
-end
+--- @class NtfCoverageStatement one statement of the source, where a counter goes
+--- @field row integer 1-based row it starts on
+--- @field byte integer 0-based byte it starts at
 
 --- @param src string the full source text
---- @return table<integer, true> # coverable lines, 1-based
-function M.coverable(src)
+--- @return NtfCoverageStatement[] # every statement, in the order it is written
+function M.statements(src)
   local root = vim.treesitter.get_string_parser(src, "lua"):parse()[1]:root()
-  local lines = {}
+
+  local found = {}
   local function walk(node)
-    local row = hit_row(node)
-    if row then
-      lines[row + 1] = true
-    end
+    local holds_statements = HOLDS_STATEMENTS[node:type()]
     for child in node:iter_children() do
-      if child:named() then
-        walk(child)
+      if holds_statements and STATEMENT[child:type()] then
+        local row, _, byte = child:start()
+        table.insert(found, { row = row + 1, byte = byte })
       end
+      walk(child)
     end
   end
   walk(root)
+
+  return found
+end
+
+--- @param src string the full source text
+--- @return table<integer, true> # coverable lines, 1-based: the row each statement starts on, which is where its counter goes
+function M.coverable(src)
+  local lines = {}
+  for _, statement in ipairs(M.statements(src)) do
+    lines[statement.row] = true
+  end
   return lines
 end
 
 --- @param node TSNode
---- @return integer[] # 1-based rows; empty when no hit-receiving ancestor exists
+--- @return integer[] # the 1-based row of the statement the node belongs to; empty where it belongs to none
 function M.anchor_rows(node)
   local current = node --- @type TSNode?
   while current do
-    local row = hit_row(current)
-    if row then
-      return { row + 1 }
+    local parent = current:parent()
+    if parent and HOLDS_STATEMENTS[parent:type()] and STATEMENT[current:type()] then
+      return { (current:start()) + 1 }
     end
-    local kind = current:type()
-    if kind == "assignment_statement" or kind == "return_statement" then
-      return vim.tbl_map(function(end_row)
-        return end_row + 1
-      end, value_rows(current) or {})
-    end
-    current = current:parent()
+    current = parent
   end
   return {}
 end

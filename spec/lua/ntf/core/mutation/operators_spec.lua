@@ -412,7 +412,7 @@ end
     assert.equal("local function f() return nil; end", splice.apply(src, site))
   end)
 
-  it("anchors a return of a closure on the row its hit lands, not on the return", function()
+  it("anchors a return of a closure on the row the return starts on", function()
     local sites = operators.enumerate(table.concat({
       "local function f()",
       "  return function()",
@@ -422,7 +422,7 @@ end
     }, "\n"))
 
     assert.equal("drop-return-value", sites[1].operator)
-    assert.same({ 4 }, sites[1].anchor_rows)
+    assert.same({ 2 }, sites[1].anchor_rows)
   end)
 
   it("finds no site in a string or a comment", function()

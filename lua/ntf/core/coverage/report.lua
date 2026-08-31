@@ -22,15 +22,7 @@ end
 --- @param hits table<integer, integer>
 --- @return integer covered, integer coverable, integer[] missed ascending line numbers
 local function count_file(source_lines, hits)
-  local seen = {}
-  for line in pairs(hits) do
-    seen[line] = true
-  end
-  for line in pairs(coverable_lines(table.concat(source_lines, "\n"))) do
-    seen[line] = true
-  end
-
-  local coverable = vim.tbl_keys(seen)
+  local coverable = vim.tbl_keys(coverable_lines(table.concat(source_lines, "\n")))
   table.sort(coverable)
 
   local covered, missed = 0, {}

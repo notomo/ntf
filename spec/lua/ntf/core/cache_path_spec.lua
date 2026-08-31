@@ -36,6 +36,21 @@ describe("ntf.core.cache_path", function()
     assert.equal(escaped_cwd() .. ".out", vim.fs.basename(path))
   end)
 
+  it("files an instrumented copy under the cache directory, named for the source it holds", function()
+    local source = vim.fs.joinpath(vim.fn.getcwd(), "lua", "mod.lua")
+
+    local path = cache_path.instrumented(source)
+
+    assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "instrumented"), vim.fs.dirname(path))
+    assert.equal(escaped(source) .. ".instrumented", vim.fs.basename(path))
+  end)
+
+  it("gives an instrumented copy no name a run would take for code under test", function()
+    local path = cache_path.instrumented(vim.fs.joinpath(vim.fn.getcwd(), "lua", "mod.lua"))
+
+    assert.no.match("%.lua$", path)
+  end)
+
   it("names the files for the directory it is given, not for the current one", function()
     local dir = vim.fs.dirname(vim.fn.getcwd())
 

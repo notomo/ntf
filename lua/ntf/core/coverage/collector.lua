@@ -1,14 +1,14 @@
 local is_hidden = require("ntf.core.path").is_hidden
 local absolute = require("ntf.core.path").absolute
-local normalize = require("ntf.core.path").normalize
 local walk = require("ntf.core.walk")
+local instrument = require("ntf.core.coverage.instrument")
 
 local M = {}
 
 --- @class NtfCoverageMeasurement one measurement in progress
---- @field hook function the line hook it installed
---- @field data table<string, { max: integer, lines: table<string, integer> }> the counts its hook records into
---- @field previous { hook: function?, mask: string, count: integer } the debug hook that was installed when it began
+--- @field loader function the package loader it installed
+--- @field data table<string, table<integer, integer>> the hits its instrumented files count, by row
+--- @field previous { loadfile: function, dofile: function } the loaders it took the place of, which reach no instrumented copy
 
 --- @type NtfCoverageMeasurement[] the measurements in progress, innermost last
 local measurements = {}
@@ -28,7 +28,7 @@ function M.exclude_paths(paths)
   return prefixes
 end
 
---- @param path string normalized path, absolute unless it comes from a chunk source that names no file
+--- @param path string normalized absolute path
 --- @param cwd string normalized absolute working directory
 --- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
 --- @return string|false the path to record under, or false
@@ -43,25 +43,6 @@ local function measured_path(path, cwd, excludes)
     end
   end
   return path
-end
-
---- @param cwd string normalized absolute working directory
---- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
---- @return fun(source: string): string|false
-local function make_resolver(cwd, excludes)
-  local decided = {}
-  return function(source)
-    local cached = decided[source]
-    if cached ~= nil then
-      return cached
-    end
-
-    local path = source:match("^@(.*)$")
-    local result = path and measured_path(normalize(path), cwd, excludes) or false
-
-    decided[source] = result
-    return result
-  end
 end
 
 --- @param path string absolute file path
@@ -108,67 +89,131 @@ function M.measurable_files(cwd, excludes)
   return files
 end
 
---- @param opts { cwd: string, excludes?: string[] }
---- @return fun(event: string, line: integer) # a `debug.sethook` line hook
---- @return table<string, { max: integer, lines: table<string, integer> }> # filled as the hook records
-function M.line_hook(opts)
-  local cwd = absolute(opts.cwd)
-  local resolve = make_resolver(cwd, opts.excludes or {})
-  local data = {}
-
-  --- @type integer `debug.getinfo` level, inside a `debug.sethook` line hook, of the function whose source is being measured
-  local measured_level = 2
-
-  local function hook(_, line)
-    local info = debug.getinfo(measured_level, "S")
-    local path = resolve(info.source)
-    if not path or line < 1 then
-      return
+--- @param cwd string normalized absolute working directory
+--- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
+--- @param data table<string, table<integer, integer>> what the files it loads count their rows into
+--- @return fun(path: string): function? # the file's chunk, counting the rows it runs; nil for a file that is not measured code
+local function make_measure(cwd, excludes, data)
+  return function(path)
+    local measured = measured_path(absolute(path), cwd, excludes)
+    if not measured then
+      return nil
     end
-    local entry = data[path]
-    if not entry then
-      entry = { max = line, lines = {} }
-      data[path] = entry
+    local chunk = instrument.chunk(measured)
+    if not chunk then
+      return nil
     end
-    local key = tostring(line)
-    entry.lines[key] = (entry.lines[key] or 0) + 1
-    if line > entry.max then
-      entry.max = line
+    local counts = data[measured] or {}
+    data[measured] = counts
+    return chunk(counts)
+  end
+end
+
+--- @param name string a module name
+--- @return boolean # whether Neovim's own loader finds it in a `lua/` directory of the runtimepath, where it reads the file with the `loadfile` a measurement replaces
+local function in_runtimepath(name)
+  local relative = (name:gsub("%.", "/"))
+  for _, pattern in ipairs({ ("lua/%s.lua"):format(relative), ("lua/%s/init.lua"):format(relative) }) do
+    if vim.api.nvim_get_runtime_file(pattern, false)[1] then
+      return true
     end
   end
-  return hook, data
+  return false
+end
+
+--- @param measure fun(path: string): function?
+--- @return function # a `package.loaders` entry for the modules Lua loads itself, which no replaced `loadfile` reaches
+local function make_loader(measure)
+  return function(name)
+    if in_runtimepath(name) then
+      return nil
+    end
+    local path = package.searchpath(name, package.path)
+    return path and measure(path) or nil
+  end
+end
+
+--- @param name string the name a loaded module is filed under
+--- @param cwd string normalized absolute working directory
+--- @param excludes string[] absolute dir prefixes (each ending with "/") to skip
+--- @return boolean # whether requiring it anew would reach a measured file
+local function measured_module(name, cwd, excludes)
+  local relative = (name:gsub("%.", "/"))
+  for _, candidate in ipairs({
+    ("%s/lua/%s.lua"):format(cwd, relative),
+    ("%s/lua/%s/init.lua"):format(cwd, relative),
+  }) do
+    if vim.uv.fs_stat(candidate) and measured_path(candidate, cwd, excludes) then
+      return true
+    end
+  end
+  return false
 end
 
 --- @param opts { cwd: string, excludes?: string[] }
 function M.start(opts)
-  local hook, data = M.line_hook(opts)
-  local previous_hook, previous_mask, previous_count = debug.gethook()
-  local jit = require("jit")
-  jit.off()
-  jit.flush()
-  debug.sethook(hook, "l")
-  table.insert(measurements, {
-    hook = hook,
-    data = data,
-    previous = { hook = previous_hook, mask = previous_mask, count = previous_count },
-  })
-end
+  local cwd = absolute(opts.cwd)
+  local excludes = opts.excludes or {}
 
---- @param measurement NtfCoverageMeasurement
---- @return string? # why the counts it recorded are partial: the single `debug.sethook` slot was taken over while it ran
-function M.release(measurement)
-  if debug.gethook() ~= measurement.hook then
-    return "the debug hook coverage counts lines with was replaced while the test ran, so the counts stop where the replacement began"
+  local data = {}
+  local measure = make_measure(cwd, excludes, data)
+
+  local loader = make_loader(measure)
+  table.insert(package.loaders, 2, loader)
+
+  local previous = { loadfile = loadfile, dofile = dofile }
+  _G.loadfile = function(path)
+    local chunk = path and measure(path)
+    if not chunk then
+      return previous.loadfile(path)
+    end
+    return chunk
   end
-  local previous = measurement.previous
-  debug.sethook(previous.hook, previous.mask, previous.count)
+  _G.dofile = function(path)
+    local chunk = path and measure(path)
+    if not chunk then
+      return previous.dofile(path)
+    end
+    return chunk()
+  end
+
+  for name in pairs(package.loaded) do
+    if measured_module(name, cwd, excludes) then
+      package.loaded[name] = nil
+    end
+  end
+
+  table.insert(measurements, { loader = loader, data = data, previous = previous })
 end
 
---- @return table<string, { max: integer, lines: table<string, integer> }> # the counts recorded, which the message below reports as partial
---- @return string? # why the counts are partial, from `M.release`
+--- @param data table<string, table<integer, integer>> hits by row
+--- @return table<string, { max: integer, lines: table<string, integer> }> # the rows keyed by string, since vim.json.encode rejects the sparse array they would otherwise form
+local function counted(data)
+  local out = {}
+  for path, counts in pairs(data) do
+    local lines = {}
+    local max = 0
+    for row, hits in pairs(counts) do
+      lines[tostring(row)] = hits
+      max = math.max(max, row)
+    end
+    out[path] = { max = max, lines = lines }
+  end
+  return out
+end
+
+--- @return table<string, { max: integer, lines: table<string, integer> }> # the counts recorded
 function M.stop()
   local measurement = table.remove(measurements)
-  return measurement.data, M.release(measurement)
+  for index, loader in ipairs(package.loaders) do
+    if loader == measurement.loader then
+      table.remove(package.loaders, index)
+      break
+    end
+  end
+  _G.loadfile = measurement.previous.loadfile
+  _G.dofile = measurement.previous.dofile
+  return counted(measurement.data)
 end
 
 --- @param into table accumulator (same shape as `M.stop`'s return)
