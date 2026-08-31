@@ -225,7 +225,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "row": 80,
+      "row": 83,
       "col": 6,
       "operator": "force-branch",
       "original": "not ok",
@@ -235,7 +235,7 @@
     },
     {
       "path": "lua/ntf/core/tree.lua",
-      "row": 180,
+      "row": 202,
       "col": 6,
       "operator": "force-branch",
       "original": "not ok",

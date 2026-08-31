@@ -22,6 +22,9 @@ local stack = {} ---@type NtfNode[]
 
 local finally_collector = nil
 
+--- @type boolean? true while a test is running, which is what pending() aborts
+local running_test
+
 local function current()
   return stack[#stack]
 end
@@ -96,11 +99,18 @@ local function new_it(name, fn, opts)
   add_child(node, declaring("it", current()))
 end
 
+--- @param group NtfNode? the group being declared into, nil once no spec file is being loaded
+--- @param running boolean? true while a test is running, which pending() leaves pending instead
 --- @param name string
 --- @param fn fun()? optional body (ignored; pending is never executed)
-local function new_pending(name, fn)
-  local group = current()
+local function new_pending(group, running, name, fn)
   if not group then
+    if not running then
+      error(
+        "pending() outside a spec file being loaded and outside a running test: it declares a skipped test where the tests are declared, and leaves the running one pending from a before_each or a test body",
+        0
+      )
+    end
     error({ [M.PENDING] = true, message = name }, 0)
   end
   local node = {
@@ -132,11 +142,23 @@ end
 
 M.describe = new_describe
 M.it = new_it
-M.pending = new_pending
+--- @param name string pending reason
+--- @param fn fun()? optional body (ignored; pending is never executed)
+M.pending = function(name, fn)
+  return new_pending(current(), running_test, name, fn)
+end
 M.before_each = add_hook("before_each")
 M.after_each = add_hook("after_each")
 M.finally = function(fn)
   M.collect_finally(finally_collector, fn)
+end
+
+--- @param running boolean? true while a test is running, which pending() leaves pending instead of declaring; nil until a run installs one
+--- @return boolean? # the state it replaced, to put back once that run is over
+function M.set_running(running)
+  local saved = running_test
+  running_test = running
+  return saved
 end
 
 --- @param fn fun() runs with a fresh `finally` collector installed; must not throw, the caller catches errors inside

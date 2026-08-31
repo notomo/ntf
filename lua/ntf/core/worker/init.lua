@@ -16,7 +16,7 @@ local function main()
     error(process_hook_error, 0)
   end
 
-  local hook = require("ntf.core.hook").load(payload.test_hook)
+  local hook = require("ntf.core.hook").load("--test-hook", payload.test_hook)
   if type(hook) == "string" then
     error(hook, 0)
   end

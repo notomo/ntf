@@ -653,6 +653,27 @@ return {
     assert.match("setup boom", obj.stderr)
   end)
 
+  it("exits 2 for a --global-hook module of a shape no hook is read from, as the other hooks do", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook = spec("global_hook.lua", [[return function() end]])
+
+    local obj = run({ path }, { "--global-hook=" .. hook })
+
+    assert.equal(2, obj.code)
+    assert.match("%-%-global%-hook module .*returns a function", obj.stderr)
+  end)
+
+  it("names the flag when a --global-hook setup pends, which no test is running to receive", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local hook =
+      spec("global_hook.lua", [[return { setup = function() require("ntf").pending("no test to skip here") end }]])
+
+    local obj = run({ path }, { "--global-hook=" .. hook })
+
+    assert.equal(1, obj.code)
+    assert.match("%-%-global%-hook setup error: .*pending%(%) outside a spec file being loaded", obj.stderr)
+  end)
+
   it("exits 2 when the --global-hook module does not exist", function()
     local path = spec("pass_spec.lua", PASSING)
     local obj = run({ path }, { "--global-hook=/no/such/hook.lua" })

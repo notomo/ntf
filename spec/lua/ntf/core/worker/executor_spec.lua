@@ -251,6 +251,21 @@ end)
     assert.same({}, rawget(_G, "__NTF_LOG"))
   end)
 
+  it("puts back the pending() the run found, so the one that nested it keeps answering as it did", function()
+    local root = tree.build(helper.write_spec([[
+local ntf = require("ntf")
+ntf.it("passes", function() end)
+]]))
+
+    local was_running = tree.set_running(false)
+    executor.run(root, nil)
+    local ok, err = pcall(ntf.pending, "no test is running out here")
+    tree.set_running(was_running)
+
+    assert.is_false(ok)
+    assert.match("^pending%(%) outside a spec file being loaded", err)
+  end)
+
   it("names an after_each pending() as too late, rather than reporting its reason as the error", function()
     local root = tree.build(helper.write_spec([[
 local ntf = require("ntf")

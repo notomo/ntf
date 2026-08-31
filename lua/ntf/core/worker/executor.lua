@@ -200,7 +200,9 @@ function M.run(root, selected)
     end
   end
 
+  local was_running = tree.set_running(true)
   descend(root, {}, {}, {})
+  tree.set_running(was_running)
   return results
 end
 

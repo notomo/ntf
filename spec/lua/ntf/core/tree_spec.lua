@@ -127,6 +127,29 @@ describe("ntf.core.tree.pending", function()
     assert.is_false(ok)
     assert.is_true(thrown[tree.PENDING])
   end)
+
+  it("raises a message for a pending() no test is running to receive, rather than the bare signal", function()
+    local was_running = tree.set_running(false)
+    local ok, err = pcall(tree.pending, "nothing to attach to and no one to send to")
+    tree.set_running(was_running)
+
+    assert.is_false(ok)
+    assert.equal(
+      "pending() outside a spec file being loaded and outside a running test: it declares a skipped test where the tests are declared, and leaves the running one pending from a before_each or a test body",
+      err
+    )
+  end)
+end)
+
+describe("ntf.core.tree.set_running", function()
+  it("hands back the state it replaced, so the run it is nested in gets its own back", function()
+    local was_running = tree.set_running(false)
+
+    local replaced = tree.set_running(true)
+
+    tree.set_running(was_running)
+    assert.is_false(replaced)
+  end)
 end)
 
 describe("ntf.core.tree.collect_finallies", function()

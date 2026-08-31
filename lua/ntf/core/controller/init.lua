@@ -306,16 +306,14 @@ function M.run(root)
     os.exit(2)
   end
 
-  local ok_setup, global_hook = xpcall(function()
-    local hook = require("ntf.core.hook").load(opts.global_hook)
-    if type(hook) == "string" then
-      error(hook, 0)
-    end
-    hook.setup()
-    return hook
-  end, debug.traceback)
+  local global_hook = require("ntf.core.hook").load("--global-hook", opts.global_hook)
+  if type(global_hook) == "string" then
+    io.stderr:write(global_hook .. "\n")
+    os.exit(2)
+  end
+  local ok_setup, setup_error = xpcall(global_hook.setup, debug.traceback)
   if not ok_setup then
-    io.stderr:write("--global-hook setup error: " .. tostring(global_hook) .. "\n")
+    io.stderr:write("--global-hook setup error: " .. tostring(setup_error) .. "\n")
     os.exit(1)
   end
 

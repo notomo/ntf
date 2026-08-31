@@ -48,20 +48,26 @@ local function rejected(result, path)
   return nil
 end
 
+--- @param flag string the flag the module was named by, which its rejection is reported under
 --- @param path string?
 --- @return NtfHookModule|string # the module's hooks, or why the file cannot be one
-local function load_module(path)
+local function load_module(flag, path)
   if type(path) ~= "string" or path == "" then
     return {}
   end
   local result = dofile(path)
-  return rejected(result, path) or result
+  local reason = rejected(result, path)
+  if not reason then
+    return result
+  end
+  return ("%s module %s"):format(flag, reason)
 end
 
+--- @param flag string the flag the module was named by, which its rejection is reported under
 --- @param path string?
 --- @return NtfHook|string # the hooks, each missing one filled with a noop, or why the module cannot be one
-function M.load(path)
-  local loaded = load_module(path)
+function M.load(flag, path)
+  local loaded = load_module(flag, path)
   if type(loaded) == "string" then
     return loaded
   end
@@ -74,7 +80,7 @@ end
 --- @param path string?
 --- @return fun()|string # the setup every process runs before it loads a spec, or why the module cannot be one
 function M.load_setup(path)
-  local loaded = load_module(path)
+  local loaded = load_module("--process-hook", path)
   if type(loaded) == "string" then
     return loaded
   end
