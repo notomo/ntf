@@ -30,6 +30,18 @@ describe("ntf.core.write", function()
     assert.same({ "out.json" }, vim.fn.readdir(dir))
   end)
 
+  it("raises what refused the rename, leaving no temporary file beside the target", function()
+    local dir = helper.test_data:create_dir("cache")
+    local taken = helper.test_data:create_dir("cache/out.json")
+    helper.test_data:create_file("cache/out.json/held", "a directory holding a file takes no rename")
+
+    local ok, err = pcall(write.file, taken, "written")
+
+    assert.is_false(ok)
+    assert.match(vim.pesc(taken) .. "$", err)
+    assert.same({ "out.json" }, vim.fn.readdir(dir))
+  end)
+
   it("closes the temporary file it wrote before renaming it into place", function()
     local path = helper.test_data:path("out.json")
     local tmp = ("%s.%d.tmp"):format(path, vim.uv.os_getpid())

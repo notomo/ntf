@@ -135,6 +135,21 @@ describe("ntf.core.coverage.instrument.chunk", function()
     assert.equal(1, vim.fn.filereadable(cache_path.instrumented(path)))
   end)
 
+  it("returns the chunk though it could file no copy, as a worker racing another does", function()
+    local path = source_file("subject.lua", "return 1")
+    local taken = cache_path.instrumented(path)
+    vim.fn.mkdir(vim.fs.joinpath(taken, "held"), "p")
+    finally(function()
+      vim.fn.delete(taken, "rf")
+    end)
+
+    local counts = {}
+    local body = assert(instrument.chunk(path))(counts)
+
+    assert.equal(1, body())
+    assert.same({ [1] = 1 }, counts)
+  end)
+
   it("reads the copy an earlier run left for the same source", function()
     local path = source_file("subject.lua", "return 1")
     instrument.chunk(path)

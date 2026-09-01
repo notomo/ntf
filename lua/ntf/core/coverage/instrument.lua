@@ -59,7 +59,12 @@ function M.chunk(path)
   local text = cached(path, suffix)
   if not text then
     text = M.transform(src) .. suffix
-    write.file(cache_path.instrumented(path), text)
+    -- WHY: windows refuses a rename onto a path another process holds open, and
+    -- the workers of one run instrument the same source at the same moment. The
+    -- copy is only what saves the next run the transform.
+    -- NOT: write.file, whose raise ends a worker over a file it already holds
+    -- the content of.
+    pcall(write.file, cache_path.instrumented(path), text)
   end
 
   return (loadstring(text, "@" .. path))

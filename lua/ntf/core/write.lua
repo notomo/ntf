@@ -29,7 +29,12 @@ function M.file(path, content)
   local file = assert(io.open(tmp, "w"))
   file:write(content)
   file:close()
-  assert(vim.uv.fs_rename(tmp, path))
+
+  local renamed, err = vim.uv.fs_rename(tmp, path)
+  if not renamed then
+    os.remove(tmp)
+    error(err)
+  end
 end
 
 return M
