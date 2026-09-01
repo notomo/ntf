@@ -16,7 +16,7 @@ local M = {}
 --- @field workers integer how many workers that was, each of which reported exactly one result
 
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_ignore_items?: table<integer, true>, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
 --- @return table coverage merged per-file line hit counts
 --- @return NtfRunTiming timing
@@ -33,6 +33,7 @@ function M.run(items, opts)
   local merged_coverage = {}
   local coverage_excludes = opts.coverage_excludes
     or collector.exclude_paths(require("ntf.core.controller.discover").default_paths())
+  local coverage_ignore_items = opts.coverage_ignore_items or {}
   local started = 0
   local state = { finished = 0, running = {} } --- @type NtfRunState
 
@@ -44,6 +45,8 @@ function M.run(items, opts)
     local item_index = started
     local item = items[item_index]
 
+    local measures_coverage = opts.coverage and not coverage_ignore_items[item_index]
+
     local item_started = vim.uv.hrtime()
     state.running[item_index] = item_locator(item)
     driver.launch(item, {
@@ -52,7 +55,7 @@ function M.run(items, opts)
       timeout = opts.timeout,
       test_hook = opts.test_hook,
       process_hook = opts.process_hook,
-      coverage = opts.coverage,
+      coverage = measures_coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
       local seconds = (vim.uv.hrtime() - item_started) * 1e-9
@@ -70,7 +73,7 @@ function M.run(items, opts)
       state.running[item_index] = nil
       local ok, err = xpcall(function()
         vim.list_extend(results, outcome.results)
-        if opts.coverage then
+        if measures_coverage then
           collector.merge(merged_coverage, outcome.coverage)
           if opts.on_item_coverage then
             opts.on_item_coverage(item_index, outcome.coverage)

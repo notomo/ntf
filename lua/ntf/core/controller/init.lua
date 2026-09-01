@@ -388,9 +388,10 @@ function M.run(root)
     local exclude = require("ntf.core.mutation.exclude")
     local _, uncovered_spec_excludes = exclude.partition(files, mutation_exclude_spec, cwd)
     local unused_spec_excludes = exclude.within(uncovered_spec_excludes, opts.paths, cwd)
-    local coverage_map = require("ntf.core.mutation.coverage_map").new({
-      ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd),
-    })
+    local ignore_items = exclude.item_indexes(items, mutation_exclude_spec, cwd)
+    local coverage_map = require("ntf.core.mutation.coverage_map").new({ ignore_items = ignore_items })
+    --- @type table<integer, true> the items whose coverage nothing reads, so their workers measure none; a run reporting coverage of its own reads every item's
+    local unread_coverage_items = opts.coverage and {} or ignore_items
 
     local results, coverage, timing, gave_up = require("ntf.core.controller.pool").run(items, {
       root = root,
@@ -399,6 +400,7 @@ function M.run(root)
       test_hook = opts.test_hook,
       process_hook = opts.process_hook,
       coverage = opts.coverage or mode.mutation,
+      coverage_ignore_items = unread_coverage_items,
       coverage_excludes = coverage_excludes,
       on_item = prog and prog.on_item or nil,
       on_item_coverage = mode.mutation and coverage_map.add or nil,

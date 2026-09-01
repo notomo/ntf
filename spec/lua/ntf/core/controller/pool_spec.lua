@@ -373,6 +373,30 @@ end)
     }, calls)
   end)
 
+  it("measures no coverage for an item it was told nothing reads, running its test all the same", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("runs", function() end)
+  ntf.it("runs too", function() end)
+end)
+]])
+    local items = work.plan({ file })
+
+    local measured = {}
+    local results = run(items, {
+      root = helper.root,
+      coverage = true,
+      coverage_ignore_items = { [1] = true },
+      on_item_coverage = function(item_index)
+        table.insert(measured, item_index)
+      end,
+    })
+
+    assert.equal(2, #results)
+    assert.same({ 2 }, measured)
+  end)
+
   it("fills the jobs it was given and no more, so an item waits for a slot to free", function()
     local jobs = 2
     local dir = helper.test_data:create_dir("slots")
