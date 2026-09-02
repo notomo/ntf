@@ -569,10 +569,8 @@ rejects the rest.]],
           ([[
 - `ntf CMD --help` prints the options of any other command, such as
   `ntf mutation --help` or `ntf mutation baseline add --help`.
-- Only leading tokens name a command, so a path is never taken for one:
-  `ntf run list` is how you name a path that reads like a command.
-- A command that leaves the tests unrun takes no path at all and says so in its
-  usage line, `mutation baseline add` being the one.
+- Only leading tokens name a command, so `ntf run list` is how you name a path
+  that reads like a command.
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
   instead. It has to be Neovim %s or later.
@@ -588,10 +586,8 @@ rejects the rest.]],
           [[
 A test's full name — the enclosing `describe` names and its own, joined by
 spaces — has to be its own within the file. Two tests sharing one fails the
-file, naming both declaration sites, rather than running either: nothing tells
-them apart afterwards, not the report, not `--filter`, not the schedule the
-next run is ordered from, and not the worker, which picks a test by its
-position in the file. So a test built in a loop puts what varies into its name:
+file, naming both declaration sites, rather than running either. So a test built
+in a loop puts what varies into its name:
 ]],
           util.help_code_block(
             table.concat({
@@ -604,21 +600,16 @@ position in the file. So a test built in a loop puts what varies into its name:
             { language = "lua" }
           ),
           [[
-A name is a single line, whatever the source spelled it over: a break in it, a
-newline the case data carried in included, is written as the `\n` it is, and
-every other character stands as the source wrote it. So a listing keeps one
-line per test, and that written form is the name — what two tests may not
-share, and what a `--filter` pattern, the schedule and an `invariant_spec` are
-all matched against — so the name a report shows is the one to write back.
+A name is a single line: a newline in it is written as the `\n` it is, and that
+written form is what a `--filter` pattern and an `invariant_spec` are matched
+against. So the name a report shows is the one to write back.
 
-The tests are declared once to plan the run and once again in each worker, and
-a worker is handed the position of the test it is to run. So the declarations
-have to come out the same both times: a file that decides what to declare from
-anything the two processes do not share — what another spec file left behind in
-the launcher, what a hook set up in the worker, the order `pairs()` hands back
-— gives that position to another test. A worker that finds a different tree
-than the run was planned from says so and runs nothing, rather than running the
-test that took the position.]],
+The tests are declared once to plan the run and once again in each worker, so
+the declarations have to come out the same both times. A file that decides what
+to declare from anything the two processes do not share — what another spec left
+behind in the launcher, what a hook set up in the worker, the order `pairs()`
+hands back — plans one test and runs another. A worker that finds a different
+tree than the run was planned from says so and runs nothing.]],
         }, "\n")
       end,
     },
@@ -629,9 +620,8 @@ test that took the position.]],
           [[
 A hook module returns an optional `setup` and an optional `teardown`. Which
 process runs them, and how often, is what the three flags differ in. A module
-that returns anything else -- the function itself, rather than a table holding
-it -- or that carries a key neither hook is read from, is rejected naming what
-it returned, rather than loading as a hook that does nothing.]],
+that returns anything else, or that carries a key neither hook is read from, is
+rejected naming what it returned.]],
           "\n" .. util.help_tagged(ctx, "--test-hook=FILE", "ntf-hook-test"),
           [[
 Loaded in every worker (via `dofile`). Each test runs in its own worker, so the
@@ -667,9 +657,8 @@ Run in every process ntf starts — the launcher and each worker alike — befor
 that process loads a spec, which makes it the one hook the two of them agree
 on. It is for what a process has to be before it can read a spec at all: the
 runtimepath a dependency plugin sits on, a `package.path` entry, a stub. It
-takes a `setup` and nothing else — it says what a process is rather than what it
-brackets, so a module carrying a `teardown` is rejected before any test runs,
-naming the two flags a teardown does belong in.]],
+takes a `setup` and nothing else, so a module carrying a `teardown` is rejected
+naming the two flags it does belong in.]],
           util.help_code_block_from_file(process_hook_path, { language = "lua" }),
           util.help_code_block(process_hook_command, { language = "sh" }),
           [[
@@ -687,11 +676,8 @@ whose `setup` runs before a spec is loaded, in every process that loads one:]],
           util.help_code_block_from_file(dependency_hook_path, { language = "lua" }),
           util.help_code_block(dependency_hook_command, { language = "sh" }),
           [[
-- `--test-hook` cannot do this: it runs only in a worker, so a spec that
-  requires the dependency at file scope still fails to load in the launcher,
-  which reads every spec file to discover its tests.
-- `--global-hook` cannot do this either: it runs only in the launcher, whose
-  runtimepath no worker inherits.
+- The other two hooks cannot do this: each reaches only one of the two
+  processes that load a spec.
 - The runtimepath alone only makes the dependency's `lua/` and other runtime
   files findable; startup is over, so its `plugin/` scripts are sourced only
   where the second line does it.]],
@@ -729,19 +715,16 @@ its own instead of the runs overwriting one another, and
 What it measures:
 
 - every file under the working directory, except the test tree: any
-  `*_spec.lua` file, and `./spec` when the project has one — the directory a run
-  naming no path discovers from — so anything sitting alongside the specs there,
-  cloned test dependencies say, is left out too. That is the whole of it: the
-  paths you name pick which specs run, never which code is measured, so code
-  that sits beside its own specs is measured like any other
+  `*_spec.lua` file, and `./spec` when the project has one, so anything sitting
+  alongside the specs there, cloned test dependencies say, is left out too. The
+  paths you name pick which specs run, never which code is measured
 - a measured file no test executed, which shows up at 0%
 - a measured file however the run reaches it: `require`, `dofile` and `loadfile`
   all load the counted copy, though a chunk built out of source text by
   `loadstring` is measured no more than the text it was built from
 - but never a LuaCATS meta file, which by definition never runs
 
-A run that measured no line at all fails rather than reporting a coverage of
-`n/a` that reads like a clean gate.
+A run that measured no line at all fails rather than reporting `n/a`.
 
 Not everything under the working directory is code you hold your tests to —
 vendored third-party files, your own test helpers, a test tree that is not
@@ -750,11 +733,10 @@ or directory out of the code under test; repeat it for each one. The `mutation`
 commands take it too, since they measure the same code:]],
           util.help_code_block(exclude_code_command, { language = "sh" }),
           [[
-The built-in summary is intentionally simple: a line is one to hold the tests to
-when a statement starts on it, which is where the counting goes, so a line a
-statement is merely continued onto counts for neither side of the ratio. For an
-authoritative or HTML report, hand the stats to LuaCov —
-which ntf does not depend on — by writing them where it looks:]],
+The built-in summary counts a line only where a statement starts on it, so a
+line a statement is merely continued onto counts for neither side of the ratio.
+For an authoritative or HTML report, hand the stats to LuaCov — which ntf does
+not depend on — by writing them where it looks:]],
           util.help_code_block(
             table.concat({
               "luarocks install luacov",
@@ -763,11 +745,6 @@ which ntf does not depend on — by writing them where it looks:]],
             }, "\n"),
             { language = "sh" }
           ),
-          [[
-The instrumented copy of each measured file is kept under
-`stdpath("cache")/ntf/instrumented/` and made again whenever the source it was
-read from changes, so what a `--coverage` run adds to a plain one is the
-counting itself.]],
         }, "\n")
       end,
     },
@@ -802,9 +779,8 @@ in the tests, and is reported with the change it got away with:]],
   to a cache file named for the working directory (under
   `stdpath("cache")/ntf/mutation/`, as `--coverage` files its stats), which
   |ntf.mutation.decorate()| reads back to set the survivors as diagnostics in a
-  buffer with no path to configure — in a namespace of its own, so that
-  `vim.diagnostic.jump()` and `setloclist()` can take the survivors alone.
-  `--results=FILE` writes it where you name instead.
+  buffer with no path to configure. `--results=FILE` writes it where you name
+  instead.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor. It leaves the score instead of passing it,
@@ -816,20 +792,17 @@ survived, was left uncovered, or never landed. `--strict=survived` (or
 raised in steps:]],
           util.help_code_block(mutation_strict_command, { language = "sh" }),
           [[
-A run that enumerated no mutant at all fails whatever `--strict` was asked for,
-since its categories count the mutants a run did enumerate: a `--target` naming
-no file to mutate, or an `exclude` covering every one of them, otherwise reports
-a score of `n/a` that reads like a clean gate.
+A run that enumerated no mutant at all — a `--target` naming no file to mutate,
+or an `exclude` covering every one of them — fails whatever `--strict` was asked
+for, its categories counting only the mutants a run did enumerate.
 
 To see what a run would cover before paying for it, `ntf mutation list` runs
 the tests once and lists the mutants with the number of tests that reach each:]],
           util.help_code_block(mutation_list_command, { language = "sh" }),
           [[
-A listing holds its `--config` to the same account a scoring run does, since
-none of that judgement waits on a mutant being run: an entry of `baseline`,
-`exclude` or `exclude_spec` that the code no longer holds is reported and fails
-the listing, rather than being left for the run the listing was to be read
-before.]],
+A listing holds its `--config` to the same account a scoring run does: an entry
+of `baseline`, `exclude` or `exclude_spec` that the code no longer holds is
+reported and fails the listing.]],
         }, "\n")
       end,
     },
@@ -880,11 +853,8 @@ operators it holds its tests to:
 - A name no operator answers to is rejected before the tests run: a set that
   runs less than it says is the one mistake this file must not keep to itself.
 
-Nothing outside those sections is read, so nothing outside them is kept: a key
-none of them names — a misspelled `excludes`, say — is rejected before the
-tests run, rather than being applied by nothing and then dropped the next time
-`baseline add` writes the file. An entry is held to its own fields the same
-way.
+A key none of those sections names — a misspelled `excludes`, say — is rejected
+before the tests run, and an entry is held to its own fields the same way.
 
 The other two sections are |ntf-MUTATION-BASELINE| and |ntf-MUTATION-EXCLUDE|.]],
         }, "\n")
@@ -911,23 +881,18 @@ what it writes is the claim that no test can tell the difference:]],
           [[
 - Every report spells a mutant as `PATH:ROW:COL:OPERATOR`, the same name
   `ntf mutation list` prints and the one `--mutant` takes, so naming one is a
-  copy rather than a translation. Its row and column are both counted from 1,
-  the way an editor and an 'errorformat' count them.
+  copy rather than a translation.
 - `--replacement` is only needed where a single position holds more than one of
   that operator's mutants — the forced branch, which has one per outcome. Such
   a position is answered with the replacements to choose from rather than
   guessed at.
-- The file stays a plain document written in one shape, so editing it by hand
-  remains first-class.
 
 An entry names its mutant by content rather than by position, so it survives the
 line moving. Where a file carries the same line twice — same text, same column,
-same operator — the content names two mutants and cannot say which one the
-rationale answers for, and the run fails as AMBIGUOUS BASELINE rather than
-excusing both behind one reason. `row` is what separates them, and
-`baseline add` writes it exactly where it is needed: an entry that carries one
-goes LOST BASELINE as soon as its line moves, which is the churn a content key
-spares every other entry.
+same operator — the content names two mutants and the run fails as AMBIGUOUS
+BASELINE. `row` is what separates them, and `baseline add` writes one only
+there, an entry that carries one going LOST BASELINE as soon as its line
+moves.
 
 An entry is otherwise only ever trusted, not checked: a mutant a new test would
 now detect stays out of the score behind a mark that no longer holds.
@@ -938,40 +903,34 @@ results file, which is what you want right after editing the baseline:]],
           util.help_code_block(mutation_verify_baseline_command, { language = "sh" }),
           [[
 Verify fails the same way when it re-ran none of the entries its config lists,
-so a run scoped past all of them is answered rather than passing as `0/0`.
+so a run scoped past all of them is answered rather than passing as `0/0`. A
+kill has to repeat before it counts, so a test that fails for reasons of its own
+does not condemn an entry.
 
-A kill has to repeat before it counts, so a test that fails for reasons of its
-own does not condemn an entry. `--verify-baseline` asks the same question of a
-scoring run, verifying the entries in the same pass that scores the rest, so a
-gate that wants both answers pays for one run of the suite instead of two:]],
+`--verify-baseline` asks the same question of a scoring run, verifying the
+entries in the same pass that scores the rest, so a gate that wants both answers
+pays for one run of the suite instead of two:]],
           util.help_code_block(mutation_verify_baseline_with_score_command, { language = "sh" }),
           [[
 An entry is re-run by the tests that reach its mutant, so one no test reaches
-has nothing to re-run and would otherwise pass by saying nothing at all. Such
-an entry makes the second claim itself: `uncovered`, which
-`ntf mutation baseline add --uncovered` writes, says no test runs the line —
-a different statement from the rest of the baseline's "the tests cannot tell the
-difference". Both halves are held to the suite, and both fail the run:
-UNCOVERED BASELINE, once an entry without the mark is reached by no test, and
-COVERED BASELINE, once an entry carrying it is reached by one, which leaves the
-mark something to be verified by after all. Reaching the mutant with a spec is
-still what a NO COVERAGE mutant asks for; the mark is for the line a spec
-cannot reach. Only the whole suite can say that nothing reaches a mutant, so
-UNCOVERED BASELINE is answered for only where the run takes every test the
-project has, while a test that does reach one says so however few were
-selected. Verify's own line counts the entries it stood behind apart from the
-ones it re-ran.
+has nothing to re-run and would otherwise pass by saying nothing at all. Such an
+entry makes that second claim itself with `uncovered`, which
+`ntf mutation baseline add --uncovered` writes. Both halves are held to the
+suite: UNCOVERED BASELINE, once an entry without the mark is reached by no test,
+and COVERED BASELINE, once an entry carrying it is reached by one. Reaching the
+mutant with a spec is still what a NO COVERAGE mutant asks for; the mark is for
+the line a spec cannot reach. Only the whole suite can say that nothing reaches
+a mutant, so UNCOVERED BASELINE is answered for only where the run takes every
+test the project has.
 
-Two report lines answer for an entry that has gone stale, and both fail the
-run: LOST BASELINE, once the `line` it marks is no longer there, and UNPINNED
-BASELINE, once no test named by `invariant_spec` passes. A rationale usually
-rests on a fact from somewhere else — what the callers pass, what shape another
-module hands over, what the runtime does with a value — and that fact can stop
-holding without the marked line moving. Naming the test that pins it is what
-makes renaming or deleting that test something to answer for, instead of
-quietly unmooring the rationale. A run that takes part of the suite cannot tell
-a name that is gone from one it never selected, so UNPINNED BASELINE is
-answered for only where the run takes every test the project has.]],
+A rationale usually rests on a fact from somewhere else — what the callers pass,
+what shape another module hands over, what the runtime does with a value — and
+that fact can stop holding without the marked line moving. `invariant_spec`
+names the test that pins it, so renaming or deleting that test fails the run as
+UNPINNED BASELINE instead of quietly unmooring the rationale. A run that takes
+part of the suite cannot tell a name that is gone from one it never selected, so
+that line, like LOST BASELINE, is answered for only where the run takes every
+test the project has.]],
         }, "\n")
       end,
     },
@@ -1003,9 +962,8 @@ out in one of four ways, which are not interchangeable:]],
           [[
 The flags are the blunt forms: they take no rationale, so such a list grows
 quietly and outlives what put each path on it. `--exclude-code` is still what a
-vendored copy wants, since it is not code you hold your tests to at all. A gate
-built on `--exclude-spec` has to run the suite a second time to cover what it
-dropped.
+vendored copy wants, and a gate built on `--exclude-spec` has to run the suite a
+second time to cover what it dropped.
 
 The `exclude` section is for code that only ever executes in a process no spec
 drives, where every mutant comes back uncovered rather than detected:]],
@@ -1033,8 +991,7 @@ reaches. Listing its path keeps it out of every trial, and out of the coverage
 that decides which mutants are covered at all, so a mutant only it reaches is
 reported NO COVERAGE. It still runs with the rest of the suite, and the run
 still stops when it fails, which is what lets one mutation run stand in for a
-plain test run in CI. It takes no `operators`: it names a spec, not a file
-mutants are enumerated from.
+plain test run in CI.
 
 Both sections fail the run — UNUSED EXCLUDE and UNUSED EXCLUDE SPEC — when an
 entry covers nothing, so a path that has been renamed, or is already covered by

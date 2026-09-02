@@ -6,10 +6,7 @@ local M = {}
 --- @class NtfItOption
 --- @field timeout integer? per-process timeout in ms, overriding the
 ---   `--timeout` default; an exceeded worker is killed and reported as an
----   error. A mutation run derives a trial's timeout from what the test took in
----   its baseline run and takes this one as the ceiling, so a long one does not
----   make every trial of the test wait that long, and a `0`, which leaves the
----   test itself untimed, still leaves its trials bounded.
+---   error. A mutation run takes it as the ceiling for the test's trials.
 
 --- Define a test group. Its body runs at build time to discover nested
 --- `describe`/`it`; the body itself is never reported as a test.
@@ -22,9 +19,7 @@ end
 --- Define a test case. The body runs at execution time, in its own fresh Neovim
 --- process. This is not configurable: state never leaks between tests, because
 --- no two tests ever share a process.
---- Its full name -- the enclosing `describe` names and its own, joined by
---- spaces -- has to be its own within the file. Two leaves sharing one fails
---- the file instead of running: |ntf-WRITING-SPECS|.
+--- Its full name has to be its own within the file: |ntf-WRITING-SPECS|.
 --- @param name string: test name
 --- @param fn fun() test body
 --- @param opts NtfItOption?: |NtfItOption|
@@ -35,12 +30,10 @@ end
 --- Mark a test as pending. As a declaration it records a skipped node; called
 --- from a running test body or from a before_each it aborts the test as
 --- pending. Either way the report lists the test on its own `PENDING` line,
---- under the site it is declared at; a reason given from a running test is
---- printed below it, a declared one already being the node's name.
---- An after_each or a finally runs once the result is decided, so
---- calling it there never skips the test: the run reports it as an error
---- against whatever result the test already reached, as it does any other raise
---- from those two.
+--- with a reason given from a running test printed below it.
+--- Calling it from an after_each or a finally never skips the test, the result
+--- being decided by then; it is reported as an error like any other raise from
+--- those two.
 --- @param name string: pending reason
 --- @param fn fun()?: optional body (ignored; pending is never executed)
 function M.pending(name, fn)
