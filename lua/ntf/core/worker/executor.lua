@@ -13,7 +13,7 @@ local M = {}
 --- @field message string? failure/error message
 --- @field traceback string? captured traceback (failed/error)
 --- @field duration number? wall time in seconds
---- @field file string? spec file path (set by the controller)
+--- @field file string? spec file path (set by the worker, from the leaf it ran)
 
 local function extend(a, b)
   local out = {}

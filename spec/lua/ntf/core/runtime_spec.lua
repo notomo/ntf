@@ -30,8 +30,13 @@ describe("ntf.core.runtime.setup", function()
     "runs the process hook with the working directory already prepended, which is what it puts a dependency beside",
     function()
       local original = vim.o.runtimepath
+      -- WHY: the test below proves an unrun setup by finding this global unset,
+      -- which only holds where nothing left it set.
+      -- NOT: leaving it to the process ending, which is not what separates two
+      -- tests that share one.
       finally(function()
         vim.o.runtimepath = original
+        vim.g.ntf_runtime_spec_head = nil
       end)
       vim.o.runtimepath = vim.fn.tempname()
       local path = process_hook({

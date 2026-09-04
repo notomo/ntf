@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local hook = require("ntf.core.hook")
 local helper = require("ntf.test.helper")
 
@@ -125,6 +126,13 @@ describe("ntf.core.hook.load_setup", function()
   after_each(helper.after_each)
 
   it("returns the setup the module provides", function()
+    -- WHY: the test below proves a rejected setup did not run by finding this
+    -- global unset, which only holds where nothing left it set.
+    -- NOT: leaving it to the process ending, which is not what separates two
+    -- tests that share one.
+    finally(function()
+      vim.g.ntf_hook_spec = nil
+    end)
     local path = helper.test_data:create_file(
       "process_hook.lua",
       table.concat({

@@ -59,24 +59,70 @@ local function main()
   end
 
   local tree = require("ntf.core.tree")
-  local root_node = tree.build(payload.file)
+  local executor = require("ntf.core.worker.executor")
 
-  local problem = root_node.load_error and tostring(root_node.load_error)
-    or tree.divergence(root_node, payload.node_id, payload.names, payload.leaves_count)
-  if problem then
-    if collector then
-      collector.stop()
+  -- WHY: a batch holds leaves of the same spec file next to each other, and its
+  -- point is to pay that file's load once for all of them.
+  -- NOT: building the tree per leaf, which puts the load back for every one.
+  local roots = {}
+
+  --- @param leaf NtfWorkerLeaf
+  --- @return NtfResult[]? results, string? # why the file cannot answer for that leaf
+  local function run_leaf(leaf)
+    local root_node = roots[leaf.file]
+    if not root_node then
+      root_node = tree.build(leaf.file)
+      roots[leaf.file] = root_node
     end
-    local message = problem
-    local teardown_err = teardown()
-    if teardown_err then
-      message = message .. "\n\nteardown error: " .. teardown_err.message
+    local problem = root_node.load_error and tostring(root_node.load_error)
+      or tree.divergence(root_node, leaf.node_id, leaf.names, leaf.leaves_count)
+    if problem then
+      return nil, problem
     end
-    protocol.emit({ load_error = message, file = payload.file }, payload.nonce)
-    return 1
+    return executor.run(root_node, { [leaf.node_id] = true })
   end
 
-  local results = require("ntf.core.worker.executor").run(root_node, { [payload.node_id] = true })
+  --- @param results NtfResult[]
+  --- @return boolean # true once one of them is a result the run fails on
+  local function detected(results)
+    for _, result in ipairs(results) do
+      if result.status == "failed" or result.status == "error" then
+        return true
+      end
+    end
+    return false
+  end
+
+  local results = {}
+  local failed_index
+  -- WHY: the payload carries the fields of a leaf itself, so a worker given no
+  -- batch runs the one leaf it names through the same loop.
+  -- NOT: a branch per shape, which leaves the single-leaf path to drift from
+  -- the batched one it has to keep behaving like.
+  for index, leaf in ipairs(payload.batch or { payload }) do
+    local ran, problem = run_leaf(leaf)
+    if problem then
+      if collector then
+        collector.stop()
+      end
+      local message = problem
+      local teardown_err = teardown()
+      if teardown_err then
+        message = message .. "\n\nteardown error: " .. teardown_err.message
+      end
+      protocol.emit({ load_error = message, file = leaf.file }, payload.nonce)
+      return 1
+    end
+    --- @cast ran NtfResult[]
+    for _, result in ipairs(ran) do
+      result.file = leaf.file
+      table.insert(results, result)
+    end
+    if detected(ran) then
+      failed_index = index
+      break
+    end
+  end
 
   local coverage
   if collector then
@@ -90,12 +136,15 @@ local function main()
   if applied then
     mutation_applied = applied()
   end
-  protocol.emit({ results = results, coverage = coverage, mutation_applied = mutation_applied }, payload.nonce)
+  protocol.emit({
+    results = results,
+    failed_index = failed_index,
+    coverage = coverage,
+    mutation_applied = mutation_applied,
+  }, payload.nonce)
 
-  for _, result in ipairs(results) do
-    if result.status == "failed" or result.status == "error" then
-      return 1
-    end
+  if detected(results) then
+    return 1
   end
   return 0
 end

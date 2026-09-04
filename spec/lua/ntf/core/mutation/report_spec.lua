@@ -35,6 +35,82 @@ local function record(path, row, status, mutant)
 end
 
 describe("ntf.core.mutation.report.summary", function()
+  it("names the batches a kill was taken back from, and counts them", function()
+    local mutant = record(abs("lua/a.lua"), 7, "killed").mutant
+    local summary = {
+      records = {},
+      restarted = {
+        { mutant = mutant, killed_by = "a leaky test" },
+        { mutant = mutant, killed_by = "another leaky test" },
+      },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
+
+    assert.match("  2 batches restarted after a kill did not reproduce alone\n", text)
+    assert.match(
+      'FLAKY BATCH lua/a%.lua:7:1:swap%-relational < %-> <= killed by "a leaky test" only where a process was shared',
+      text
+    )
+    assert.match('killed by "another leaky test"', text)
+  end)
+
+  it("counts one restarted batch in the singular", function()
+    local summary = {
+      records = {},
+      restarted = { { mutant = record(abs("lua/a.lua"), 7, "killed").mutant, killed_by = "a leaky test" } },
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
+
+    assert.match("  1 batch restarted after a kill did not reproduce alone\n", text)
+  end)
+
+  it("says nothing about batches where every kill reproduced alone", function()
+    local summary = {
+      records = {},
+      restarted = {},
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
+
+    assert.no.match("restarted", text)
+    assert.no.match("FLAKY BATCH", text)
+  end)
+
   it("scores the detected mutants and lists every one a test did not plainly fail on", function()
     local summary = {
       records = {

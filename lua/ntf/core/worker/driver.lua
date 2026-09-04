@@ -18,6 +18,7 @@ local running = {}
 --- @field output NtfWorkerOutput? captured user output, when there was any
 --- @field timed_out boolean? the worker was killed for exceeding its timeout
 --- @field mutation_applied boolean? the mutated module was loaded (mutation runs only)
+--- @field failed_index integer? which of the leaves it was given failed, told from the worker rather than matched back from a name
 
 --- @param item NtfWorkItem
 --- @param obj { code: integer, stdout: string?, stderr: string? } vim.system result
@@ -25,10 +26,10 @@ local running = {}
 --- @param timed_out_ms integer? the timeout the worker was killed for exceeding
 --- @return NtfResult[]
 local function results_of(item, obj, decoded, timed_out_ms)
+  -- WHY: a batch reports leaves of several files, so the file a result answers
+  -- for is the one the worker ran it from and stamped it with.
+  -- NOT: the item's, which names only the leaf the worker was launched under.
   if decoded and decoded.results and #decoded.results > 0 then
-    for _, result in ipairs(decoded.results) do
-      result.file = item.file
-    end
     return decoded.results
   end
 
@@ -59,8 +60,8 @@ local function results_of(item, obj, decoded, timed_out_ms)
   }
 end
 
---- @param item NtfWorkItem
---- @param opts { cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
+--- @param item NtfWorkItem the leaf the worker answers for in the run's reports; the first of `opts.batch` when it is given one
+--- @param opts { cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation, batch?: NtfWorkerLeaf[] }
 --- @return NtfWorkerPayload
 --- @return integer? # ms after which the run kills the worker, nil when it is untimed
 function M.payload(item, opts)
@@ -79,6 +80,7 @@ function M.payload(item, opts)
     node_id = item.node_id,
     names = item.names,
     leaves_count = item.leaves_count,
+    batch = opts.batch,
     test_hook = opts.test_hook,
     process_hook = opts.process_hook,
     coverage = opts.coverage or false,
@@ -104,8 +106,8 @@ function M.kill_all()
   return killed
 end
 
---- @param item NtfWorkItem
---- @param opts { root: string, cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation }
+--- @param item NtfWorkItem the leaf the worker answers for in the run's reports; the first of `opts.batch` when it is given one
+--- @param opts { root: string, cwd: string, timeout: integer?, timeout_override: integer?, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_excludes?: string[], mutation?: NtfWorkerMutation, batch?: NtfWorkerLeaf[] }
 --- @param on_done fun(outcome: NtfWorkerOutcome) called from the process-exit callback (a fast event context)
 function M.launch(item, opts, on_done)
   local worker = vim.fs.joinpath(opts.root, "lua/ntf/core/worker/init.lua")
@@ -148,6 +150,7 @@ function M.launch(item, opts, on_done)
       coverage = decoded and decoded.coverage or nil,
       timed_out = timed_out or nil,
       mutation_applied = decoded and decoded.mutation_applied,
+      failed_index = decoded and decoded.failed_index,
     }
     if decoded then
       local blob = protocol.captured_output(obj.stdout, obj.stderr, payload.nonce)

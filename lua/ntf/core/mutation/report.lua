@@ -16,8 +16,9 @@ M.listed = {
   baseline_killable = { label = "BASELINE KILLABLE", color = "red" },
 }
 
---- @type table<string, string> the lines a config entry the run cannot stand behind is reported under
+--- @type table<string, string> the lines a run reports under that judge something other than a mutant: a config entry it cannot stand behind, or a batch it took a kill back from
 M.entry_labels = {
+  flaky_batch = "FLAKY BATCH",
   unused_exclude = "UNUSED EXCLUDE",
   unused_exclude_spec = "UNUSED EXCLUDE SPEC",
   unpinned = "UNPINNED BASELINE",
@@ -86,6 +87,14 @@ function M.summary(summary, cwd, opts)
   end
   lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 
+  local restarted = summary.restarted or {}
+  if #restarted > 0 then
+    table.insert(
+      lines,
+      ("  %d batch%s restarted after a kill did not reproduce alone"):format(#restarted, #restarted == 1 and "" or "es")
+    )
+  end
+
   for _, record in ipairs(summary.records) do
     local listed = M.listed[record.status]
     if listed then
@@ -105,6 +114,20 @@ function M.summary(summary, cwd, opts)
         )
       )
     end
+  end
+
+  for _, restart in ipairs(restarted) do
+    local mutant = restart.mutant
+    table.insert(
+      lines,
+      ("%s %s %s -> %s killed by %q only where a process was shared"):format(
+        paint("yellow", M.entry_labels.flaky_batch),
+        locator(relative(mutant.path, cwd), mutant),
+        oneline(mutant.original),
+        oneline(mutant.replacement),
+        restart.killed_by
+      )
+    )
   end
 
   return table.concat(lines, "\n") .. "\n" .. M.stale(summary, opts)

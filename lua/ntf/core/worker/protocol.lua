@@ -3,11 +3,14 @@ local M = {}
 --- @class NtfWorkerMutation : NtfMutantSplice one mutation to splice into the module under test
 --- @field path string normalized absolute path of the file to mutate
 
---- @class NtfWorkerPayload parameters for one worker process
+--- @class NtfWorkerLeaf one leaf a worker is asked to run, named the way the run planned it
 --- @field file string spec file path
 --- @field node_id string leaf id to run
 --- @field names string[] the name chain the run planned at that id, which a diverged tree is answered with
 --- @field leaves_count integer how many tests the file declared when the run was planned
+
+--- @class NtfWorkerPayload : NtfWorkerLeaf parameters for one worker process
+--- @field batch NtfWorkerLeaf[]? leaves to run in order, stopping at the first failure; absent for a worker that runs the one leaf the payload itself names
 --- @field test_hook string? Lua module path providing setup/teardown
 --- @field process_hook string? Lua module path providing the setup this process runs before it loads a spec
 --- @field coverage boolean
@@ -19,6 +22,7 @@ local M = {}
 
 --- @class NtfWorkerResult the block a worker emits as its last stdout write
 --- @field results NtfResult[]? per-leaf results (absent when the spec failed to load)
+--- @field failed_index integer? which of the leaves it was given failed, the one the rest of them were cut short for
 --- @field coverage table? per-file line hit counts (when coverage was measured)
 --- @field mutation_applied boolean? whether the mutated module was actually loaded (mutation runs only)
 --- @field load_error string? load failure message

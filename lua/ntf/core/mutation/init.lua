@@ -4,6 +4,7 @@ local runner = require("ntf.core.mutation.runner")
 local baseline = require("ntf.core.mutation.baseline")
 local exclude = require("ntf.core.mutation.exclude")
 local collector = require("ntf.core.coverage.collector")
+local tree = require("ntf.core.tree")
 local absolute = require("ntf.core.path").absolute
 local relative = require("ntf.core.path").relative
 
@@ -26,7 +27,12 @@ local M = {}
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
 
+--- @class NtfMutationRestart a batched trial whose kill the test did not reproduce when it was run alone, so the batch was what killed it
+--- @field mutant NtfMutant
+--- @field killed_by string full name of the test the batch came back killed by
+
 --- @class NtfMutationSummary : NtfMutationStaleness
+--- @field restarted NtfMutationRestart[] the batches a kill was taken back from, which cost the run the trials they had left
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
 --- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
@@ -227,6 +233,8 @@ function M.run(opts, ctx)
     ctx.on_start(#tasks)
   end
 
+  --- @type NtfMutationRestart[]
+  local restarted = {}
   local outcomes = runner.run(tasks, {
     root = ctx.root,
     cwd = ctx.cwd,
@@ -235,6 +243,9 @@ function M.run(opts, ctx)
     test_hook = opts.test_hook,
     process_hook = opts.process_hook,
     on_task = ctx.on_task,
+    on_restart = function(mutant, trial)
+      table.insert(restarted, { mutant = mutant, killed_by = tree.full_name(trial.item.names) })
+    end,
   })
   for task_index, outcome in pairs(outcomes) do
     local record = records[task_records[task_index]]
@@ -271,6 +282,7 @@ function M.run(opts, ctx)
   end
 
   return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes, claims), {
+    restarted = restarted,
     records = records,
     counts = counts,
     excluded_files = excluded_files,

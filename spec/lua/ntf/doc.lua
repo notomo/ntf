@@ -512,6 +512,7 @@ local report_labels = enumeration({
   unordered = true,
   entries = {
     { label = "TIMEOUT", description = "a hung test detected it, which a busy machine can fake" },
+    { label = "FLAKY BATCH", description = "a kill only a shared process made, taken back" },
     { label = "SURVIVED", description = "no test noticed the change" },
     { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
     { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
@@ -1018,7 +1019,14 @@ the score:]],
 not applied. A run that scored no mutant at all says so — `Mutation: n/a (no
 mutant scored)` — instead of reading as a run with nothing to do. Everything
 else that fails a run — a stale baseline entry, an exclude entry covering
-nothing — fails it on its own, with or without the gate.]],
+nothing — fails it on its own, with or without the gate.
+
+A mutant is tried against the tests that cover it, cheapest first, sharing one
+process until a test fails. That test only names a candidate: the verdict is
+taken from running it alone, exactly as an unbatched trial is, so a process a
+test before it left in a state of its own never becomes a detection. A kill
+that does not come back is reported FLAKY BATCH and taken back, and the trials
+left are run from a new process.]],
         }, "\n")
       end,
     },

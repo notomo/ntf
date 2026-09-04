@@ -349,6 +349,97 @@ describe("ntf.core.worker.driver.payload", function()
   end)
 end)
 
+local TWO_TESTS = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("one", function() end)
+  ntf.it("two", function() end)
+end)
+]]
+
+local THREE = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("one", function() end)
+  ntf.it("two", function()
+    error("two raised")
+  end)
+  ntf.it("three", function() end)
+end)
+]]
+
+-- WHY: the run's own planning loads this file too, in a process whose working
+-- directory is the plugin root, so the line it appends has to land beside the
+-- spec for the test to be able to take it back before it launches a worker.
+-- NOT: a path relative to the working directory, which puts it in the repo.
+local COUNTS_LOADS = [[
+local source = debug.getinfo(1, "S").source:sub(2)
+local file = io.open(vim.fs.joinpath(vim.fs.dirname(source), "loads.txt"), "a")
+file:write("x\n")
+file:close()
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("one", function() end)
+  ntf.it("two", function() end)
+end)
+]]
+
+--- @param item table one NtfWorkItem
+--- @return table # the NtfWorkerLeaf naming it
+local function leaf_of(item)
+  return { file = item.file, node_id = item.node_id, names = item.names, leaves_count = item.leaves_count }
+end
+
+describe("ntf.core.worker.driver.launch with a batch", function()
+  before_each(helper.before_each)
+  after_each(teardown)
+
+  it("runs every leaf it is given and reports them in that order", function()
+    local items = work.plan({ helper.write_spec(TWO_TESTS) })
+
+    local outcome = launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
+
+    assert.equal(2, #outcome.results)
+    assert.equal("passed", outcome.results[1].status)
+    assert.equal("passed", outcome.results[2].status)
+    assert.is_nil(outcome.failed_index)
+  end)
+
+  it("stops at the leaf that failed and says which one it was", function()
+    local items = work.plan({ helper.write_spec(THREE) })
+
+    local outcome = launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
+
+    assert.equal(2, #outcome.results)
+    assert.equal("failed", outcome.results[2].status)
+    assert.equal(2, outcome.failed_index)
+  end)
+
+  it("loads a spec file once for every leaf of it the batch holds", function()
+    local items = work.plan({ helper.write_spec(COUNTS_LOADS) })
+    helper.test_data:delete("loads.txt")
+
+    launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
+
+    local file = assert(io.open(helper.test_data:path("loads.txt"), "r"))
+    local blob = file:read("*a")
+    file:close()
+    assert.equal("x\n", blob)
+  end)
+
+  it("answers for the file of the leaf whose tree the run no longer planned from", function()
+    local items = work.plan({ helper.write_spec(ONE_TEST) })
+    local other = work.plan({ helper.test_data:create_file("other_spec.lua", ONE_TEST) })
+    local diverged = vim.tbl_extend("force", leaf_of(other[1]), { names = { "gone" } })
+
+    local outcome = launch(items[1], { batch = { leaf_of(items[1]), diverged } })
+
+    assert.equal(1, #outcome.results)
+    assert.equal("error", outcome.results[1].status)
+    assert.match('the run picked "gone"', outcome.results[1].message)
+  end)
+end)
+
 describe("ntf.core.worker.driver.kill_all", function()
   before_each(helper.before_each)
   after_each(teardown)
