@@ -4,11 +4,22 @@ local describe, before_each, after_each, it, finally, assert =
 local hook = require("ntf.core.hook")
 local helper = require("ntf.test.helper")
 
+-- WHY: a test further down proves a rejected setup did not run by finding this
+-- global unset, which only holds where nothing left it set.
+-- NOT: leaving it to the process ending, which is not what separates two tests
+-- that share one.
+local function clear_global()
+  finally(function()
+    vim.g.ntf_hook_spec = nil
+  end)
+end
+
 describe("ntf.core.hook.load", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
   it("loads setup and teardown from the module file", function()
+    clear_global()
     local path = helper.test_data:create_file(
       "hook.lua",
       table.concat({
@@ -31,6 +42,7 @@ describe("ntf.core.hook.load", function()
   end)
 
   it("fills a missing teardown with a noop", function()
+    clear_global()
     local path = helper.test_data:create_file(
       "hook.lua",
       table.concat({
@@ -126,13 +138,7 @@ describe("ntf.core.hook.load_setup", function()
   after_each(helper.after_each)
 
   it("returns the setup the module provides", function()
-    -- WHY: the test below proves a rejected setup did not run by finding this
-    -- global unset, which only holds where nothing left it set.
-    -- NOT: leaving it to the process ending, which is not what separates two
-    -- tests that share one.
-    finally(function()
-      vim.g.ntf_hook_spec = nil
-    end)
+    clear_global()
     local path = helper.test_data:create_file(
       "process_hook.lua",
       table.concat({

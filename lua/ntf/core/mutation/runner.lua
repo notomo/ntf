@@ -44,13 +44,14 @@ local function leaf_chars(trial)
   return chars
 end
 
--- WHY: a batch names the test a mutant may have reached; the verdict is still
--- taken from that one test run alone, exactly as an unbatched trial is, so
--- sharing a process never becomes evidence of its own.
+-- WHY: a batch names the test a mutant may have reached; every verdict is still
+-- taken from trials run one to a process, so sharing one never becomes evidence
+-- of its own -- a kill is confirmed alone, and a mutant no test killed is tried
+-- again without a batch.
 -- NOT: scoring the batch, where a test failing on what an earlier one left
--- behind reads as a detection the mutant had nothing to do with.
+-- behind reads as a detection, and one passing on it reads as a survival.
 --- @param tasks NtfMutantTask[]
---- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, budget?: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome), on_restart?: fun(mutant: NtfMutant, trial: NtfMutantTrial) }
+--- @param opts { root: string, cwd: string, jobs?: integer, timeout: integer, budget?: integer, test_hook?: string, process_hook?: string, on_task?: fun(outcome: NtfMutantOutcome), on_restart?: fun(trial: NtfMutantTrial) }
 --- @return NtfMutantOutcome[] # parallel to tasks
 function M.run(tasks, opts)
   local jobs = opts.jobs or vim.uv.available_parallelism()
@@ -66,6 +67,9 @@ function M.run(tasks, opts)
   local run_trial
   local run_batch
   local run_confirm
+
+  --- @type table<integer, true> the tasks a batch was launched for, whose survival is not theirs to report
+  local batched = {}
 
   --- @param task_index integer
   --- @param outcome NtfMutantOutcome
@@ -120,6 +124,14 @@ function M.run(tasks, opts)
     local task = tasks[task_index]
     local trial = task.trials[trial_index]
     if not trial then
+      -- WHY: a survival is the one verdict a batch reaches on its own -- a test
+      -- that would have failed alone passing on what an earlier one left behind
+      -- -- so it is taken again with every trial in a process of its own.
+      -- NOT: reporting it, which is a mutant the batch chose not to detect.
+      if batched[task_index] then
+        batched[task_index] = nil
+        return run_trial(task_index, 1, verdict.new_progress())
+      end
       return settle(task_index, verdict.exhausted(progress))
     end
 
@@ -140,7 +152,16 @@ function M.run(tasks, opts)
   --- @param from_index integer the first trial the batch covers
   --- @param progress NtfMutantProgress what the earlier trials showed
   function run_batch(task_index, from_index, progress)
-    local trials = tasks[task_index].trials
+    local task = tasks[task_index]
+    -- WHY: a task that re-runs a baseline entry takes every trial it has, so a
+    -- batch saves it none, and the survival it ends on is one a batch would
+    -- have to hand back to the trials anyway.
+    -- NOT: batching it, for a search that has nothing to find early.
+    if task.confirm_kill then
+      return run_trial(task_index, from_index, progress)
+    end
+
+    local trials = task.trials
 
     local leaves = {}
     local baseline_ms = 0
@@ -162,6 +183,7 @@ function M.run(tasks, opts)
       return run_trial(task_index, from_index, progress)
     end
     local last_index = from_index + #leaves - 1
+    batched[task_index] = true
 
     launch(task_index, from_index, leaves, budget.trial(baseline_ms, opts.timeout), function(outcome)
       local settled, next_progress = verdict.step(outcome, progress)
@@ -185,11 +207,10 @@ function M.run(tasks, opts)
         return run_trial(task_index, from_index, progress)
       end
 
-      local task = tasks[task_index]
       -- WHY: the batch's first leaf ran in a process that had done exactly what
       -- a worker given that leaf alone does.
       -- NOT: confirming it, which runs the same process a second time.
-      if outcome.failed_index == 1 and not task.confirm_kill then
+      if outcome.failed_index == 1 then
         return settle(task_index, settled)
       end
       run_confirm(task_index, from_index + outcome.failed_index - 1, next_progress)
@@ -200,15 +221,11 @@ function M.run(tasks, opts)
   --- @param trial_index integer the trial a batch came back killed by
   --- @param progress NtfMutantProgress what the batch showed
   function run_confirm(task_index, trial_index, progress)
-    local task = tasks[task_index]
-    local trial = task.trials[trial_index]
+    local trial = tasks[task_index].trials[trial_index]
     local ceiling = trial.item.timeout or opts.timeout
     launch(task_index, trial_index, nil, budget.trial(trial.baseline_ms, ceiling), function(outcome)
       local settled, next_progress = verdict.step(outcome, progress)
       if settled then
-        if settled.status == "killed" and task.confirm_kill then
-          return run_trial(task_index, trial_index, next_progress, true)
-        end
         return settle(task_index, settled)
       end
       -- WHY: the test the batch was killed by passes alone, so what killed the
@@ -216,7 +233,7 @@ function M.run(tasks, opts)
       -- no place to take the rest of the trials from.
       -- NOT: carrying on in it, which spreads that state over every trial left.
       if opts.on_restart then
-        opts.on_restart(task.mutant, trial)
+        opts.on_restart(trial)
       end
       run_batch(task_index, trial_index + 1, next_progress)
     end)

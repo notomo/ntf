@@ -89,9 +89,18 @@ function M.summary(summary, cwd, opts)
 
   local restarted = summary.restarted or {}
   if #restarted > 0 then
+    local taken_back = 0
+    for _, restart in ipairs(restarted) do
+      taken_back = taken_back + restart.count
+    end
     table.insert(
       lines,
-      ("  %d batch%s restarted after a kill did not reproduce alone"):format(#restarted, #restarted == 1 and "" or "es")
+      ("  %d kill%s taken back from a batch, over %d test%s passing when run alone"):format(
+        taken_back,
+        taken_back == 1 and "" or "s",
+        #restarted,
+        #restarted == 1 and "" or "s"
+      )
     )
   end
 
@@ -117,14 +126,12 @@ function M.summary(summary, cwd, opts)
   end
 
   for _, restart in ipairs(restarted) do
-    local mutant = restart.mutant
     table.insert(
       lines,
-      ("%s %s %s -> %s killed by %q only where a process was shared"):format(
+      ("%s %d kill%s taken back from %q"):format(
         paint("yellow", M.entry_labels.flaky_batch),
-        locator(relative(mutant.path, cwd), mutant),
-        oneline(mutant.original),
-        oneline(mutant.replacement),
+        restart.count,
+        restart.count == 1 and "" or "s",
         restart.killed_by
       )
     )

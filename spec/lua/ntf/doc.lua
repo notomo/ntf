@@ -1022,11 +1022,12 @@ else that fails a run — a stale baseline entry, an exclude entry covering
 nothing — fails it on its own, with or without the gate.
 
 A mutant is tried against the tests that cover it, cheapest first, sharing one
-process until a test fails. That test only names a candidate: the verdict is
-taken from running it alone, exactly as an unbatched trial is, so a process a
-test before it left in a state of its own never becomes a detection. A kill
-that does not come back is reported FLAKY BATCH and taken back, and the trials
-left are run from a new process.]],
+process until a test fails. That test only names a candidate: every verdict is
+taken from trials run one to a process, so what one test leaves behind for the
+next never decides a mutant. A kill that does not come back on its own is
+reported FLAKY BATCH and taken back, and the trials left are run from a new
+process; a mutant no test killed is tried again with every trial in a process
+of its own before it is reported survived.]],
         }, "\n")
       end,
     },

@@ -70,6 +70,23 @@ ntf.describe("x", function()
 end)
 ]]
 
+-- WHY: the other half of what a shared process does: a test passing on what an
+-- earlier one left behind, which hides the detection it would make alone.
+-- NOT: only the failing half, which the confirming run already answers.
+local HIDES = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("leaves a global behind", function()
+    require("mod")
+    vim.g.ntf_runner_spec = "set"
+  end)
+  ntf.it("wants the global set", function()
+    require("mod")
+    assert(vim.g.ntf_runner_spec == "set", "no test before it left the global set")
+  end)
+end)
+]]
+
 local FAILS_THEN_DETECTS = [[
 local ntf = require("ntf")
 ntf.describe("x", function()
@@ -147,7 +164,7 @@ local function run(task, opts)
       cwd = helper.test_data.full_path,
       jobs = 1,
       timeout = 30000,
-      on_restart = function(_, trial)
+      on_restart = function(trial)
         table.insert(restarts, tree.full_name(trial.item.names))
       end,
     }, opts or {})
@@ -217,6 +234,24 @@ describe("ntf.core.mutation.runner.run", function()
     assert.equal("x detects", outcome.killed_by)
     assert.equal(1, #restarts)
     assert.equal("x wants the global unset", restarts[1])
+  end)
+
+  it("takes a mutant no batch could kill again, with every trial in a process of its own", function()
+    local outcome = run((task_of(HIDES)))
+
+    assert.equal("killed", outcome.status)
+    assert.equal("x wants the global set", outcome.killed_by)
+  end)
+
+  it("gives every trial a process of its own for a task that re-runs a baseline entry", function()
+    local task = task_of(DETECTS)
+    task.confirm_kill = true
+
+    local outcome = run(task, { process_hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK) })
+
+    assert.equal("killed", outcome.status)
+    assert.equal("x detects", outcome.killed_by)
+    assert.equal(5, process_count())
   end)
 
   it("takes the trials a batch was cut short of from where it stopped, not from past the whole batch", function()

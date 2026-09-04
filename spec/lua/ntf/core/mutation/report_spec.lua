@@ -36,12 +36,11 @@ end
 
 describe("ntf.core.mutation.report.summary", function()
   it("names the batches a kill was taken back from, and counts them", function()
-    local mutant = record(abs("lua/a.lua"), 7, "killed").mutant
     local summary = {
       records = {},
       restarted = {
-        { mutant = mutant, killed_by = "a leaky test" },
-        { mutant = mutant, killed_by = "another leaky test" },
+        { killed_by = "a leaky test", count = 45 },
+        { killed_by = "another leaky test", count = 1 },
       },
       counts = {
         killed = 0,
@@ -58,18 +57,15 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
-    assert.match("  2 batches restarted after a kill did not reproduce alone\n", text)
-    assert.match(
-      'FLAKY BATCH lua/a%.lua:7:1:swap%-relational < %-> <= killed by "a leaky test" only where a process was shared',
-      text
-    )
-    assert.match('killed by "another leaky test"', text)
+    assert.match("  46 kills taken back from a batch, over 2 tests passing when run alone\n", text)
+    assert.match('FLAKY BATCH 45 kills taken back from "a leaky test"', text)
+    assert.match('FLAKY BATCH 1 kill taken back from "another leaky test"', text)
   end)
 
-  it("counts one restarted batch in the singular", function()
+  it("counts one kill taken back from one test in the singular", function()
     local summary = {
       records = {},
-      restarted = { { mutant = record(abs("lua/a.lua"), 7, "killed").mutant, killed_by = "a leaky test" } },
+      restarted = { { killed_by = "a leaky test", count = 1 } },
       counts = {
         killed = 0,
         timeout = 0,
@@ -85,7 +81,7 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
-    assert.match("  1 batch restarted after a kill did not reproduce alone\n", text)
+    assert.match("  1 kill taken back from a batch, over 1 test passing when run alone\n", text)
   end)
 
   it("says nothing about batches where every kill reproduced alone", function()
@@ -107,7 +103,7 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
-    assert.no.match("restarted", text)
+    assert.no.match("taken back", text)
     assert.no.match("FLAKY BATCH", text)
   end)
 
