@@ -459,6 +459,15 @@
       "invariant_spec": "ntf.core.worker.driver.launch refuses a worker whose spec no longer holds the position the run planned"
     },
     {
+      "path": "lua/ntf/core/worker/driver.lua",
+      "col": 56,
+      "operator": "perturb-number",
+      "original": "0",
+      "replacement": "1",
+      "line": "        timer:start(budgets[event.index][event.trial], 0, function()",
+      "rationale": "the callback only kills a process already being killed, and the exit callback closes the timer, so repeating it changes nothing"
+    },
+    {
       "path": "lua/ntf/core/worker/protocol.lua",
       "col": 45,
       "operator": "swap-boolean",
@@ -507,6 +516,15 @@
       "line": "  local json = stdout:sub(from + #begin_marker, to - 1)",
       "rationale": "emit writes a newline between the JSON and the end marker, so the shorter slice sheds only whitespace that vim.json.decode ignores",
       "invariant_spec": "ntf.core.worker.protocol.emit writes the begin marker, the JSON, then the end marker, each on its own line"
+    },
+    {
+      "path": "lua/ntf/core/worker/protocol.lua",
+      "col": 45,
+      "operator": "swap-boolean",
+      "original": "true",
+      "replacement": "false",
+      "line": "      local line_end = buffer:find(\"\\n\", 1, true)",
+      "rationale": "the newline searched for holds no pattern-magic character, so pattern and plain find agree on every input"
     },
     {
       "path": "lua/ntf/core/worker/wait.lua",

@@ -36,6 +36,15 @@ describe("ntf.core.cache_path", function()
     assert.equal(escaped_cwd() .. ".out", vim.fs.basename(path))
   end)
 
+  it("files a worker's payload under the cache directory, named for the worker it carries one for", function()
+    local nonce = ("a"):rep(32)
+
+    local path = cache_path.payload(nonce)
+
+    assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "payload"), vim.fs.dirname(path))
+    assert.equal(nonce .. ".json", vim.fs.basename(path))
+  end)
+
   it("files an instrumented copy under the cache directory, named for the source it holds", function()
     local source = vim.fs.joinpath(vim.fn.getcwd(), "lua", "mod.lua")
 

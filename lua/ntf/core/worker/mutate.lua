@@ -32,6 +32,7 @@ end
 --- @param mutation NtfWorkerMutation
 --- @param cwd string working directory (any form)
 --- @return fun(): boolean # whether the mutated source was loaded
+--- @return fun() # takes the loader back out and gives the module names back what held them
 function M.install(mutation, cwd)
   local normalized_cwd = absolute(cwd)
   local names = M.module_names(mutation.path, normalized_cwd)
@@ -72,13 +73,32 @@ function M.install(mutation, cwd)
   -- keeps it, so ntf's own machinery is not mutated out from under itself.
   -- NOT: clearing all of `package.loaded`, which would hand ntf's machinery the
   -- mutant too.
+  local evicted = {}
   for name in pairs(names) do
+    evicted[name] = package.loaded[name]
     package.loaded[name] = nil
+  end
+
+  -- WHY: a worker takes one mutant after another, and the names it evicts are
+  -- the ones ntf's own machinery is reached by when it mutates itself, so a
+  -- mutant left in package.loaded is served to every later `require` of it.
+  -- NOT: leaving the eviction to the next mutant's install, which drops the
+  -- mutated entry without ever putting the original back.
+  local function uninstall()
+    for index, installed in ipairs(package.loaders) do
+      if installed == loader then
+        table.remove(package.loaders, index)
+        break
+      end
+    end
+    for name in pairs(names) do
+      package.loaded[name] = evicted[name]
+    end
   end
 
   return function()
     return applied
-  end
+  end, uninstall
 end
 
 return M

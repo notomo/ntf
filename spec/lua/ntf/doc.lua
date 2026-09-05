@@ -512,7 +512,7 @@ local report_labels = enumeration({
   unordered = true,
   entries = {
     { label = "TIMEOUT", description = "a hung test detected it, which a busy machine can fake" },
-    { label = "FLAKY BATCH", description = "a kill only a shared process made, taken back" },
+    { label = "RETRIED KILL", description = "a kill the test did not make a second time, taken back" },
     { label = "SURVIVED", description = "no test noticed the change" },
     { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
     { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
@@ -767,10 +767,11 @@ in the tests, and is reported with the change it got away with:]],
 - Only the mutants a test can reach are run. The mutation commands always
   collect the same line coverage as `--coverage`, and a mutant on a line no
   test executes is reported NO COVERAGE instead of being run.
-- A mutant is run against the tests that reach it, in the same
-  one-process-per-test isolation as a normal run, and stops at the first test
-  that detects it. A test that hangs on a mutant is killed and counts as
-  detected.
+- A mutant is run against the tests that reach it and stops at the first test
+  that detects it. Unlike a normal run, the trials share a worker with each
+  other and with the mutants after them, so a spec of a mutation run is
+  responsible for leaving the editor as it found it. A test that hangs on a
+  mutant is killed and counts as detected.
 - The score is the share of detected mutants, counting an uncovered one as
   undetected.
 - `--target=PATH` restricts the mutated files to one file or directory, which
@@ -1021,13 +1022,14 @@ mutant scored)` — instead of reading as a run with nothing to do. Everything
 else that fails a run — a stale baseline entry, an exclude entry covering
 nothing — fails it on its own, with or without the gate.
 
-A mutant is tried against the tests that cover it, cheapest first, sharing one
-process until a test fails. That test only names a candidate: every verdict is
-taken from trials run one to a process, so what one test leaves behind for the
-next never decides a mutant. A kill that does not come back on its own is
-reported FLAKY BATCH and taken back, and the trials left are run from a new
-process; a mutant no test killed is tried again with every trial in a process
-of its own before it is reported survived.]],
+A mutant is tried against the tests that cover it, cheapest first, in a worker
+that goes on to the mutants after it. A test that fails only tells the run to
+look again: the same test is run a second time, and a kill it does not make
+twice is reported RETRIED KILL, taken back, and the trials after it are taken
+as usual. A failure from before anything loaded the mutated source is passed
+over, since the mutant was never what the test met. A test that hangs takes
+its worker with it, which the run kills and starts another for the mutants
+that are left.]],
         }, "\n")
       end,
     },

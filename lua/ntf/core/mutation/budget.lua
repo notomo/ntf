@@ -1,13 +1,13 @@
 local M = {}
 
 --- @type integer ms the shortest a trial gets, however fast the test was in the baseline run
-local floor_ms = 3000
+local floor_ms = 300
 
 --- @type integer how many baselines of the test a trial gets before the headroom
 local baseline_factor = 2
 
 --- @type integer ms a trial gets beyond the baselines it is given
-local headroom_ms = 2000
+local headroom_ms = 300
 
 --- @param baseline_ms number how long the test took in the baseline run
 --- @param timeout integer ms the trial may not exceed: the test's own timeout when it declared one, the run's per-test timeout otherwise (0 disables)

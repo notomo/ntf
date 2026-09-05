@@ -4,7 +4,6 @@ local runner = require("ntf.core.mutation.runner")
 local operators = require("ntf.core.mutation.operators")
 local work = require("ntf.core.controller.work")
 local driver = require("ntf.core.worker.driver")
-local tree = require("ntf.core.tree")
 local report = require("ntf.core.controller.report")
 local helper = require("ntf.test.helper")
 
@@ -25,64 +24,16 @@ ntf.describe("x", function()
 end)
 ]]
 
-local SLEEPS_THEN_DETECTS = [[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("sleeps past every budget below", function()
-    vim.uv.sleep(3000)
-  end)
-  ntf.it("detects", function()
-    assert(require("mod").answer(), "answer() came back false")
-  end)
-end)
-]]
-
 local DETECTS = [[
 local ntf = require("ntf")
 ntf.describe("x", function()
   ntf.it("passes", function() end)
   ntf.it("passes too", function() end)
-  ntf.it("passes as well", function() end)
   ntf.it("detects", function()
     assert(require("mod").answer(), "answer() came back false")
   end)
-end)
-]]
-
--- WHY: the leaks a shared process really carries look like this one: a test
--- asserting that a global it does not own is unset, which any test setting it
--- before makes fail whatever the mutant did.
--- NOT: a test that fails on its own too, which the confirming run would agree
--- with and so tell nothing about sharing.
-local POISONS = [[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("leaves a global behind", function()
-    require("mod")
-    vim.g.ntf_runner_spec = "left"
-  end)
-  ntf.it("wants the global unset", function()
-    assert(vim.g.ntf_runner_spec == nil, "a test before it left the global set")
-  end)
-  ntf.it("detects", function()
+  ntf.it("detects as well", function()
     assert(require("mod").answer(), "answer() came back false")
-  end)
-end)
-]]
-
--- WHY: the other half of what a shared process does: a test passing on what an
--- earlier one left behind, which hides the detection it would make alone.
--- NOT: only the failing half, which the confirming run already answers.
-local HIDES = [[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("leaves a global behind", function()
-    require("mod")
-    vim.g.ntf_runner_spec = "set"
-  end)
-  ntf.it("wants the global set", function()
-    require("mod")
-    assert(vim.g.ntf_runner_spec == "set", "no test before it left the global set")
   end)
 end)
 ]]
@@ -99,6 +50,52 @@ ntf.describe("x", function()
 end)
 ]]
 
+-- WHY: a test that fails once and passes when it is run again is what a kill
+-- taken from a shared process looks like when the failure was not the mutant's
+-- doing, and the process the trials share is what makes the second run differ.
+-- NOT: a test that fails every time, which is the detection this has to be told
+-- apart from.
+local FAILS_ONCE_THEN_DETECTS = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("fails until something in the process has run it once", function()
+    require("mod")
+    local first = vim.g.ntf_runner_spec == nil
+    vim.g.ntf_runner_spec = "ran"
+    assert(not first, "it was the first run in this process")
+  end)
+  ntf.it("detects", function()
+    assert(require("mod").answer(), "answer() came back false")
+  end)
+end)
+]]
+
+local NOTICES_NOTHING = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("loads the module and asks it nothing", function()
+    require("mod")
+  end)
+end)
+]]
+
+local LOADS_NOTHING = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("never reaches the module", function() end)
+end)
+]]
+
+local CRASHES = [[
+local ntf = require("ntf")
+ntf.describe("x", function()
+  ntf.it("takes the process with it", function()
+    require("mod")
+    os.exit(1)
+  end)
+end)
+]]
+
 local PROCESS_HOOK = [[
 return {
   setup = function()
@@ -109,30 +106,9 @@ return {
 }
 ]]
 
-local LOADS = [[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("loads the module", function()
-    require("mod")
-  end)
-  ntf.it("passes", function() end)
-end)
-]]
+local PROCESS_HOOK_RAISES = [[return { setup = function() error("the process hook raised") end }]]
 
 local TEARDOWN_RAISES = [[return { teardown = function() error("teardown raised") end }]]
-
---- @param count integer tests to declare
---- @param name_chars integer characters of name each of them carries, which is what fills a batch
---- @return string # a spec whose last test is the one that detects the mutant
-local function wide_spec(count, name_chars)
-  local lines = { 'local ntf = require("ntf")', 'ntf.describe("x", function()' }
-  for index = 1, count do
-    local body = index == count and 'assert(require("mod").answer(), "answer() came back false")' or ""
-    table.insert(lines, ('  ntf.it("t%d%s", function() %s end)'):format(index, ("n"):rep(name_chars), body))
-  end
-  table.insert(lines, "end)")
-  return table.concat(lines, "\n")
-end
 
 local function teardown()
   driver.kill_all()
@@ -140,36 +116,47 @@ local function teardown()
 end
 
 --- @param source string the spec whose every leaf becomes a trial, in the order it declares them
+--- @param spec_name string? what to file the spec under, for a run given more than one task
 --- @return table # one NtfMutantTask over a mutated module the spec can `require`
 --- @return string # the mutated module, as a run in the plugin root writes it
-local function task_of(source)
+local function task_of(source, spec_name)
   local path = helper.test_data:create_file("lua/mod.lua", MODULE)
   local mutant = vim.tbl_extend("force", operators.enumerate(MODULE)[1], { path = vim.fs.normalize(path) })
+  local spec = helper.test_data:create_file(spec_name or "temp_spec.lua", source)
   local trials = vim.tbl_map(function(item)
     return { item = item, baseline_ms = 0 }
-  end, work.plan({ helper.write_spec(source) }))
+  end, work.plan({ spec }))
   return { mutant = mutant, trials = trials }, assert(vim.fs.relpath(helper.root, path))
 end
 
---- @param task table one NtfMutantTask
+--- @param tasks table[] the NtfMutantTask to run
 --- @param opts table? run options merged over the defaults
---- @return table # its NtfMutantOutcome
---- @return string[] # the test of every batch a kill was taken back from
-local function run(task, opts)
-  local restarts = {}
+--- @return table[] # their NtfMutantOutcome, parallel to tasks
+--- @return string[] # the test of every kill that was taken back
+local function run_all(tasks, opts)
+  local retries = {}
   local outcomes = runner.run(
-    { task },
+    tasks,
     vim.tbl_extend("force", {
       root = helper.root,
       cwd = helper.test_data.full_path,
       jobs = 1,
       timeout = 30000,
-      on_restart = function(trial)
-        table.insert(restarts, tree.full_name(trial.item.names))
+      on_retry = function(name)
+        table.insert(retries, name)
       end,
     }, opts or {})
   )
-  return outcomes[1], restarts
+  return outcomes, retries
+end
+
+--- @param task table one NtfMutantTask
+--- @param opts table? run options merged over the defaults
+--- @return table # its NtfMutantOutcome
+--- @return string[] # the test of every kill that was taken back
+local function run(task, opts)
+  local outcomes, retries = run_all({ task }, opts)
+  return outcomes[1], retries
 end
 
 --- @return integer # how many worker processes the run started, told by the --process-hook every one of them runs
@@ -219,56 +206,44 @@ describe("ntf.core.mutation.runner.run", function()
     end
   )
 
-  it("takes a batched kill from the test the batch stopped at, in one process for the trials before it", function()
+  it("takes the kill from the first trial that fails on the mutant, in one process for the trials before it", function()
     local outcome = run(task_of(DETECTS), { process_hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK) })
 
     assert.equal("killed", outcome.status)
     assert.equal("x detects", outcome.killed_by)
-    assert.equal(2, process_count())
+    assert.equal(1, process_count())
   end)
 
-  it("takes a batched kill back once the test passes alone, and runs the trials left from a new process", function()
-    local outcome, restarts = run((task_of(POISONS)))
-
-    assert.equal("killed", outcome.status)
-    assert.equal("x detects", outcome.killed_by)
-    assert.equal(1, #restarts)
-    assert.equal("x wants the global unset", restarts[1])
-  end)
-
-  it("takes a mutant no batch could kill again, with every trial in a process of its own", function()
-    local outcome = run((task_of(HIDES)))
-
-    assert.equal("killed", outcome.status)
-    assert.equal("x wants the global set", outcome.killed_by)
-  end)
-
-  it("gives every trial a process of its own for a task that re-runs a baseline entry", function()
-    local task = task_of(DETECTS)
-    task.confirm_kill = true
-
-    local outcome = run(task, { process_hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK) })
-
-    assert.equal("killed", outcome.status)
-    assert.equal("x detects", outcome.killed_by)
-    assert.equal(5, process_count())
-  end)
-
-  it("takes the trials a batch was cut short of from where it stopped, not from past the whole batch", function()
+  it("passes over a trial that failed before anything had loaded the mutated source", function()
     local outcome = run((task_of(FAILS_THEN_DETECTS)))
 
     assert.equal("killed", outcome.status)
     assert.equal("x detects", outcome.killed_by)
   end)
 
-  it("falls back to the trials a batch stood in for once the batch runs out of its budget", function()
-    local outcome = run(task_of(SLEEPS_THEN_DETECTS), { timeout = 300 })
+  it("takes a kill back from a test that does not fail a second time, and goes on to the trials after it", function()
+    local outcome, retries = run((task_of(FAILS_ONCE_THEN_DETECTS)))
 
-    assert.equal("timeout", outcome.status)
+    assert.equal("killed", outcome.status)
+    assert.equal("x detects", outcome.killed_by)
+    assert.same({ "x fails until something in the process has run it once" }, retries)
   end)
 
-  it("falls back to the trials a batch stood in for once it fails without naming one of them", function()
-    local outcome = run(task_of(LOADS), {
+  it("reports a mutant every trial ran through as survived", function()
+    local outcome = run((task_of(NOTICES_NOTHING)))
+
+    assert.equal("survived", outcome.status)
+    assert.is_nil(outcome.killed_by)
+  end)
+
+  it("reports a mutant no trial loaded the source of as not applied", function()
+    local outcome = run((task_of(LOADS_NOTHING)))
+
+    assert.equal("not_applied", outcome.status)
+  end)
+
+  it("takes a kill from a --test-hook teardown that raises, which no test of the run answers for", function()
+    local outcome = run(task_of(NOTICES_NOTHING), {
       test_hook = helper.test_data:create_file("test_hook.lua", TEARDOWN_RAISES),
     })
 
@@ -276,13 +251,51 @@ describe("ntf.core.mutation.runner.run", function()
     assert.equal("teardown", outcome.killed_by)
   end)
 
-  it("runs the trials one batch has no room left for in the next one", function()
-    local outcome = run(task_of(wide_spec(8, 4000)), {
-      process_hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK),
-    })
+  it("counts a mutant that hangs a test as a timeout, and judges the mutants after it from a new worker", function()
+    local hangs = task_of(SLEEPS, "hangs_spec.lua")
+    local detects = task_of(DETECTS, "detects_spec.lua")
+
+    local outcomes = run_all({ hangs, detects }, { timeout = 300 })
+
+    assert.equal("timeout", outcomes[1].status)
+    assert.equal("killed", outcomes[2].status)
+  end)
+
+  it("takes a kill from the mutant a worker died on, so a crash is not read as a survival", function()
+    local outcome = run((task_of(CRASHES)))
 
     assert.equal("killed", outcome.status)
-    assert.match("^x t8n+$", outcome.killed_by)
-    assert.equal(4, process_count())
+    assert.equal("x takes the process with it", outcome.killed_by)
   end)
+
+  it("gives every mutant a verdict where there are more of them than one worker takes", function()
+    local task = task_of(DETECTS)
+    local tasks = {}
+    for _ = 1, 70 do
+      table.insert(tasks, task)
+    end
+
+    local outcomes = run_all(tasks)
+
+    assert.equal(70, #outcomes)
+    for _, outcome in ipairs(outcomes) do
+      assert.equal("killed", outcome.status)
+    end
+  end)
+
+  it(
+    "fails the run over a worker that reported nothing at all, rather than launching another for its mutants",
+    function()
+      local ok, err = xpcall(function()
+        return run(task_of(DETECTS), {
+          process_hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK_RAISES),
+        })
+      end, debug.traceback)
+
+      assert.is_false(ok)
+      local message = report.error_message(err)
+      assert.match("a mutation worker reported nothing", message)
+      assert.match("the process hook raised", message)
+    end
+  )
 end)

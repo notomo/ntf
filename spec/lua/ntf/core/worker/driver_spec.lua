@@ -36,6 +36,27 @@ local function teardown()
   helper.after_each()
 end
 
+--- @return integer # timer handles this process holds now
+local function timer_count()
+  local count = 0
+  vim.uv.walk(function(handle)
+    if handle:get_type() == "timer" and not handle:is_closing() then
+      count = count + 1
+    end
+  end)
+  return count
+end
+
+-- WHY: a worker an earlier test launched can close its own timer between the two
+-- counts, and only a run that ends holding more of them than it started with
+-- kept one of its own open.
+-- NOT: an equality, which one of those handles draining fails on its own.
+--- @param before integer timer handles this process held before the run
+--- @return boolean # whether the run left one behind
+local function leaves_a_timer(before)
+  return timer_count() > before
+end
+
 --- @param source string
 --- @return table # one NtfWorkItem
 local function item_of(source)
@@ -194,20 +215,11 @@ end)
   end)
 
   it("closes the timeout timer once the worker is done, leaving none behind", function()
-    local function live_timers()
-      local count = 0
-      vim.uv.walk(function(handle)
-        if handle:get_type() == "timer" and not handle:is_closing() then
-          count = count + 1
-        end
-      end)
-      return count
-    end
-    local before = live_timers()
+    local before = timer_count()
 
     launch(item_of(ONE_TEST), { timeout = 30000 })
 
-    assert.equal(before, live_timers())
+    assert.is_false(leaves_a_timer(before))
   end)
 
   it("hands back nothing for a worker that stayed silent", function()
@@ -335,8 +347,8 @@ describe("ntf.core.worker.driver.payload", function()
 
     local payload = driver.payload(item, { cwd = helper.root })
 
-    assert.same(item.names, payload.names)
-    assert.equal(1, payload.leaves_count)
+    assert.same(item.names, payload.leaf.names)
+    assert.equal(1, payload.leaf.leaves_count)
   end)
 
   it("gives each worker a marker nonce of its own", function()
@@ -349,94 +361,170 @@ describe("ntf.core.worker.driver.payload", function()
   end)
 end)
 
-local TWO_TESTS = [[
-local ntf = require("ntf")
-ntf.describe("x", function()
-  ntf.it("one", function() end)
-  ntf.it("two", function() end)
-end)
-]]
+local MODULE = table.concat({
+  "local M = {}",
+  "function M.answer()",
+  "  return true",
+  "end",
+  "return M",
+}, "\n")
 
-local THREE = [[
+local DETECTS = [[
 local ntf = require("ntf")
 ntf.describe("x", function()
-  ntf.it("one", function() end)
-  ntf.it("two", function()
-    error("two raised")
+  ntf.it("detects", function()
+    ntf.assert.is_true(require("mod").answer())
   end)
-  ntf.it("three", function() end)
 end)
 ]]
 
--- WHY: the run's own planning loads this file too, in a process whose working
--- directory is the plugin root, so the line it appends has to land beside the
--- spec for the test to be able to take it back before it launches a worker.
--- NOT: a path relative to the working directory, which puts it in the repo.
-local COUNTS_LOADS = [[
-local source = debug.getinfo(1, "S").source:sub(2)
-local file = io.open(vim.fs.joinpath(vim.fs.dirname(source), "loads.txt"), "a")
-file:write("x\n")
-file:close()
+local SLEEPS_LONG = [[
 local ntf = require("ntf")
 ntf.describe("x", function()
-  ntf.it("one", function() end)
-  ntf.it("two", function() end)
+  ntf.it("sleeps past every budget below", function()
+    vim.uv.sleep(30000)
+  end)
 end)
 ]]
 
---- @param item table one NtfWorkItem
---- @return table # the NtfWorkerLeaf naming it
-local function leaf_of(item)
-  return { file = item.file, node_id = item.node_id, names = item.names, leaves_count = item.leaves_count }
+local PROCESS_HOOK_RAISES = [[
+return {
+  setup = function()
+    error("the process hook raised")
+  end,
+}
+]]
+
+--- @param name_chars integer characters of comment the mutant carries, which is what fills a payload
+--- @return table # one NtfWorkerMutation over a module the specs below can `require`
+local function mutation_of(name_chars)
+  local path = helper.test_data:create_file("lua/mod.lua", MODULE)
+  local at = assert(MODULE:find("true", 1, true))
+  return {
+    path = vim.fs.normalize(path),
+    start_byte = at - 1,
+    end_byte = at + #"true" - 1,
+    original = "true",
+    replacement = ("false --[[%s]]"):format(("n"):rep(name_chars)),
+  }
 end
 
-describe("ntf.core.worker.driver.launch with a batch", function()
+--- @param source string the spec whose every leaf becomes a trial
+--- @param budget_ms integer what each of them is given before the run kills the worker
+--- @return table[] # the NtfWorkerTrial of each of them
+local function trials_of(source, budget_ms)
+  return vim.tbl_map(function(item)
+    return {
+      file = item.file,
+      node_id = item.node_id,
+      names = item.names,
+      leaves_count = item.leaves_count,
+      budget_ms = budget_ms,
+    }
+  end, work.plan({ helper.write_spec(source) }))
+end
+
+--- @param jobs table[] the NtfWorkerMutantJob to hand one worker
+--- @param opts table? launch options merged over the defaults
+--- @return table[] # the NtfWorkerEvent the worker wrote, in order
+--- @return table # the NtfWorkerMutantsExit it came to
+local function launch_mutants(jobs, opts)
+  local events = {} --- @type table[]
+  local exit
+  driver.launch_mutants(
+    jobs,
+    vim.tbl_extend("force", { root = helper.root, cwd = helper.test_data.full_path }, opts or {}),
+    {
+      on_event = function(event)
+        table.insert(events, event)
+      end,
+      on_exit = function(came_to)
+        exit = came_to
+      end,
+    }
+  )
+  vim.wait(30000, function()
+    return exit ~= nil
+  end, 20)
+  return events, assert(exit, "the worker did not exit")
+end
+
+describe("ntf.core.worker.driver.launch_mutants", function()
   before_each(helper.before_each)
   after_each(teardown)
 
-  it("runs every leaf it is given and reports them in that order", function()
-    local items = work.plan({ helper.write_spec(TWO_TESTS) })
+  it("reports a verdict for every mutant one worker is given", function()
+    local mutation = mutation_of(0)
+    local trials = trials_of(DETECTS, 30000)
 
-    local outcome = launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
+    local events, exit = launch_mutants({
+      { index = 7, mutation = mutation, trials = trials },
+      { index = 9, mutation = mutation, trials = trials },
+    })
 
-    assert.equal(2, #outcome.results)
-    assert.equal("passed", outcome.results[1].status)
-    assert.equal("passed", outcome.results[2].status)
-    assert.is_nil(outcome.failed_index)
+    local verdicts = vim.tbl_filter(function(event)
+      return event.type == "verdict"
+    end, events)
+    assert.equal(2, #verdicts)
+    assert.equal(7, verdicts[1].index)
+    assert.equal("killed", verdicts[1].status)
+    assert.equal("x detects", verdicts[1].killed_by)
+    assert.equal(9, verdicts[2].index)
+    assert.is_nil(exit.pending)
   end)
 
-  it("stops at the leaf that failed and says which one it was", function()
-    local items = work.plan({ helper.write_spec(THREE) })
+  it("kills a worker that outlasts the budget of the trial it began, naming the mutant it was on", function()
+    local events, exit = launch_mutants({
+      { index = 4, mutation = mutation_of(0), trials = trials_of(SLEEPS_LONG, 300) },
+    })
 
-    local outcome = launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
-
-    assert.equal(2, #outcome.results)
-    assert.equal("failed", outcome.results[2].status)
-    assert.equal(2, outcome.failed_index)
+    assert.is_true(exit.timed_out)
+    assert.equal(4, exit.pending)
+    assert.equal("begin", events[1].type)
   end)
 
-  it("loads a spec file once for every leaf of it the batch holds", function()
-    local items = work.plan({ helper.write_spec(COUNTS_LOADS) })
-    helper.test_data:delete("loads.txt")
+  it("answers for a worker that reported no verdict with what it exited on", function()
+    local hook = helper.test_data:create_file("hook.lua", PROCESS_HOOK_RAISES)
 
-    launch(items[1], { batch = vim.tbl_map(leaf_of, items) })
+    local _, exit = launch_mutants({
+      { index = 1, mutation = mutation_of(0), trials = trials_of(DETECTS, 30000) },
+    }, { process_hook = hook })
 
-    local file = assert(io.open(helper.test_data:path("loads.txt"), "r"))
-    local blob = file:read("*a")
-    file:close()
-    assert.equal("x\n", blob)
+    assert.is_nil(exit.pending)
+    assert.match("the process hook raised", exit.message)
   end)
 
-  it("answers for the file of the leaf whose tree the run no longer planned from", function()
-    local items = work.plan({ helper.write_spec(ONE_TEST) })
-    local other = work.plan({ helper.test_data:create_file("other_spec.lua", ONE_TEST) })
-    local diverged = vim.tbl_extend("force", leaf_of(other[1]), { names = { "gone" } })
+  it("holds a worker of its own until it exits, so kill_all reaches it", function()
+    driver.launch_mutants({
+      { index = 1, mutation = mutation_of(0), trials = trials_of(SLEEPS_LONG, 30000) },
+    }, { root = helper.root, cwd = helper.test_data.full_path }, {
+      on_event = function() end,
+      on_exit = function() end,
+    })
 
-    local outcome = launch(items[1], { batch = { leaf_of(items[1]), diverged } })
+    assert.equal(1, driver.kill_all())
+  end)
 
-    assert.equal(1, #outcome.results)
-    assert.equal("error", outcome.results[1].status)
-    assert.match('the run picked "gone"', outcome.results[1].message)
+  it("lets go of a worker that exited on its own, and of the timer that watched it", function()
+    local before = timer_count()
+
+    launch_mutants({ { index = 1, mutation = mutation_of(0), trials = trials_of(DETECTS, 30000) } })
+
+    assert.equal(0, driver.kill_all())
+    assert.is_false(leaves_a_timer(before))
+  end)
+
+  it("carries a chunk of mutants no environment block would hold", function()
+    -- WHY: Windows caps a process environment block at 32767 characters and
+    -- spawns nothing at all past it, so the chunk a worker is given reaches it
+    -- through a file rather than its environment.
+    -- NOT: a payload this size in the environment, which never gets to run.
+    local mutation = mutation_of(64 * 1024)
+
+    local events = launch_mutants({ { index = 1, mutation = mutation, trials = trials_of(DETECTS, 30000) } })
+
+    assert.equal("verdict", events[#events].type)
+    assert.equal("killed", events[#events].status)
   end)
 end)
 

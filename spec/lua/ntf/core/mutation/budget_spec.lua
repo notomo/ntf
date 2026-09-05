@@ -3,18 +3,18 @@ local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local budget = require("ntf.core.mutation.budget")
 
 describe("ntf.core.mutation.budget.trial", function()
-  it("gives a trial three seconds, however fast the test was in the baseline run", function()
+  it("gives a trial three tenths of a second, however fast the test was in the baseline run", function()
     local instant = 0
     local untimed = 0
-    assert.equal(3000, budget.trial(instant, untimed))
+    assert.equal(300, budget.trial(instant, untimed))
   end)
 
-  it("gives a slower test twice its baseline and two seconds more", function()
-    assert.equal(8000, budget.trial(3000, 0))
+  it("gives a slower test twice its baseline and three tenths of a second more", function()
+    assert.equal(6300, budget.trial(3000, 0))
   end)
 
   it("rounds a fractional baseline down to whole milliseconds", function()
-    assert.equal(8001, budget.trial(3000.7, 0))
+    assert.equal(6301, budget.trial(3000.7, 0))
   end)
 
   it("caps a trial at the run's own timeout", function()
@@ -26,6 +26,6 @@ describe("ntf.core.mutation.budget.trial", function()
   end)
 
   it("leaves a trial that already fits inside the timeout alone", function()
-    assert.equal(8000, budget.trial(3000, 60000))
+    assert.equal(6300, budget.trial(3000, 60000))
   end)
 end)

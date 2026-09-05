@@ -1,8 +1,32 @@
 local ntf = require("ntf")
-local describe, it, finally, assert = ntf.describe, ntf.it, ntf.finally, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local protocol = require("ntf.core.worker.protocol")
+local helper = require("ntf.test.helper")
 
 local NONCE = "0123456789abcdef0123456789abcdef"
+
+--- @param events table[] the NtfWorkerEvent to write
+--- @param nonce string?
+--- @return string # the stdout a worker writes those events to
+local function event_stdout(events, nonce)
+  local written = {}
+  local saved = io.stdout
+  finally(function()
+    io.stdout = saved
+  end)
+  io.stdout = {
+    write = function(_, text)
+      table.insert(written, text)
+    end,
+    flush = function() end,
+  }
+  for _, event in ipairs(events) do
+    protocol.emit_event(event, nonce or NONCE)
+  end
+  io.stdout = saved
+  return table.concat(written)
+end
 
 local function emitted(result, nonce)
   local written = {}
@@ -103,15 +127,134 @@ end)
 
 describe("ntf.core.worker.protocol.env -> payload", function()
   it("round-trips the payload through the worker's environment", function()
-    local sent = { file = "/x_spec.lua", node_id = "1.1", coverage = false, cwd = "/tmp", nonce = NONCE }
+    local sent = {
+      leaf = { file = "/x_spec.lua", node_id = "1.1" },
+      coverage = false,
+      cwd = "/tmp",
+      nonce = NONCE,
+    }
     for name, value in pairs(protocol.env(sent)) do
       vim.env[name] = value
     end
 
     local received = protocol.payload()
-    assert.equal("/x_spec.lua", received.file)
-    assert.equal("1.1", received.node_id)
+    assert.equal("/x_spec.lua", received.leaf.file)
+    assert.equal("1.1", received.leaf.node_id)
     assert.equal(NONCE, received.nonce)
+  end)
+end)
+
+describe("ntf.core.worker.protocol.env -> payload through a file", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  it("carries a payload no environment block holds, and leaves the file behind for nothing to read twice", function()
+    local file = helper.test_data:path("payload.json")
+    local sent = { mutants = { { index = 1, trials = {} } }, cwd = "/tmp", nonce = NONCE }
+    for name, value in pairs(protocol.env(sent, file)) do
+      vim.env[name] = value
+    end
+    assert(vim.uv.fs_stat(file), "the payload was not filed")
+
+    local received = protocol.payload()
+
+    assert.equal(1, received.mutants[1].index)
+    assert.is_nil(vim.uv.fs_stat(file))
+  end)
+
+  it("closes the file it read the payload from", function()
+    local file = helper.test_data:path("payload.json")
+    for name, value in pairs(protocol.env({ cwd = "/tmp", nonce = NONCE }, file)) do
+      vim.env[name] = value
+    end
+
+    assert.is_false(helper.leaves_file_open(file, protocol.payload))
+  end)
+end)
+
+describe("ntf.core.worker.protocol emit_event -> event_reader", function()
+  it("reads the events of writes that split a line between them", function()
+    local stdout = event_stdout({
+      { type = "begin", index = 3, trial = 1 },
+      { type = "verdict", index = 3, status = "killed", killed_by = "x detects" },
+    })
+    local read = protocol.event_reader(NONCE)
+
+    local events = {}
+    for at = 1, #stdout do
+      vim.list_extend(events, read(stdout:sub(at, at)))
+    end
+
+    assert.equal(2, #events)
+    assert.equal("begin", events[1].type)
+    assert.equal(1, events[1].trial)
+    assert.equal("x detects", events[2].killed_by)
+  end)
+
+  it("reads back to back events out of one write", function()
+    local stdout = event_stdout({
+      { type = "begin", index = 1, trial = 1 },
+      { type = "verdict", index = 1, status = "survived" },
+    })
+    local read = protocol.event_reader(NONCE)
+
+    local events = read(stdout)
+
+    assert.equal(2, #events)
+    assert.equal("survived", events[2].status)
+  end)
+
+  it("keeps the events another worker wrote out of the ones it reads", function()
+    local read = protocol.event_reader(NONCE)
+
+    local events = read(event_stdout({ { type = "verdict", index = 1 } }, protocol.nonce()))
+
+    assert.equal(0, #events)
+  end)
+
+  it("keeps the lines a test wrote around an event out of the ones it reads", function()
+    local read = protocol.event_reader(NONCE)
+
+    local events = read("printed before\n" .. event_stdout({ { type = "verdict", index = 5 } }) .. "printed after\n")
+
+    assert.equal(1, #events)
+    assert.equal(5, events[1].index)
+  end)
+
+  it("keeps an event line no JSON can be read out of out of them", function()
+    local read = protocol.event_reader(NONCE)
+
+    local events = read((event_stdout({ { type = "verdict", index = 1 } }):gsub('"type"', '"type')))
+
+    assert.equal(0, #events)
+  end)
+
+  it("flushes the line, which a pipe holds on to until it is", function()
+    local flushed = 0
+    local saved = io.stdout
+    finally(function()
+      io.stdout = saved
+    end)
+    io.stdout = {
+      write = function() end,
+      flush = function()
+        flushed = flushed + 1
+      end,
+    }
+
+    protocol.emit_event({ type = "verdict", index = 1 }, NONCE)
+    io.stdout = saved
+
+    assert.equal(1, flushed)
+  end)
+
+  it("reads no event out of a line the worker has not finished writing", function()
+    local stdout = event_stdout({ { type = "verdict", index = 1, status = "survived" } })
+    local read = protocol.event_reader(NONCE)
+
+    local events = read(stdout:sub(1, #stdout - 1))
+
+    assert.equal(0, #events)
   end)
 end)
 

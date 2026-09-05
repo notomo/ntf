@@ -4,7 +4,6 @@ local runner = require("ntf.core.mutation.runner")
 local baseline = require("ntf.core.mutation.baseline")
 local exclude = require("ntf.core.mutation.exclude")
 local collector = require("ntf.core.coverage.collector")
-local tree = require("ntf.core.tree")
 local absolute = require("ntf.core.path").absolute
 local relative = require("ntf.core.path").relative
 
@@ -27,12 +26,12 @@ local M = {}
 --- @field unused_excludes NtfMutationExcludeEntry[] --config exclude entries covering none of the measurable files
 --- @field unused_spec_excludes NtfMutationExcludeEntry[] --config exclude_spec entries covering none of the discovered spec files, of the ones a spec path of the run holds
 
---- @class NtfMutationRestart a test a batched kill was taken back from, the test passing once it is run alone
---- @field killed_by string full name of the test the batches came back killed by
+--- @class NtfMutationRetried a test a kill was taken back from, the test passing when it was run a second time
+--- @field killed_by string full name of the test the mutants came back killed by
 --- @field count integer kills taken back from it
 
 --- @class NtfMutationSummary : NtfMutationStaleness
---- @field restarted NtfMutationRestart[] the tests a kill was taken back from, first taken back first, each costing the run the trials its batch had left
+--- @field retried NtfMutationRetried[] the tests a kill was taken back from, first taken back first, each costing the run a second run of that test
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
 --- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
@@ -213,7 +212,7 @@ function M.run(opts, ctx)
       local trials = covering_trials(ctx, durations, mutant)
       claims.record(matched, #trials > 0)
       if opts.mutation_verify_baseline and #trials > 0 then
-        table.insert(tasks, { mutant = mutant, trials = trials, confirm_kill = true })
+        table.insert(tasks, { mutant = mutant, trials = trials })
         table.insert(task_records, #records)
         table.insert(task_verify, true)
       end
@@ -233,10 +232,10 @@ function M.run(opts, ctx)
     ctx.on_start(#tasks)
   end
 
-  --- @type table<string, integer> kills taken back, by the test the batch named
-  local restart_counts = {}
+  --- @type table<string, integer> kills taken back, by the test that made them
+  local retried_counts = {}
   --- @type string[] those tests, in the order a kill was first taken back from one
-  local restart_order = {}
+  local retried_order = {}
   local outcomes = runner.run(tasks, {
     root = ctx.root,
     cwd = ctx.cwd,
@@ -245,12 +244,11 @@ function M.run(opts, ctx)
     test_hook = opts.test_hook,
     process_hook = opts.process_hook,
     on_task = ctx.on_task,
-    on_restart = function(trial)
-      local name = tree.full_name(trial.item.names)
-      if not restart_counts[name] then
-        table.insert(restart_order, name)
+    on_retry = function(name)
+      if not retried_counts[name] then
+        table.insert(retried_order, name)
       end
-      restart_counts[name] = (restart_counts[name] or 0) + 1
+      retried_counts[name] = (retried_counts[name] or 0) + 1
     end,
   })
   for task_index, outcome in pairs(outcomes) do
@@ -287,12 +285,12 @@ function M.run(opts, ctx)
     counts[record.status] = counts[record.status] + 1
   end
 
-  local restarted = vim.tbl_map(function(name)
-    return { killed_by = name, count = restart_counts[name] }
-  end, restart_order)
+  local retried = vim.tbl_map(function(name)
+    return { killed_by = name, count = retried_counts[name] }
+  end, retried_order)
 
   return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes, claims), {
-    restarted = restarted,
+    retried = retried,
     records = records,
     counts = counts,
     excluded_files = excluded_files,

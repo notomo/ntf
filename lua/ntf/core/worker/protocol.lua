@@ -1,3 +1,5 @@
+local write = require("ntf.core.write")
+
 local M = {}
 
 --- @class NtfWorkerMutation : NtfMutantSplice one mutation to splice into the module under test
@@ -9,11 +11,20 @@ local M = {}
 --- @field names string[] the name chain the run planned at that id, which a diverged tree is answered with
 --- @field leaves_count integer how many tests the file declared when the run was planned
 
---- @class NtfWorkerPayload : NtfWorkerLeaf parameters for one worker process
---- @field batch NtfWorkerLeaf[]? leaves to run in order, stopping at the first failure; absent for a worker that runs the one leaf the payload itself names
+--- @class NtfWorkerTrial : NtfWorkerLeaf one leaf a mutant is tried against
+--- @field budget_ms integer ms the leaf gets before the run kills the worker over it
+
+--- @class NtfWorkerMutantJob one mutant and the leaves it is tried against, cheapest first
+--- @field index integer the task the controller reads this job's events as
+--- @field mutation NtfWorkerMutation
+--- @field trials NtfWorkerTrial[]
+
+--- @class NtfWorkerPayload parameters for one worker process
+--- @field leaf NtfWorkerLeaf? the one leaf to run, for a worker the run gave a test
+--- @field mutants NtfWorkerMutantJob[]? the mutants to take one after another, for a worker the run gave a chunk of them
 --- @field test_hook string? Lua module path providing setup/teardown
 --- @field process_hook string? Lua module path providing the setup this process runs before it loads a spec
---- @field coverage boolean
+--- @field coverage boolean? measure line coverage, for a worker the run gave a test
 --- @field coverage_excludes string[]? absolute dir prefixes to exclude
 --- @field mutation NtfWorkerMutation? apply this mutation when the module is required
 --- @field cwd string working directory shared with the controller
@@ -22,15 +33,24 @@ local M = {}
 
 --- @class NtfWorkerResult the block a worker emits as its last stdout write
 --- @field results NtfResult[]? per-leaf results (absent when the spec failed to load)
---- @field failed_index integer? which of the leaves it was given failed, the one the rest of them were cut short for
 --- @field coverage table? per-file line hit counts (when coverage was measured)
 --- @field mutation_applied boolean? whether the mutated module was actually loaded (mutation runs only)
 --- @field load_error string? load failure message
 --- @field file string? spec file path (set alongside load_error)
 
+--- @class NtfWorkerEvent one line a worker writes as it works through its mutants
+--- @field type "begin"|"verdict"
+--- @field index integer the task the controller reads it as
+--- @field trial integer? which of the mutant's trials began
+--- @field status ("killed"|"survived"|"not_applied")? what the mutant came to
+--- @field killed_by string? full name of the test that detected it
+--- @field retried string[]? full names of the tests a kill was taken back from, absent where none was
+
 local PAYLOAD_ENV = "_NTF_WORKER_PAYLOAD"
+local PAYLOAD_FILE = "@"
 local BEGIN = "<<<NTF_JSON:%s>>>"
 local END = "<<<END_NTF_JSON:%s>>>"
+local EVENT = "<<<NTF_EVENT:%s>>>"
 
 --- @param nonce string the nonce of the worker whose block is written or read
 --- @return string # the marker that opens that worker's block
@@ -61,18 +81,65 @@ function M.emit(result, nonce)
   io.stdout:write("\n" .. end_marker .. "\n")
 end
 
+--- @param event NtfWorkerEvent
+--- @param nonce string the nonce the controller drew for this worker
+function M.emit_event(event, nonce)
+  io.stdout:write("\n" .. EVENT:format(nonce) .. vim.json.encode(event) .. "\n")
+  io.stdout:flush()
+end
+
+--- @param nonce string the nonce the controller drew for that worker
+--- @return fun(data: string?): NtfWorkerEvent[] # the events the writes fed to it so far have completed a line of
+function M.event_reader(nonce)
+  local marker = EVENT:format(nonce)
+  local buffer = ""
+  return function(data)
+    buffer = buffer .. (data or "")
+    local events = {}
+    while true do
+      local line_end = buffer:find("\n", 1, true)
+      if not line_end then
+        return events
+      end
+      local line = buffer:sub(1, line_end - 1)
+      buffer = buffer:sub(line_end + 1)
+      if line:sub(1, #marker) == marker then
+        local ok, decoded = pcall(vim.json.decode, line:sub(#marker + 1))
+        if ok then
+          table.insert(events, decoded)
+        end
+      end
+    end
+  end
+end
+
 --- @return NtfWorkerPayload the payload the controller passed in
 function M.payload()
-  return vim.json.decode(vim.env[PAYLOAD_ENV])
+  local value = vim.env[PAYLOAD_ENV]
+  if value:sub(1, #PAYLOAD_FILE) ~= PAYLOAD_FILE then
+    return vim.json.decode(value)
+  end
+  local file = value:sub(#PAYLOAD_FILE + 1)
+  local handle = assert(io.open(file, "r"))
+  local blob = handle:read("*a")
+  handle:close()
+  os.remove(file)
+  return vim.json.decode(blob)
 end
 
 -- WHY: `arg` is not populated for the `-c "luafile"` launch worker/init.lua
 -- explains, so parameters reach a worker through its environment.
 -- NOT: passing them as script arguments read from `arg`.
 --- @param payload NtfWorkerPayload
+--- @param file string? a file to leave the payload in for the worker to read and delete, for one no environment block holds
 --- @return table<string, string> the environment that carries `payload` to a worker
-function M.env(payload)
-  return { [PAYLOAD_ENV] = vim.json.encode(payload) }
+function M.env(payload, file)
+  local encoded = vim.json.encode(payload)
+  if not file then
+    return { [PAYLOAD_ENV] = encoded }
+  end
+  write.file(file, encoded)
+  return { [PAYLOAD_ENV] = PAYLOAD_FILE .. file }
 end
 
 --- @param stdout string? a worker's stdout

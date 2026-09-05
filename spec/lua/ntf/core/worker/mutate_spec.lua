@@ -350,6 +350,40 @@ return M
     assert.match("unexpected symbol", err)
   end)
 
+  it("takes its loader back out and gives the module names back what held them", function()
+    local cwd = helper.test_data.full_path
+    local module = helper.test_data:create_file(
+      "lua/held.lua",
+      [[
+local M = {}
+function M.is_positive(n)
+  return n > 0
+end
+return M
+]]
+    )
+    vim.opt.runtimepath:append(cwd)
+    finally(function()
+      package.loaded["held"] = nil
+      vim.opt.runtimepath:remove(cwd)
+    end)
+    local original = require("held")
+    local loaders_before = vim.list_slice(package.loaders)
+
+    local _, uninstall = mutate.install(first_mutation(module, "swap-relational"), cwd)
+    local mutated = require("held")
+    uninstall()
+
+    assert.is_true(mutated.is_positive(0))
+    assert.same(loaders_before, package.loaders)
+    -- WHY: a worker takes one mutant after another, so a module ntf itself
+    -- reaches through that name is served the mutant by every `require` after
+    -- it once the entry is left behind.
+    -- NOT: asserting the loader alone, which a module already in package.loaded
+    -- is never reached through.
+    assert.equal(original, require("held"))
+  end)
+
   it("reports that the mutation was not applied when the module is never required", function()
     local cwd = helper.test_data.full_path
     helper.test_data:create_file(

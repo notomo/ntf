@@ -28,6 +28,12 @@ function M.coverage_stats(working_dir)
   return path("coverage", ".out", working_dir)
 end
 
+--- @param nonce string the worker it carries the payload of, so two of them never share one file
+--- @return string
+function M.payload(nonce)
+  return vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf", "payload", nonce .. ".json")
+end
+
 --- @param source string the file it holds the instrumented copy of
 --- @return string # a path no `.lua` of its own, so that a cache directory inside a project is never taken for code under test
 function M.instrumented(source)

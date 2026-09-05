@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local mutation = require("ntf.mutation")
 local cache_path = require("ntf.core.cache_path")
 local helper = require("ntf.test.helper")
@@ -361,11 +362,22 @@ describe("ntf.mutation.namespace", function()
   end)
 
   it("shows the survivors as a sign and as virtual lines, never as end-of-line text", function()
+    local ns = mutation.namespace()
+    local before = vim.diagnostic.config(nil, ns)
+    finally(function()
+      vim.diagnostic.config(before, ns)
+      package.loaded["ntf.mutation"] = nil
+    end)
+    vim.diagnostic.config({ signs = false, virtual_text = true, virtual_lines = false }, ns)
+    package.loaded["ntf.mutation"] = nil
+
+    require("ntf.mutation")
+
     assert.same({
       signs = { text = { [vim.diagnostic.severity.WARN] = "▌" } },
       virtual_text = false,
       virtual_lines = { current_line = false },
-    }, vim.diagnostic.config(nil, mutation.namespace()))
+    }, vim.diagnostic.config(nil, ns))
   end)
 
   it("draws a survivor as soon as it is set, wherever the cursor is", function()

@@ -35,10 +35,10 @@ local function record(path, row, status, mutant)
 end
 
 describe("ntf.core.mutation.report.summary", function()
-  it("names the batches a kill was taken back from, and counts them", function()
+  it("names the tests a kill was taken back from, and counts them", function()
     local summary = {
       records = {},
-      restarted = {
+      retried = {
         { killed_by = "a leaky test", count = 45 },
         { killed_by = "another leaky test", count = 1 },
       },
@@ -57,15 +57,15 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
-    assert.match("  46 kills taken back from a batch, over 2 tests passing when run alone\n", text)
-    assert.match('FLAKY BATCH 45 kills taken back from "a leaky test"', text)
-    assert.match('FLAKY BATCH 1 kill taken back from "another leaky test"', text)
+    assert.match("  46 kills taken back, over 2 tests that did not fail a second time\n", text)
+    assert.match('RETRIED KILL 45 kills taken back from "a leaky test"', text)
+    assert.match('RETRIED KILL 1 kill taken back from "another leaky test"', text)
   end)
 
   it("counts one kill taken back from one test in the singular", function()
     local summary = {
       records = {},
-      restarted = { { killed_by = "a leaky test", count = 1 } },
+      retried = { { killed_by = "a leaky test", count = 1 } },
       counts = {
         killed = 0,
         timeout = 0,
@@ -81,13 +81,13 @@ describe("ntf.core.mutation.report.summary", function()
 
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
-    assert.match("  1 kill taken back from a batch, over 1 test passing when run alone\n", text)
+    assert.match("  1 kill taken back, over 1 test that did not fail a second time\n", text)
   end)
 
-  it("says nothing about batches where every kill reproduced alone", function()
+  it("says nothing about the tests where every kill came back a second time", function()
     local summary = {
       records = {},
-      restarted = {},
+      retried = {},
       counts = {
         killed = 0,
         timeout = 0,
@@ -104,7 +104,7 @@ describe("ntf.core.mutation.report.summary", function()
     local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
 
     assert.no.match("taken back", text)
-    assert.no.match("FLAKY BATCH", text)
+    assert.no.match("RETRIED KILL", text)
   end)
 
   it("scores the detected mutants and lists every one a test did not plainly fail on", function()

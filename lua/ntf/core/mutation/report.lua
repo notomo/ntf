@@ -16,9 +16,9 @@ M.listed = {
   baseline_killable = { label = "BASELINE KILLABLE", color = "red" },
 }
 
---- @type table<string, string> the lines a run reports under that judge something other than a mutant: a config entry it cannot stand behind, or a batch it took a kill back from
+--- @type table<string, string> the lines a run reports under that judge something other than a mutant: a config entry it cannot stand behind, or a test it took a kill back from
 M.entry_labels = {
-  flaky_batch = "FLAKY BATCH",
+  retried = "RETRIED KILL",
   unused_exclude = "UNUSED EXCLUDE",
   unused_exclude_spec = "UNUSED EXCLUDE SPEC",
   unpinned = "UNPINNED BASELINE",
@@ -87,19 +87,19 @@ function M.summary(summary, cwd, opts)
   end
   lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 
-  local restarted = summary.restarted or {}
-  if #restarted > 0 then
+  local retried = summary.retried or {}
+  if #retried > 0 then
     local taken_back = 0
-    for _, restart in ipairs(restarted) do
-      taken_back = taken_back + restart.count
+    for _, entry in ipairs(retried) do
+      taken_back = taken_back + entry.count
     end
     table.insert(
       lines,
-      ("  %d kill%s taken back from a batch, over %d test%s passing when run alone"):format(
+      ("  %d kill%s taken back, over %d test%s that did not fail a second time"):format(
         taken_back,
         taken_back == 1 and "" or "s",
-        #restarted,
-        #restarted == 1 and "" or "s"
+        #retried,
+        #retried == 1 and "" or "s"
       )
     )
   end
@@ -125,14 +125,14 @@ function M.summary(summary, cwd, opts)
     end
   end
 
-  for _, restart in ipairs(restarted) do
+  for _, entry in ipairs(retried) do
     table.insert(
       lines,
       ("%s %d kill%s taken back from %q"):format(
-        paint("yellow", M.entry_labels.flaky_batch),
-        restart.count,
-        restart.count == 1 and "" or "s",
-        restart.killed_by
+        paint("yellow", M.entry_labels.retried),
+        entry.count,
+        entry.count == 1 and "" or "s",
+        entry.killed_by
       )
     )
   end
