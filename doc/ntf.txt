@@ -694,8 +694,11 @@ mutant scored)` — instead of reading as a run with nothing to do. Everything
 else that fails a run — a stale baseline entry, an exclude entry covering
 nothing — fails it on its own, with or without the gate.
 
-A mutant is tried against the tests that cover it, cheapest first, in a worker
-that goes on to the mutants after it. A test that fails only tells the run to
+A mutant is tried against the tests that cover it in a worker that goes on to
+the mutants after it, taking the ones that killed a mutant on the same line
+first, then the ones that killed elsewhere in the file, then the rest, cheapest
+first within each. That order is read back from the results the last run filed,
+so a first run has only the cheapest-first half of it. A test that fails only tells the run to
 look again: the same test is run a second time, and a kill it does not make
 twice is reported RETRIED KILL, taken back, and the trials after it are taken
 as usual. A failure from before anything loaded the mutated source is passed

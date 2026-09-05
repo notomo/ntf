@@ -1,4 +1,7 @@
 local operators = require("ntf.core.mutation.operators")
+local killers = require("ntf.core.mutation.killers")
+local results = require("ntf.core.mutation.results")
+local tree = require("ntf.core.tree")
 local splice = require("ntf.core.mutation.splice")
 local runner = require("ntf.core.mutation.runner")
 local baseline = require("ntf.core.mutation.baseline")
@@ -125,11 +128,11 @@ local function rows_of(mutant)
   return vim.list_extend(rows, mutant.anchor_rows)
 end
 
---- @param results NtfResult[]
+--- @param baseline_results NtfResult[]
 --- @return table<string, number> # "<file>\0<id>" -> duration in ms
-local function baseline_durations(results)
+local function baseline_durations(baseline_results)
   local durations = {}
-  for _, result in ipairs(results) do
+  for _, result in ipairs(baseline_results) do
     if result.file then
       durations[result.file .. "\0" .. result.id] = (result.duration or 0) * 1000
     end
@@ -150,14 +153,24 @@ end
 
 --- @param ctx { items: NtfWorkItem[], coverage_map: NtfMutationCoverageMap }
 --- @param durations table<string, number> baseline test durations, keyed file\0node_id
+--- @param previous_killer fun(mutant: NtfMutant): string? the test that killed this mutant in the run before, if one did
 --- @param mutant NtfMutant
---- @return NtfMutantTrial[] # covering tests, cheapest first, so a kill is found early; empty when uncovered
-local function covering_trials(ctx, durations, mutant)
+--- @return NtfMutantTrial[] # covering tests, the one that killed it last time first and the rest cheapest first, so a kill is found early; empty when uncovered
+local function covering_trials(ctx, durations, previous_killer, mutant)
   local trials = vim.tbl_map(function(item_index)
     local item = ctx.items[item_index]
     return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
   end, ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)))
+
+  local killed_it = previous_killer(mutant)
+  local was_the_killer = {}
+  for _, trial in ipairs(trials) do
+    was_the_killer[trial] = tree.full_name(trial.item.names) == killed_it
+  end
   table.sort(trials, function(a, b)
+    if was_the_killer[a] ~= was_the_killer[b] then
+      return was_the_killer[a]
+    end
     return a.baseline_ms < b.baseline_ms
   end)
   return trials
@@ -187,6 +200,7 @@ end
 function M.run(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local durations = baseline_durations(ctx.baseline_results)
+  local previous_killer = killers.previous_killer(results.read(opts.mutation_results))
   local matcher = baseline.matcher(ctx.baseline or {})
   local claims = baseline.claims()
 
@@ -209,7 +223,7 @@ function M.run(opts, ctx)
     if matched then
       table.insert(records, { mutant = mutant, status = "equivalent" })
 
-      local trials = covering_trials(ctx, durations, mutant)
+      local trials = covering_trials(ctx, durations, previous_killer, mutant)
       claims.record(matched, #trials > 0)
       if opts.mutation_verify_baseline and #trials > 0 then
         table.insert(tasks, { mutant = mutant, trials = trials })
@@ -219,7 +233,7 @@ function M.run(opts, ctx)
     elseif not opts.mutation_verify_baseline_only then
       table.insert(records, { mutant = mutant, status = "no_coverage" })
 
-      local trials = covering_trials(ctx, durations, mutant)
+      local trials = covering_trials(ctx, durations, previous_killer, mutant)
       if #trials > 0 then
         table.insert(tasks, { mutant = mutant, trials = trials })
         table.insert(task_records, #records)
