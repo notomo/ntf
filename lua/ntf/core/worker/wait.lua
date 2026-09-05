@@ -9,6 +9,7 @@ M.budget_ms = 15 * 60 * 1000
 --- @field finished integer work items that have reported back
 --- @field running table<any, string> what every item a worker was launched for is called, until it reports back
 --- @field fatal any? the error a callback raised, which ends the run before its items are done
+--- @field closed boolean? the wait is over, so what a worker reports while it is torn down is no longer the run's to take
 
 --- @class NtfRunGiveUp what a run that spent its budget was still waiting on
 --- @field budget integer ms the wait was given
@@ -44,6 +45,13 @@ function M.settle(state, opts)
   vim.wait(budget, function()
     return state.finished >= opts.total or state.fatal ~= nil
   end, 20)
+
+  -- WHY: tearing the workers down waits for each of them to exit, which runs the
+  -- callbacks of any that were still going, and what the run came to is what it
+  -- had when its budget ran out.
+  -- NOT: leaving them to report, where a run that gave up on an item hands back
+  -- a result for it and says in the same breath that it never reported back.
+  state.closed = true
   driver.kill_all()
 
   if state.fatal then

@@ -98,15 +98,26 @@ end
 
 --- @return integer # workers signalled, so a caller can tell a clean finish from a torn-down one
 function M.kill_all()
-  local killed = 0
-  for _, proc in pairs(running) do
+  local signalled = vim.tbl_values(running)
+  for _, proc in ipairs(signalled) do
     pcall(function()
       proc:kill("sigkill")
     end)
-    killed = killed + 1
   end
-  running = {}
-  return killed
+
+  -- WHY: Windows keeps a directory open for as long as a process has it as its
+  -- working directory, so a signalled worker still holds the one a test launched
+  -- it in, which that test's teardown then fails to delete. Waiting is also what
+  -- runs each worker's exit callback, which is what takes it off this list.
+  -- NOT: returning once they are signalled, which leaves the caller tearing down
+  -- around processes that are still there.
+  for _, proc in ipairs(signalled) do
+    pcall(function()
+      proc:wait()
+    end)
+  end
+
+  return #signalled
 end
 
 --- @param root string the plugin root the worker prepends to its runtimepath

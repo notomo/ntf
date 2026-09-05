@@ -58,6 +58,9 @@ function M.run(items, opts)
       coverage = measures_coverage,
       coverage_excludes = coverage_excludes,
     }, function(outcome)
+      if state.closed then
+        return
+      end
       local seconds = (vim.uv.hrtime() - item_started) * 1e-9
       -- WHY: a killed worker's life measures the timeout the run chose, not the
       -- startup it paid or the test it ran, so the split the report makes of

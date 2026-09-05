@@ -544,10 +544,8 @@ describe("ntf.core.worker.driver.kill_all", function()
 
     assert.equal(1, driver.kill_all())
 
-    vim.wait(30000, function()
-      return done ~= nil
-    end, 20)
-    assert(done, "the worker outlived kill_all")
+    assert(done, "kill_all came back before the worker it signalled had exited")
+    assert.equal(0, driver.kill_all())
   end)
 
   it("has nothing left to kill once its workers exited on their own", function()

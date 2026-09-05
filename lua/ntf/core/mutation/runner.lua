@@ -101,6 +101,9 @@ function M.run(tasks, opts)
     --- @return fun(value: T) # the same handler, its raise ending the run rather than the worker callback it came from
     local function guarded(fn)
       return function(value)
+        if state.closed then
+          return
+        end
         local ok, err = xpcall(fn, debug.traceback, value)
         if not ok then
           state.fatal = state.fatal or err
