@@ -24,6 +24,7 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @field mutation_verify_baseline boolean run the baseline entries and fail any that a test can kill
 --- @field mutation_verify_baseline_only boolean leave every mutant outside the baseline unrun
 --- @field mutation_results string mutation results output path (JSON)
+--- @field mutation_no_cache boolean score every mutant again rather than taking a kill from the results the last run filed
 --- @field mutation_mutant { path: string, row: integer, col: integer, operator: string }? the mutant a baseline entry is written for, its col taken back to the 0-based one every site counts
 --- @field mutation_replacement string? what the mutant puts in place of the original, naming one of several mutants a position holds
 --- @field mutation_rationale string? why no test can detect the mutant the entry is written for
@@ -220,6 +221,15 @@ local verify_baseline = {
 }
 
 --- @type NtfFlag
+local no_cache = {
+  name = "--no-cache",
+  description = "score every mutant again, taking no kill from the results the last run filed",
+  set = function(opts)
+    opts.mutation_no_cache = true
+  end,
+}
+
+--- @type NtfFlag
 local results = {
   name = "--results",
   value = "FILE",
@@ -351,7 +361,7 @@ local mutation_run_command = {
   description = "mutate the covered code once the tests pass and score the mutants",
   id = "mutation.run",
   positional = SPEC_PATHS,
-  flags = command_flags(discovery_flags, worker_flags, mutation_flags, { strict, verify_baseline, results }),
+  flags = command_flags(discovery_flags, worker_flags, mutation_flags, { strict, verify_baseline, results, no_cache }),
   validate = function(opts)
     if opts.mutation_verify_baseline and not opts.mutation_config then
       return "--verify-baseline requires --config"
@@ -642,6 +652,7 @@ function M.parse(argv)
     mutation_verify_baseline = false,
     mutation_verify_baseline_only = false,
     mutation_results = cache_path.mutation_results(),
+    mutation_no_cache = false,
     mutation_mutant = nil,
     mutation_replacement = nil,
     mutation_rationale = nil,

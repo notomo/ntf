@@ -42,6 +42,7 @@ describe("ntf.core.mutation.report.summary", function()
         { killed_by = "a leaky test", count = 45 },
         { killed_by = "another leaky test", count = 1 },
       },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -66,6 +67,7 @@ describe("ntf.core.mutation.report.summary", function()
     local summary = {
       records = {},
       retried = { { killed_by = "a leaky test", count = 1 } },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -84,10 +86,57 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("  1 kill taken back, over 1 test that did not fail a second time\n", text)
   end)
 
+  it("says how many verdicts it took from the last run rather than made", function()
+    local summary = {
+      records = {},
+      retried = {},
+      reused = 1,
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
+
+    assert.match("  1 taken from the last run, nothing they are judged by having changed\n", text)
+  end)
+
+  it("says nothing about a run that made every verdict itself", function()
+    local summary = {
+      records = {},
+      retried = {},
+      reused = 0,
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+      },
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 1.0 })
+
+    assert.no.match("taken from the last run", text)
+  end)
+
   it("says nothing about the tests where every kill came back a second time", function()
     local summary = {
       records = {},
       retried = {},
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -115,6 +164,7 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 3, "survived"),
         record(abs("lua/b.lua"), 4, "no_coverage"),
       },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 1,
@@ -145,6 +195,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists a mutant that never landed apart from the undetected ones", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "not_applied") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -169,6 +220,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("shows a path relative to the working directory, leaving a path outside it whole", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "survived"), record("/other/b.lua", 2, "survived") },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -195,6 +247,7 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 1, "survived", { col = 12 }),
         record(abs("lua/a.lua"), 1, "survived", { col = 4 }),
       },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -235,6 +288,7 @@ describe("ntf.core.mutation.report.summary", function()
           replacement = "do end",
         }),
       },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -266,6 +320,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("counts the equivalents apart and lists the lost baseline entries", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "equivalent") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -303,6 +358,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists a baseline position whose content named more than one mutant", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -343,6 +399,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("counts the mutants an exclude entry's operator left out", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/b.lua"), 2, "excluded") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -367,6 +424,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("counts the mutants of an operator the config did not adopt", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -391,6 +449,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists the exclude entries that cover no measurable file", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -416,6 +475,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists the exclude_spec entries that cover no discovered spec file", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -442,6 +502,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists the baseline entries whose invariant_spec no test pins", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -480,6 +541,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists the baseline entries no test reaches, which carry no uncovered to say so", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -513,6 +575,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists the uncovered baseline entries a test does reach", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -547,6 +610,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("lists a baseline-killable mutant apart from the score", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "baseline_killable") },
+      reused = 0,
       counts = {
         killed = 1,
         timeout = 0,
@@ -573,6 +637,7 @@ describe("ntf.core.mutation.report.summary", function()
     killable.killed_by = "ntf.core.mod keeps a and b apart"
     local summary = {
       records = { killable },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -603,6 +668,7 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 2, "equivalent"),
         record(abs("lua/a.lua"), 3, "baseline_killable"),
       },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -632,6 +698,7 @@ describe("ntf.core.mutation.report.summary", function()
         record(abs("lua/a.lua"), 1, "equivalent"),
         record(abs("lua/a.lua"), 2, "equivalent"),
       },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -655,6 +722,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("reports n/a when there is no mutant to score", function()
     local summary = {
       records = {},
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,
@@ -678,6 +746,7 @@ describe("ntf.core.mutation.report.summary", function()
   it("counts the mutants that left the score even though none of them was scored", function()
     local summary = {
       records = { record(abs("lua/a.lua"), 1, "not_applied") },
+      reused = 0,
       counts = {
         killed = 0,
         timeout = 0,

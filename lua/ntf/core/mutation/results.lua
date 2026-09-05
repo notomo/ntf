@@ -9,6 +9,7 @@ local VERSION = 1
 --- @field score number? percent detected; absent when nothing was scoreable
 --- @field counts table<string, integer>
 --- @field files table<string, NtfMutationResultRecord[]> normalized absolute path -> records
+--- @field digests table<string, string> content digest of every file a verdict here depends on, which is what the next run tells a change by
 
 --- @class NtfMutationResultRecord
 --- @field row integer 1-based start line
@@ -61,6 +62,7 @@ function M.write(path, summary)
       score = summary.score,
       counts = summary.counts,
       files = next(files) and files or vim.empty_dict(),
+      digests = next(summary.digests) and summary.digests or vim.empty_dict(),
     })
   )
 end

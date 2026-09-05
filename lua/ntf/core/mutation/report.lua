@@ -87,6 +87,13 @@ function M.summary(summary, cwd, opts)
   end
   lines[1] = lines[1] .. ", " .. duration(opts.elapsed) .. " elapsed"
 
+  if summary.reused > 0 then
+    table.insert(
+      lines,
+      ("  %d taken from the last run, nothing they are judged by having changed"):format(summary.reused)
+    )
+  end
+
   local retried = summary.retried or {}
   if #retried > 0 then
     local taken_back = 0

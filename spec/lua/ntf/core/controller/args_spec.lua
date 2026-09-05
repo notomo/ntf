@@ -503,6 +503,18 @@ describe("ntf.core.controller.args.parse", function()
       assert.is_false(opts.mutation_verify_baseline_only)
     end)
 
+    it("scores every mutant again with --no-cache", function()
+      local opts = args.parse({ "mutation", "--no-cache", "spec" })
+
+      assert.is_true(opts.mutation_no_cache)
+    end)
+
+    it("takes the kills the last run filed without --no-cache", function()
+      local opts = args.parse({ "mutation", "spec" })
+
+      assert.is_false(opts.mutation_no_cache)
+    end)
+
     it("errors when --verify-baseline is given without --config", function()
       local err = args.parse({ "mutation", "--verify-baseline", "spec" })
 

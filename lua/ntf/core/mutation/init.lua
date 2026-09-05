@@ -1,5 +1,5 @@
 local operators = require("ntf.core.mutation.operators")
-local killers = require("ntf.core.mutation.killers")
+local previous = require("ntf.core.mutation.previous")
 local results = require("ntf.core.mutation.results")
 local tree = require("ntf.core.tree")
 local splice = require("ntf.core.mutation.splice")
@@ -35,6 +35,8 @@ local M = {}
 
 --- @class NtfMutationSummary : NtfMutationStaleness
 --- @field retried NtfMutationRetried[] the tests a kill was taken back from, first taken back first, each costing the run a second run of that test
+--- @field reused integer mutants whose kill was taken from the run before rather than made again, no file they are judged by having changed since
+--- @field digests table<string, string> what this run read of the files a verdict depends on, filed for the next run to tell a change by
 --- @field records NtfMutationRecord[]
 --- @field counts table<string, integer> one entry per status, plus `excluded` and `unadopted` for the mutants no record was kept for
 --- @field excluded_files integer files a whole-file exclude entry dropped, whose mutants were never enumerated
@@ -153,16 +155,16 @@ end
 
 --- @param ctx { items: NtfWorkItem[], coverage_map: NtfMutationCoverageMap }
 --- @param durations table<string, number> baseline test durations, keyed file\0node_id
---- @param previous_killer fun(mutant: NtfMutant): string? the test that killed this mutant in the run before, if one did
+--- @param killer fun(mutant: NtfMutant): string? the test that killed this mutant in the run before, if one did
 --- @param mutant NtfMutant
 --- @return NtfMutantTrial[] # covering tests, the one that killed it last time first and the rest cheapest first, so a kill is found early; empty when uncovered
-local function covering_trials(ctx, durations, previous_killer, mutant)
+local function covering_trials(ctx, durations, killer, mutant)
   local trials = vim.tbl_map(function(item_index)
     local item = ctx.items[item_index]
     return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
   end, ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)))
 
-  local killed_it = previous_killer(mutant)
+  local killed_it = killer(mutant)
   local was_the_killer = {}
   for _, trial in ipairs(trials) do
     was_the_killer[trial] = tree.full_name(trial.item.names) == killed_it
@@ -200,7 +202,7 @@ end
 function M.run(opts, ctx)
   local cwd = absolute(ctx.cwd)
   local durations = baseline_durations(ctx.baseline_results)
-  local previous_killer = killers.previous_killer(results.read(opts.mutation_results))
+  local filed = previous.new(results.read(opts.mutation_results), not opts.mutation_no_cache)
   local matcher = baseline.matcher(ctx.baseline or {})
   local claims = baseline.claims()
 
@@ -212,6 +214,8 @@ function M.run(opts, ctx)
   local task_records = {}
   --- @type boolean[] whether the task re-runs a baseline entry, parallel to tasks
   local task_verify = {}
+  --- @type integer mutants whose kill the run before had already made, over files nothing has changed since
+  local reused = 0
 
   local selection = ctx.mutation_operators or "all"
   local mutant_entries, unused_excludes, excluded, unadopted, judged, excluded_files =
@@ -223,7 +227,7 @@ function M.run(opts, ctx)
     if matched then
       table.insert(records, { mutant = mutant, status = "equivalent" })
 
-      local trials = covering_trials(ctx, durations, previous_killer, mutant)
+      local trials = covering_trials(ctx, durations, filed.killer, mutant)
       claims.record(matched, #trials > 0)
       if opts.mutation_verify_baseline and #trials > 0 then
         table.insert(tasks, { mutant = mutant, trials = trials })
@@ -231,10 +235,16 @@ function M.run(opts, ctx)
         table.insert(task_verify, true)
       end
     elseif not opts.mutation_verify_baseline_only then
-      table.insert(records, { mutant = mutant, status = "no_coverage" })
+      local record = { mutant = mutant, status = "no_coverage" } --- @type NtfMutationRecord
+      table.insert(records, record)
 
-      local trials = covering_trials(ctx, durations, previous_killer, mutant)
-      if #trials > 0 then
+      local trials = covering_trials(ctx, durations, filed.killer, mutant)
+      local settled = #trials > 0 and filed.settled(mutant, trials) or nil
+      if settled then
+        record.status = "killed"
+        record.killed_by = settled
+        reused = reused + 1
+      elseif #trials > 0 then
         table.insert(tasks, { mutant = mutant, trials = trials })
         table.insert(task_records, #records)
         table.insert(task_verify, false)
@@ -305,6 +315,8 @@ function M.run(opts, ctx)
 
   return vim.tbl_extend("error", staleness_of(ctx, matcher, judged, unused_excludes, claims), {
     retried = retried,
+    reused = reused,
+    digests = filed.digests(),
     records = records,
     counts = counts,
     excluded_files = excluded_files,

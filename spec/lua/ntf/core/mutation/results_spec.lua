@@ -35,6 +35,7 @@ describe("ntf.core.mutation.results", function()
     local summary = {
       records = { record("/x.lua", 2, "swap-relational", "survived"), record("/x.lua", 1, "swap-boolean", "killed") },
       counts = { killed = 1, timeout = 0, survived = 1, no_coverage = 0, not_applied = 0 },
+      digests = {},
       score = 50,
     }
 
@@ -59,6 +60,7 @@ describe("ntf.core.mutation.results", function()
         record("/x.lua", 1, "swap-relational", "killed", 4),
       },
       counts = { killed = 1, timeout = 0, survived = 1, no_coverage = 0, not_applied = 0 },
+      digests = {},
       score = 50,
     }
 
@@ -76,6 +78,7 @@ describe("ntf.core.mutation.results", function()
     local summary = {
       records = {},
       counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      digests = {},
       score = nil,
     }
 
@@ -92,10 +95,37 @@ describe("ntf.core.mutation.results", function()
     results.write(out, {
       records = {},
       counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      digests = {},
       score = nil,
     })
 
     assert.match('"files":%s*{}', table.concat(vim.fn.readfile(out), "\n"))
+  end)
+
+  it("files the digest of every file a verdict depends on, for the next run to tell a change by", function()
+    local out = helper.test_data:path("ntf-mutation.json")
+
+    results.write(out, {
+      records = {},
+      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      digests = { ["/x.lua"] = "abc" },
+      score = nil,
+    })
+
+    assert.same({ ["/x.lua"] = "abc" }, assert(results.read(out)).digests)
+  end)
+
+  it("writes an empty digest set as a JSON object, which an empty Lua table would encode as `[]` instead", function()
+    local out = helper.test_data:path("ntf-mutation.json")
+
+    results.write(out, {
+      records = {},
+      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      digests = {},
+      score = nil,
+    })
+
+    assert.match('"digests":%s*{}', table.concat(vim.fn.readfile(out), "\n"))
   end)
 
   it("closes the file it read", function()
