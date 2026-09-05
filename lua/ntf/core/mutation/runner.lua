@@ -80,7 +80,6 @@ function M.run(tasks, opts)
       opts.on_task(outcome)
     end
     state.running[task_index] = nil
-    state.finished = state.finished + 1
   end
 
   local start_worker
@@ -105,7 +104,6 @@ function M.run(tasks, opts)
         local ok, err = xpcall(fn, debug.traceback, value)
         if not ok then
           state.fatal = state.fatal or err
-          state.finished = state.finished + 1
         end
       end
     end
@@ -154,6 +152,14 @@ function M.run(tasks, opts)
           state.fatal = report.reported_error("a mutation worker reported nothing: " .. exit.message)
           return
         end
+
+        -- WHY: a worker writes its verdicts before it exits, so counting them as
+        -- they arrive leaves the run over while the process is still there,
+        -- holding the working directory a test launched it in open on Windows.
+        -- NOT: counting a verdict when it lands, which is when the mutant is
+        -- reported and not when the worker that reported it is gone.
+        state.finished = state.finished + #indexes - #left
+
         if #left > 0 then
           return vim.schedule(function()
             launch(left)

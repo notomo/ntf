@@ -214,6 +214,12 @@ describe("ntf.core.mutation.runner.run", function()
     assert.equal(1, process_count())
   end)
 
+  it("leaves no worker of its own running once it returns, which a working directory is held open by", function()
+    run((task_of(DETECTS)))
+
+    assert.equal(0, driver.kill_all())
+  end)
+
   it("passes over a trial that failed before anything had loaded the mutated source", function()
     local outcome = run((task_of(FAILS_THEN_DETECTS)))
 
