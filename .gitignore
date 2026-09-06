@@ -1,0 +1,5 @@
+# what a mutant of protocol.env leaves behind: with its `not file` guard gone,
+# the atomic write is handed a nil path, which names the temp file after it and
+# makes a directory out of the v:null that mkdir sees
+/nil.*.tmp
+/v:null/
