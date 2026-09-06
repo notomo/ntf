@@ -89,7 +89,7 @@ describe("ntf.core.worker.watchdog.start", function()
   end
 
   --- @param script string path to a lua file
-  --- @return table # a vim.SystemObj running it in a headless neovim
+  --- @return vim.SystemObj # running it in a headless neovim
   local function nvim(script)
     return vim.system({
       vim.v.progpath,

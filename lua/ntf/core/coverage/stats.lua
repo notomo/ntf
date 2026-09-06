@@ -2,8 +2,10 @@ local write = require("ntf.core.write")
 
 local M = {}
 
+--- @alias NtfCoverageMerged table<string, { max: integer, lines: table<integer, integer> }> per-file line hit counts, keyed by normalized absolute path
+
 --- @param path string output file path
---- @param merged table<string, { max: integer, lines: table<integer, integer> }>
+--- @param merged NtfCoverageMerged
 function M.write(path, merged)
   local files = vim.tbl_keys(merged)
   table.sort(files)
@@ -23,7 +25,7 @@ function M.write(path, merged)
 end
 
 --- @param path string stats file path
---- @return table<string, { max: integer, lines: table<integer, integer> }>
+--- @return NtfCoverageMerged
 function M.read(path)
   local f = io.open(path, "r")
   if not f then

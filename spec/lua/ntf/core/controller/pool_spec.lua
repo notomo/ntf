@@ -40,7 +40,7 @@ ntf.describe("x", function()
 end)
 ]]
 
---- @param coverage table merged per-file line hit counts
+--- @param coverage NtfCoverageMerged
 --- @return integer measured, integer seeded
 local function counted(coverage)
   local measured, seeded = 0, 0
@@ -116,9 +116,9 @@ local function most_at_once(dir)
   return most
 end
 
---- @param items table[] the NtfWorkItems of the run
+--- @param items NtfWorkItem[] the items of the run
 --- @param opts table run options merged over the defaults
---- @return table results, table coverage, table timing, table? gave_up
+--- @return NtfResult[] results, NtfCoverageMerged coverage, NtfRunTiming timing, NtfRunGiveUp? gave_up
 local function run(items, opts)
   return pool.run(items, vim.tbl_extend("force", { root = helper.root, budget = 30000 }, opts))
 end

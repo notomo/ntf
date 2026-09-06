@@ -6,7 +6,7 @@ local helper = require("ntf.test.helper")
 
 local NONCE = "0123456789abcdef0123456789abcdef"
 
---- @param events table[] the NtfWorkerEvent to write
+--- @param events NtfWorkerEvent[] the events to write
 --- @param nonce string?
 --- @return string # the stdout a worker writes those events to
 local function event_stdout(events, nonce)
@@ -28,6 +28,9 @@ local function event_stdout(events, nonce)
   return table.concat(written)
 end
 
+--- @param result NtfWorkerResult what the worker answers with
+--- @param nonce string?
+--- @return string # the stdout it writes that result to
 local function emitted(result, nonce)
   local written = {}
   local saved = io.stdout
@@ -44,9 +47,12 @@ local function emitted(result, nonce)
   return table.concat(written)
 end
 
+--- @type NtfWorkerResult what a worker answers with for one test that passed
+local ONE_PASSED = { results = { { id = "1.1", names = { "group", "one" }, status = "passed" } } }
+
 describe("ntf.core.worker.protocol emit -> parse", function()
   it("round-trips a result block through a worker's stdout", function()
-    local stdout = "user output\n" .. emitted({ results = { { id = "1.1", status = "passed" } } })
+    local stdout = "user output\n" .. emitted(ONE_PASSED)
 
     local decoded = assert(protocol.parse(stdout, NONCE))
     assert.equal("1.1", decoded.results[1].id)
@@ -59,7 +65,7 @@ describe("ntf.core.worker.protocol emit -> parse", function()
   end)
 
   it("ignores a block a test printed under another worker's nonce", function()
-    local stdout = emitted({ results = { { id = "1.1", status = "passed" } } }, protocol.nonce())
+    local stdout = emitted(ONE_PASSED, protocol.nonce())
 
     assert.is_nil(protocol.parse(stdout, NONCE))
   end)
@@ -71,7 +77,7 @@ describe("ntf.core.worker.protocol emit -> parse", function()
   end)
 
   it("parses a result block that sits at the first byte of the stdout", function()
-    local stdout = emitted({ results = { { id = "1.1", status = "passed" } } }):sub(2)
+    local stdout = emitted(ONE_PASSED):sub(2)
 
     assert.equal("1.1", protocol.parse(stdout, NONCE).results[1].id)
   end)
@@ -85,7 +91,7 @@ end)
 
 describe("ntf.core.worker.protocol.emit", function()
   it("writes the begin marker, the JSON, then the end marker, each on its own line", function()
-    local lines = vim.split(emitted({ results = { { id = "1.1", status = "passed" } } }), "\n", { plain = true })
+    local lines = vim.split(emitted(ONE_PASSED), "\n", { plain = true })
 
     assert.equal(5, #lines)
     assert.equal("", lines[1])

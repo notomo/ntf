@@ -2,8 +2,8 @@ local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local exclude = require("ntf.core.mutation.exclude")
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one excluding a whole module
+--- @return NtfMutationExcludeEntry
 local function entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod",
@@ -12,8 +12,8 @@ local function entry(overrides)
   }, overrides or {})
 end
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one excluding a whole module
+--- @return NtfMutationExcludeEntry # carrying no operators, the way an exclude_spec entry is spelled
 local function spec_entry(overrides)
   local without_operators = entry(overrides)
   without_operators.operators = nil
@@ -259,9 +259,9 @@ describe("ntf.core.mutation.exclude.item_indexes", function()
   local cwd = "/project"
 
   --- @param file string
-  --- @return table
+  --- @return NtfWorkItem
   local function item(file)
-    return { file = file, node_id = "1", names = { "test" } }
+    return { file = file, node_id = "1", names = { "test" }, leaves_count = 1 }
   end
 
   it("returns the indexes of every item a directory entry covers", function()

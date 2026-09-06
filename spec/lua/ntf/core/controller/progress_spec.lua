@@ -20,10 +20,12 @@ local function work_item()
   return { file = "x_spec.lua", node_id = "1", names = { "group", "one" }, leaves_count = 1 }
 end
 
+--- @param ... NtfResultStatus what each test of the item came to
+--- @return NtfResult[]
 local function item_of(...)
   local results = {}
-  for _, status in ipairs({ ... }) do
-    table.insert(results, { status = status })
+  for index, status in ipairs({ ... }) do
+    table.insert(results, { id = ("1.%d"):format(index), names = { "group", "one" }, status = status })
   end
   return results
 end

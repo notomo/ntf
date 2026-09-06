@@ -369,6 +369,8 @@ end)
   end)
 end)
 
+--- @param leaves string[] what each test of the one group is called
+--- @return NtfNode # the root the file builds to
 local function tree_of(leaves)
   local lines = { 'local ntf = require("ntf")', 'ntf.describe("g", function()' }
   for _, name in ipairs(leaves) do

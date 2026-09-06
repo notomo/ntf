@@ -51,7 +51,7 @@ local function ranges(rows)
   return table.concat(parts, ",")
 end
 
---- @param merged table<string, { max: integer, lines: table<integer, integer> }>
+--- @param merged NtfCoverageMerged
 --- @param cwd string working directory, to show file paths relative to it
 --- @return string
 --- @return boolean # whether it found a line to hold the tests to: a run that measured none has no coverage to report, however green it looks

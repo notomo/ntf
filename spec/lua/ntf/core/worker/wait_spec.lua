@@ -10,8 +10,8 @@ local function timed(f)
   return (vim.uv.hrtime() - before) * 1e-6
 end
 
---- @param state table what the callbacks would have written
---- @return table # one NtfRunState
+--- @param state table what the callbacks would have written, over a run nothing has reported back to
+--- @return NtfRunState
 local function run_state(state)
   return vim.tbl_extend("keep", state, { finished = 0, running = {} })
 end

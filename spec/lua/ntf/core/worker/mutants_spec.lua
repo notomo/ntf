@@ -103,8 +103,8 @@ local NOOP_HOOK = {
 
 --- @param name string what to file the spec under
 --- @param source string
---- @return table # the NtfWorkerMutantJob mutation over a module the spec can `require`
---- @return table[] # its NtfWorkerTrial, one per leaf the spec declares
+--- @return NtfWorkerMutation # the mutation over a module the spec can `require`
+--- @return NtfWorkerTrial[] # one per leaf the spec declares
 local function job_parts(name, source)
   local path = helper.test_data:create_file("lua/mod.lua", MODULE)
   local site = operators.enumerate(MODULE)[1]
@@ -130,15 +130,15 @@ end
 --- @param name string what to file the spec under
 --- @param source string
 --- @param index integer? the task the job answers as (default 1)
---- @return table # one NtfWorkerMutantJob
+--- @return NtfWorkerMutantJob
 local function job_of(name, source, index)
   local mutation, trials = job_parts(name, source)
   return { index = index or 1, mutation = mutation, trials = trials }
 end
 
---- @param jobs table[] the NtfWorkerMutantJob to take
---- @param hook table? the NtfHook bracketing every trial (default: one that does nothing)
---- @return table[] # the NtfWorkerEvent written for them
+--- @param jobs NtfWorkerMutantJob[] the jobs to take
+--- @param hook NtfHook? bracketing every trial (default: one that does nothing)
+--- @return NtfWorkerEvent[] # what was written for them
 local function run(jobs, hook)
   local written = {}
   local saved = io.stdout
@@ -157,9 +157,9 @@ local function run(jobs, hook)
   return protocol.event_reader(NONCE)(table.concat(written))
 end
 
---- @param events table[] the NtfWorkerEvent of a run
+--- @param events NtfWorkerEvent[] the events of a run
 --- @param index integer? the task to take the verdict of (default 1)
---- @return table # the verdict event for it
+--- @return NtfWorkerEvent # the verdict event for it
 local function verdict_of(events, index)
   for _, event in ipairs(events) do
     if event.type == "verdict" and event.index == (index or 1) then

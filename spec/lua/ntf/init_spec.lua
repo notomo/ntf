@@ -1895,6 +1895,9 @@ describe("ntf mutation", function()
         "return M",
       }, "\n")
     )
+    --- @param row integer 1-based line the mutant starts on
+    --- @param rationale string why no test can detect it
+    --- @return NtfMutationBaselineEntry
     local function twin_entry(row, rationale)
       return {
         path = "lua/twin.lua",

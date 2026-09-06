@@ -117,7 +117,7 @@ end
 
 --- @param source string the spec whose every leaf becomes a trial, in the order it declares them
 --- @param spec_name string? what to file the spec under, for a run given more than one task
---- @return table # one NtfMutantTask over a mutated module the spec can `require`
+--- @return NtfMutantTask # one task over a mutated module the spec can `require`
 --- @return string # the mutated module, as a run in the plugin root writes it
 local function task_of(source, spec_name)
   local path = helper.test_data:create_file("lua/mod.lua", MODULE)
@@ -129,9 +129,9 @@ local function task_of(source, spec_name)
   return { mutant = mutant, trials = trials }, assert(vim.fs.relpath(helper.root, path))
 end
 
---- @param tasks table[] the NtfMutantTask to run
+--- @param tasks NtfMutantTask[] the tasks to run
 --- @param opts table? run options merged over the defaults
---- @return table[] # their NtfMutantOutcome, parallel to tasks
+--- @return NtfMutantOutcome[] # parallel to tasks
 --- @return string[] # the test of every kill that was taken back
 local function run_all(tasks, opts)
   local retries = {}
@@ -150,9 +150,9 @@ local function run_all(tasks, opts)
   return outcomes, retries
 end
 
---- @param task table one NtfMutantTask
+--- @param task NtfMutantTask
 --- @param opts table? run options merged over the defaults
---- @return table # its NtfMutantOutcome
+--- @return NtfMutantOutcome
 --- @return string[] # the test of every kill that was taken back
 local function run(task, opts)
   local outcomes, retries = run_all({ task }, opts)

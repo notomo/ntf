@@ -3,8 +3,8 @@ local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_e
 local baseline = require("ntf.core.mutation.baseline")
 local helper = require("ntf.test.helper")
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one over a swap-relational
+--- @return NtfMutationBaselineEntry
 local function entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod.lua",
@@ -17,8 +17,8 @@ local function entry(overrides)
   }, overrides or {})
 end
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the site differs in from a one-column swap-relational
+--- @return NtfMutantSite
 local function site(overrides)
   return vim.tbl_extend("force", {
     row = 3,
@@ -113,6 +113,8 @@ describe("ntf.core.mutation.baseline.validate_document", function()
 end)
 
 describe("ntf.core.mutation.baseline.twinned", function()
+  --- @param overrides table? what the site differs in from a one-column swap-relational
+  --- @return NtfMutantSite
   local function twin_site(overrides)
     return vim.tbl_extend("force", {
       row = 1,
@@ -177,8 +179,8 @@ describe("ntf.core.mutation.baseline.build", function()
     "return M",
   }, "\n")
 
-  --- @param overrides table?
-  --- @return table
+  --- @param overrides table? what the request differs in from one over a swap-relational
+  --- @return NtfMutationBaselineRequest
   local function request(overrides)
     return vim.tbl_extend("force", {
       path = "lua/mod.lua",

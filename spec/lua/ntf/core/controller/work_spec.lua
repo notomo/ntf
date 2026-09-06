@@ -19,6 +19,8 @@ end)
 
 local MATH_ADDS, MATH_SUBTRACTS, STRING_ADDS = "1.1", "1.2", "2.1"
 
+--- @param items NtfWorkItem[]
+--- @return string[] # the node id of each of them, in the order the run dispatches them
 local function planned_ids(items)
   return vim.tbl_map(function(item)
     return item.node_id

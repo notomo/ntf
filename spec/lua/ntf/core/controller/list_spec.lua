@@ -2,8 +2,8 @@ local ntf = require("ntf")
 local describe, it, assert = ntf.describe, ntf.it, ntf.assert
 local list = require("ntf.core.controller.list")
 
---- @param overrides table?
---- @return table # NtfMutantListEntry
+--- @param overrides table? what the entry differs in from an uncovered swap-relational
+--- @return NtfMutantListEntry
 local function mutant_entry(overrides)
   return vim.tbl_deep_extend("force", {
     mutant = {

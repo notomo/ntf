@@ -17,7 +17,7 @@ return f
 ]]
 
 --- @param src string
---- @return table[]
+--- @return { operator: string, row: integer, original: string, replacement: string }[] # what each site the source holds is, without its byte range
 local function summarize(src)
   return vim.tbl_map(function(site)
     return { operator = site.operator, row = site.row, original = site.original, replacement = site.replacement }

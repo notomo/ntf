@@ -6,8 +6,9 @@ local helper = require("ntf.test.helper")
 --- @param path string
 --- @param row integer
 --- @param operator string
---- @param status string
+--- @param status NtfMutationStatus
 --- @param col integer?
+--- @return NtfMutationRecord
 local function record(path, row, operator, status, col)
   return {
     mutant = {

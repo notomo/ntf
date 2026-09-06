@@ -14,7 +14,8 @@ local SOURCE = table.concat({
 }, "\n")
 
 --- @param row integer 1-based
---- @param status string
+--- @param status NtfMutationStatus
+--- @return NtfMutationResultRecord
 local function record(row, status)
   return {
     row = row,
@@ -29,7 +30,7 @@ local function record(row, status)
 end
 
 --- @param bufnr integer
---- @return table[]
+--- @return { lnum: integer, col: integer, end_lnum: integer, end_col: integer, severity: integer, source: string, code: string, message: string }[] # the mutation diagnostics of the buffer, without the fields nvim fills in
 local function diagnostics(bufnr)
   return vim
     .iter(vim.diagnostic.get(bufnr, { namespace = mutation.namespace() }))
@@ -78,7 +79,7 @@ local function survivor(row)
   }
 end
 
---- @param records table[]
+--- @param records NtfMutationResultRecord[] what the run before filed for the module
 --- @return string src, string results_file
 local function project(records)
   local src = helper.test_data:create_file("mod.lua", SOURCE)

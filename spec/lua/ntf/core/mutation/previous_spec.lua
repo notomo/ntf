@@ -8,7 +8,7 @@ local SOURCE = "return true\n"
 --- @param row integer
 --- @param killed_by string?
 --- @param over table? what the record differs in from a one-column swap-relational
---- @return table # one NtfMutationResultRecord
+--- @return NtfMutationResultRecord
 local function record(row, killed_by, over)
   return vim.tbl_extend("force", {
     row = row,
@@ -26,14 +26,14 @@ end
 --- @param path string
 --- @param row integer
 --- @param over table? what the mutant differs in from the record above
---- @return table # one NtfMutant
+--- @return NtfMutant
 local function mutant(path, row, over)
   return vim.tbl_extend("force", { path = path }, record(row, nil, over))
 end
 
 --- @param file string
 --- @param name string full name of the one test the trial runs
---- @return table[] # one NtfMutantTrial over that spec file
+--- @return NtfMutantTrial[] # one trial over that spec file
 local function trials(file, name)
   return { { item = { file = file, node_id = "1.1", names = { name } }, baseline_ms = 0 } }
 end
@@ -43,7 +43,7 @@ describe("ntf.core.mutation.previous", function()
   after_each(helper.after_each)
 
   --- @param over table? what the filed results differ in from a killed mutant of an unchanged file
-  --- @return table filed, string source, string spec
+  --- @return NtfMutationResults filed, string source, string spec
   local function filed_run(over)
     local source = helper.test_data:create_file("lua/mod.lua", SOURCE)
     local spec = helper.test_data:create_file("mod_spec.lua", SOURCE)

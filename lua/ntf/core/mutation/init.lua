@@ -17,7 +17,7 @@ local M = {}
 
 --- @class NtfMutationRecord
 --- @field mutant NtfMutant
---- @field status "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable"
+--- @field status NtfMutationStatus
 --- @field killed_by string? full name of the test that detected the mutant
 
 --- @class NtfMutationStaleness what the --config asks for that the code no longer holds, which enumerating the mutants tells without running one

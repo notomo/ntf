@@ -18,7 +18,7 @@ local M = {}
 --- @param items NtfWorkItem[]
 --- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_ignore_items?: table<integer, true>, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
---- @return table coverage merged per-file line hit counts
+--- @return NtfCoverageMerged coverage
 --- @return NtfRunTiming timing
 --- @return NtfRunGiveUp? # what the run was still waiting on when its budget ran out
 function M.run(items, opts)

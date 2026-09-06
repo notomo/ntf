@@ -29,6 +29,9 @@ describe("ntf.core.worker.mutate.module_names", function()
   end)
 end)
 
+--- @param path string the module to mutate
+--- @param operator string what the mutation is a site of
+--- @return NtfWorkerMutation
 local function first_mutation(path, operator)
   local file = assert(io.open(path, "r"))
   local src = file:read("*a")
@@ -48,6 +51,11 @@ local function first_mutation(path, operator)
   error(("no %s site in %s"):format(operator, path))
 end
 
+--- @param item NtfWorkItem
+--- @param mutation NtfWorkerMutation
+--- @param cwd string working directory of the worker
+--- @param test_hook string? path of the hook every test runs under
+--- @return NtfWorkerOutcome
 local function launch(item, mutation, cwd, test_hook)
   local done
   driver.launch(

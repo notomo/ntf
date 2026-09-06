@@ -3,8 +3,8 @@ local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_e
 local config = require("ntf.core.mutation.config")
 local helper = require("ntf.test.helper")
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one over a swap-relational
+--- @return NtfMutationBaselineEntry
 local function baseline_entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod.lua",
@@ -17,8 +17,8 @@ local function baseline_entry(overrides)
   }, overrides or {})
 end
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one excluding a whole module
+--- @return NtfMutationExcludeEntry
 local function exclude_entry(overrides)
   return vim.tbl_extend("force", {
     path = "lua/mod",
@@ -27,8 +27,8 @@ local function exclude_entry(overrides)
   }, overrides or {})
 end
 
---- @param overrides table?
---- @return table
+--- @param overrides table? what the entry differs in from one naming an end-to-end spec
+--- @return NtfMutationExcludeEntry
 local function exclude_spec_entry(overrides)
   return vim.tbl_extend("force", {
     path = "spec/e2e_spec.lua",
@@ -232,8 +232,8 @@ describe("ntf.core.mutation.config.format", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
 
-  --- @param overrides table?
-  --- @return table
+  --- @param overrides table? what the document differs in from an empty policy over every operator
+  --- @return NtfMutationConfig
   local function document(overrides)
     return vim.tbl_extend(
       "force",

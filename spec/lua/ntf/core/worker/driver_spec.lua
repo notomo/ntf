@@ -58,15 +58,15 @@ local function leaves_a_timer(before)
 end
 
 --- @param source string
---- @return table # one NtfWorkItem
+--- @return NtfWorkItem
 local function item_of(source)
   return work.plan({ helper.write_spec(source) })[1]
 end
 
---- @param item table one NtfWorkItem
+--- @param item NtfWorkItem
 --- @param opts table? launch options merged over the defaults
 --- @param wait_ms integer? how long to wait for the worker (default 30000)
---- @return table # one NtfWorkerOutcome
+--- @return NtfWorkerOutcome
 local function launch(item, opts, wait_ms)
   local done
   local launch_opts =
@@ -396,7 +396,7 @@ return {
 ]]
 
 --- @param name_chars integer characters of comment the mutant carries, which is what fills a payload
---- @return table # one NtfWorkerMutation over a module the specs below can `require`
+--- @return NtfWorkerMutation # over a module the specs below can `require`
 local function mutation_of(name_chars)
   local path = helper.test_data:create_file("lua/mod.lua", MODULE)
   local at = assert(MODULE:find("true", 1, true))
@@ -411,7 +411,7 @@ end
 
 --- @param source string the spec whose every leaf becomes a trial
 --- @param budget_ms integer what each of them is given before the run kills the worker
---- @return table[] # the NtfWorkerTrial of each of them
+--- @return NtfWorkerTrial[] # one for each of them
 local function trials_of(source, budget_ms)
   return vim.tbl_map(function(item)
     return {
@@ -424,12 +424,12 @@ local function trials_of(source, budget_ms)
   end, work.plan({ helper.write_spec(source) }))
 end
 
---- @param jobs table[] the NtfWorkerMutantJob to hand one worker
+--- @param jobs NtfWorkerMutantJob[] the jobs to hand one worker
 --- @param opts table? launch options merged over the defaults
---- @return table[] # the NtfWorkerEvent the worker wrote, in order
---- @return table # the NtfWorkerMutantsExit it came to
+--- @return NtfWorkerEvent[] # what the worker wrote, in order
+--- @return NtfWorkerMutantsExit # what it came to
 local function launch_mutants(jobs, opts)
-  local events = {} --- @type table[]
+  local events = {} --- @type NtfWorkerEvent[]
   local exit
   driver.launch_mutants(
     jobs,

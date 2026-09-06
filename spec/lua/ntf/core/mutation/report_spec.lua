@@ -14,7 +14,7 @@ end
 
 --- @param path string
 --- @param row integer
---- @param status string
+--- @param status NtfMutationStatus|"excluded" a status a run files, or the one it counts a mutant under while keeping no record for it
 --- @param mutant table? what the mutant differs in from a one-column swap-relational
 local function record(path, row, status, mutant)
   return {

@@ -1134,7 +1134,7 @@ gen_readme()
 
 --- @type table<string, true> every token the command tree parses as a flag
 local known_flags = {}
---- @param command any an NtfCommand, whose class this tree is checked apart from
+--- @param command NtfCommand
 local function collect_flags(command)
   for _, flag in ipairs(command.flags or {}) do
     known_flags[flag.name] = true

@@ -6,15 +6,17 @@ local helper = require("ntf.test.helper")
 --- @param root string
 --- @param file string relative spec path
 --- @param name string
+--- @return NtfWorkItem
 local function item(root, file, name)
-  return { file = vim.fs.joinpath(root, file), node_id = "1.1", names = { "group", name } }
+  return { file = vim.fs.joinpath(root, file), node_id = "1.1", names = { "group", name }, leaves_count = 1 }
 end
 
 --- @param root string
 --- @param file string relative spec path
 --- @param name string
 --- @param duration number? seconds
---- @param status string?
+--- @param status NtfResultStatus? what the test came to (default: passed)
+--- @return NtfResult
 local function result(root, file, name, duration, status)
   return {
     id = "1.1",
