@@ -371,9 +371,20 @@ describe("ntf.core.mutation.baseline.build", function()
   end)
 end)
 
+--- @param entries NtfMutationBaselineEntry[]
+--- @param added NtfMutationBaselineEntry
+--- @return NtfMutationBaselineEntry[] # the entries with it added, refusing the message a rejection answers with
+local function inserted(entries, added)
+  local result = baseline.insert(entries, added)
+  if type(result) == "string" then
+    error(result)
+  end
+  return result
+end
+
 describe("ntf.core.mutation.baseline.insert", function()
   it("adds an entry to an empty baseline", function()
-    local added = baseline.insert({}, entry())
+    local added = inserted({}, entry())
 
     assert.equal(1, #added)
     assert.equal("lua/mod.lua", added[1].path)
@@ -386,7 +397,7 @@ describe("ntf.core.mutation.baseline.insert", function()
       entry({ path = "lua/z.lua" }),
     }
 
-    local added = baseline.insert(entries, entry({ col = 9 }))
+    local added = inserted(entries, entry({ col = 9 }))
 
     assert.same(
       { "lua/a.lua", "lua/mod.lua", "lua/mod.lua", "lua/z.lua" },
@@ -400,7 +411,7 @@ describe("ntf.core.mutation.baseline.insert", function()
   it("adds an entry naming a file no entry does at the end", function()
     local entries = { entry({ path = "lua/a.lua" }) }
 
-    local added = baseline.insert(entries, entry())
+    local added = inserted(entries, entry())
 
     assert.equal(2, #added)
     assert.equal("lua/mod.lua", added[2].path)
@@ -409,7 +420,7 @@ describe("ntf.core.mutation.baseline.insert", function()
   it("leaves the given entries alone", function()
     local entries = { entry({ path = "lua/a.lua" }) }
 
-    baseline.insert(entries, entry())
+    inserted(entries, entry())
 
     assert.equal(1, #entries)
   end)
@@ -425,7 +436,7 @@ describe("ntf.core.mutation.baseline.insert", function()
   it("adds an entry that differs from one on the same line only by its column", function()
     local entries = { entry() }
 
-    local added = baseline.insert(entries, entry({ col = 9 }))
+    local added = inserted(entries, entry({ col = 9 }))
 
     assert.equal(2, #added)
   end)
@@ -433,7 +444,7 @@ describe("ntf.core.mutation.baseline.insert", function()
   it("adds an entry sharing a position with one that names another row", function()
     local entries = { entry({ row = 3 }) }
 
-    local added = baseline.insert(entries, entry({ row = 9 }))
+    local added = inserted(entries, entry({ row = 9 }))
 
     assert.equal(2, #added)
     assert.equal(9, added[2].row)
@@ -467,11 +478,17 @@ describe("ntf.core.mutation.baseline.insert", function()
   end)
 end)
 
+--- @param status NtfResultStatus what the run's one test came to
+--- @return NtfResult[]
+local function results_of(status)
+  return { { id = "1.1", names = { "mod", "takes the min" }, status = status } }
+end
+
 describe("ntf.core.mutation.baseline.unpinned", function()
   it("reports an entry whose invariant_spec matches no test of the run", function()
     local entries = { entry({ invariant_spec = "mod keeps a and b apart" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, true)
+    local unpinned = baseline.unpinned(entries, results_of("passed"), true)
 
     assert.equal(1, #unpinned)
     assert.equal("mod keeps a and b apart", unpinned[1].invariant_spec)
@@ -480,7 +497,7 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("keeps an entry whose invariant_spec passed", function()
     local entries = { entry({ invariant_spec = "mod takes the min" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, true)
+    local unpinned = baseline.unpinned(entries, results_of("passed"), true)
 
     assert.equal(0, #unpinned)
   end)
@@ -488,7 +505,7 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("reports an entry whose invariant_spec only went pending, since a pending test asserts nothing", function()
     local entries = { entry({ invariant_spec = "mod takes the min" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "pending" } }, true)
+    local unpinned = baseline.unpinned(entries, results_of("pending"), true)
 
     assert.equal(1, #unpinned)
   end)
@@ -502,7 +519,7 @@ describe("ntf.core.mutation.baseline.unpinned", function()
   it("leaves every entry alone where the run took part of the suite", function()
     local entries = { entry({ invariant_spec = "mod keeps a and b apart" }) }
 
-    local unpinned = baseline.unpinned(entries, { { names = { "mod", "takes the min" }, status = "passed" } }, false)
+    local unpinned = baseline.unpinned(entries, results_of("passed"), false)
 
     assert.equal(0, #unpinned)
   end)

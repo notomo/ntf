@@ -209,7 +209,9 @@ describe("ntf.core.worker.mutants.reset_point", function()
 
     local reset = mutants.reset_point()
     table.insert(package.loaders, 2, function() end)
+    --- @diagnostic disable-next-line: duplicate-set-field
     _G.loadfile = function() end
+    --- @diagnostic disable-next-line: duplicate-set-field
     _G.dofile = function() end
     reset()
 

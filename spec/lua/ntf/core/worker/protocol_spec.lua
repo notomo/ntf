@@ -48,7 +48,7 @@ describe("ntf.core.worker.protocol emit -> parse", function()
   it("round-trips a result block through a worker's stdout", function()
     local stdout = "user output\n" .. emitted({ results = { { id = "1.1", status = "passed" } } })
 
-    local decoded = protocol.parse(stdout, NONCE)
+    local decoded = assert(protocol.parse(stdout, NONCE))
     assert.equal("1.1", decoded.results[1].id)
     assert.equal("passed", decoded.results[1].status)
   end)

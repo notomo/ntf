@@ -17,6 +17,12 @@ describe("outer", function()
 end)
 ]]
 
+--- @param name string pending reason
+--- @return boolean ok, any raised # what pending() answered with, which pcall reads as the return it never makes
+local function protected_pending(name)
+  return pcall(tree.pending, name)
+end
+
 describe("ntf.core.tree.build", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -112,7 +118,7 @@ describe("ntf.core.tree.pending", function()
   after_each(helper.after_each)
 
   it("signals a pending() that has no node to attach to with a table, which lua never prefixes", function()
-    local ok, thrown = pcall(tree.pending, "outside any describe")
+    local ok, thrown = protected_pending("outside any describe")
 
     assert.is_false(ok)
     assert.equal("outside any describe", thrown.message)
@@ -122,7 +128,7 @@ describe("ntf.core.tree.pending", function()
   it("signals it too after a build whose file would not compile, which leaves a stack behind if unwound", function()
     tree.build(helper.write_spec([[describe((]]))
 
-    local ok, thrown = pcall(tree.pending, "outside any describe")
+    local ok, thrown = protected_pending("outside any describe")
 
     assert.is_false(ok)
     assert.is_true(thrown[tree.PENDING])
@@ -130,7 +136,7 @@ describe("ntf.core.tree.pending", function()
 
   it("raises a message for a pending() no test is running to receive, rather than the bare signal", function()
     local was_running = tree.set_running(false)
-    local ok, err = pcall(tree.pending, "nothing to attach to and no one to send to")
+    local ok, err = protected_pending("nothing to attach to and no one to send to")
     tree.set_running(was_running)
 
     assert.is_false(ok)
@@ -223,7 +229,7 @@ describe("ntf.core.tree declaration outside a spec file being loaded", function(
   end
 
   it("keeps pending() as the pending signal it already answers with", function()
-    local ok, err = pcall(tree.pending, "no node to attach to")
+    local ok, err = protected_pending("no node to attach to")
 
     assert.is_false(ok)
     assert.is_true(err[tree.PENDING])
@@ -270,16 +276,16 @@ end)
 
 describe("ntf.core.tree.is_leaf", function()
   it("treats it and pending as leaves", function()
-    assert.is_true(tree.is_leaf({ type = "it" }))
-    assert.is_true(tree.is_leaf({ type = "pending" }))
+    assert.is_true(tree.is_leaf({ type = "it", name = "one", id = "1" }))
+    assert.is_true(tree.is_leaf({ type = "pending", name = "two", id = "2" }))
   end)
 
   it("treats a healthy describe as a non-leaf", function()
-    assert.is_false(tree.is_leaf({ type = "describe" }))
+    assert.is_false(tree.is_leaf({ type = "describe", name = "group", id = "1" }))
   end)
 
   it("treats a describe whose body errored as a leaf, rather than running the arbitrary prefix it collected", function()
-    assert.is_true(tree.is_leaf({ type = "describe", load_error = "boom" }))
+    assert.is_true(tree.is_leaf({ type = "describe", name = "group", id = "1", load_error = "boom" }))
   end)
 end)
 

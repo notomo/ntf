@@ -221,7 +221,7 @@ function M.timing(results, timing)
 end
 
 --- @param results NtfResult[]
---- @param load_errors NtfLoadError[]
+--- @param load_errors NtfLoadError[]? the load errors of the run, which a caller with none may leave out
 --- @param opts { color: boolean, gave_up: NtfRunGiveUp? }
 --- @return string text, integer exit_code
 function M.build(results, load_errors, opts)

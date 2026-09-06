@@ -30,6 +30,7 @@ describe("ntf.core.controller.list.tests", function()
         node_id = "1",
         names = { "group", "adds" },
         trace = { source = "@" .. vim.fs.joinpath(vim.fn.getcwd(), "spec/x_spec.lua"), line = 12 },
+        leaves_count = 1,
       },
     })
 
@@ -43,6 +44,7 @@ describe("ntf.core.controller.list.tests", function()
         node_id = "1",
         names = { "group", "select (\nhoge\n)" },
         trace = { source = "@" .. vim.fs.joinpath(vim.fn.getcwd(), "spec/x_spec.lua"), line = 12 },
+        leaves_count = 1,
       },
     })
 

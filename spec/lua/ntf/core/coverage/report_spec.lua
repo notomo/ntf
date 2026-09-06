@@ -27,7 +27,7 @@ local function summary_of(lines, name)
   end
   local merged = { [vim.fs.normalize(src)] = { max = max, lines = hits } }
 
-  return report.summary(merged, helper.test_data.full_path)
+  return (report.summary(merged, helper.test_data.full_path))
 end
 
 --- @param lines SummaryLine[]

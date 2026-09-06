@@ -9,6 +9,17 @@ local function collector()
   end
 end
 
+--- @param status string a mutant status no mark has a character for, which only a cast can hand the typed callback
+--- @return NtfMutantOutcome
+local function unmarked_outcome(status)
+  return { status = status } --[[@as NtfMutantOutcome]]
+end
+
+--- @return NtfWorkItem # the leaf a progress line stands for, which the printer never reads
+local function work_item()
+  return { file = "x_spec.lua", node_id = "1", names = { "group", "one" }, leaves_count = 1 }
+end
+
 local function item_of(...)
   local results = {}
   for _, status in ipairs({ ... }) do
@@ -22,7 +33,7 @@ describe("ntf.core.controller.progress", function()
     local buf, write = collector()
     local prog = progress.new({ write = write, color = false })
 
-    prog.on_item({}, item_of("passed", "failed", "error", "pending"))
+    prog.on_item(work_item(), item_of("passed", "failed", "error", "pending"))
     prog.finish()
 
     assert.equal(".FE*\n", table.concat(buf))
@@ -41,10 +52,10 @@ describe("ntf.core.controller.progress", function()
     local buf, write = collector()
     local prog = progress.new({ write = write, color = false })
 
-    prog.on_item({}, item_of("passed", "passed"))
+    prog.on_item(work_item(), item_of("passed", "passed"))
     prog.newline()
     prog.newline()
-    prog.on_item({}, item_of("passed"))
+    prog.on_item(work_item(), item_of("passed"))
     prog.finish()
 
     assert.equal("..\n.\n", table.concat(buf))
@@ -54,7 +65,7 @@ describe("ntf.core.controller.progress", function()
     local buf, write = collector()
     local prog = progress.new({ write = write, color = true })
 
-    prog.on_item({}, item_of("failed"))
+    prog.on_item(work_item(), item_of("failed"))
 
     assert.equal("\27[31mF\27[0m", table.concat(buf))
   end)
@@ -109,7 +120,7 @@ describe("ntf.core.controller.progress.mutation", function()
     local buf, write = collector()
     local prog = progress.mutation({ write = write, enabled = true, color = false })
 
-    prog.on_task({ status = "no_coverage" })
+    prog.on_task(unmarked_outcome("no_coverage"))
 
     assert.equal("S", table.concat(buf))
   end)

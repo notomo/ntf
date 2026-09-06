@@ -23,7 +23,7 @@ local VERSION = 1
 --- @field killed_by string?
 
 --- @param path string output path
---- @param summary NtfMutationSummary
+--- @param summary { records: NtfMutationRecord[], counts: table<string, integer>, digests: table<string, string>, score: number? } what a run's summary carries of the verdicts, taken from NtfMutationSummary
 function M.write(path, summary)
   local files = {}
   for _, record in ipairs(summary.records) do

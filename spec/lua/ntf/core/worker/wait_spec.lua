@@ -73,7 +73,7 @@ describe("ntf.core.worker.wait.settle", function()
   it("hands back the items that never reported back once the budget is out", function()
     local state = run_state({ finished = 1 })
 
-    local gave_up = wait.settle(state, { budget = 100, total = 3, unit = "tests" })
+    local gave_up = assert(wait.settle(state, { budget = 100, total = 3, unit = "tests" }))
 
     assert.equal(2, gave_up.unfinished)
     assert.equal(3, gave_up.total)
@@ -89,7 +89,7 @@ describe("ntf.core.worker.wait.settle", function()
   end)
 
   it("gives up on the shortest budget a run can ask for", function()
-    local gave_up = wait.settle(run_state({}), { budget = 1, total = 1, unit = "tests" })
+    local gave_up = assert(wait.settle(run_state({}), { budget = 1, total = 1, unit = "tests" }))
 
     assert.equal(1, gave_up.unfinished)
   end)
@@ -97,7 +97,7 @@ describe("ntf.core.worker.wait.settle", function()
   it("names the launched items of the run that gave up, in one order however they were dispatched", function()
     local state = run_state({ running = { "lua/b.lua:1:1:drop-call", "lua/a.lua:2:3:swap-logical" } })
 
-    local gave_up = wait.settle(state, { budget = 100, total = 5, unit = "mutants" })
+    local gave_up = assert(wait.settle(state, { budget = 100, total = 5, unit = "mutants" }))
 
     assert.same({ "lua/a.lua:2:3:swap-logical", "lua/b.lua:1:1:drop-call" }, gave_up.launched)
   end)
