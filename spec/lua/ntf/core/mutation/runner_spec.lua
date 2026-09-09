@@ -211,6 +211,7 @@ describe("ntf.core.mutation.runner.run", function()
 
     assert.equal("killed", outcome.status)
     assert.equal("x detects", outcome.killed_by)
+    assert.is_nil(outcome.died)
     assert.equal(1, process_count())
   end)
 
@@ -272,6 +273,12 @@ describe("ntf.core.mutation.runner.run", function()
 
     assert.equal("killed", outcome.status)
     assert.equal("x takes the process with it", outcome.killed_by)
+  end)
+
+  it("says of a kill it took from a dead worker that no trial reported it", function()
+    local outcome = run((task_of(CRASHES)))
+
+    assert.is_true(outcome.died)
   end)
 
   it("gives every mutant a verdict where there are more of them than one worker takes", function()

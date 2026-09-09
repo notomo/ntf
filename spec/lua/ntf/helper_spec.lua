@@ -1,5 +1,6 @@
 local ntf = require("ntf")
-local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
+local describe, before_each, after_each, it, finally, assert =
+  ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local plugin_helper = require("ntf.helper")
 local helper = require("ntf.test.helper")
 
@@ -16,6 +17,9 @@ describe("ntf.helper.find_plugin_root", function()
     local plugin_root = helper.test_data:create_dir(vim.fs.joinpath("lua", "upstream", plugin_name))
     helper.test_data:create_file(vim.fs.joinpath("lua", "upstream", plugin_name, "lua", plugin_name, "init.lua"))
     vim.opt.runtimepath:append(plugin_root)
+    finally(function()
+      vim.opt.runtimepath:remove(plugin_root)
+    end)
 
     assert.equal(plugin_root, plugin_helper.find_plugin_root(plugin_name))
   end)

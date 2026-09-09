@@ -382,6 +382,10 @@ describe("ntf.mutation.namespace", function()
   end)
 
   it("draws a survivor as soon as it is set, wherever the cursor is", function()
+    local before = vim.diagnostic.config()
+    finally(function()
+      vim.diagnostic.config(before)
+    end)
     vim.diagnostic.config({ virtual_lines = { current_line = true } })
     local src, results_file = project({ record(3, "survived") })
 

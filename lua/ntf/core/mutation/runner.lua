@@ -11,6 +11,7 @@ local M = {}
 --- @class NtfMutantOutcome
 --- @field status "killed"|"timeout"|"survived"|"not_applied"
 --- @field killed_by string? full name of the test that detected the mutant
+--- @field died boolean? true where the kill is what the run made of a worker that exited on the trial, rather than a verdict a trial reported
 
 --- @class NtfMutantTrial one test to run against one mutant
 --- @field item NtfWorkItem the covering test
@@ -144,6 +145,7 @@ function M.run(tasks, opts)
               settle(task_index, exit.timed_out and { status = "timeout" } or {
                 status = "killed",
                 killed_by = killed_by,
+                died = true,
               })
             else
               table.insert(left, task_index)

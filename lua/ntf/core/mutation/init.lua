@@ -284,7 +284,7 @@ function M.run(opts, ctx)
       -- NOT: counting it as detected the way the score does, where reading a
       -- timeout as a kill understates the surviving mutants and here it invents
       -- a failure instead.
-      if outcome.status == "killed" then
+      if outcome.status == "killed" and not outcome.died then
         record.status = "baseline_killable"
         record.killed_by = outcome.killed_by
       end
