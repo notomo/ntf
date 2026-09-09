@@ -4,3 +4,5 @@ on: [push, pull_request]
 jobs:
   ci:
     uses: notomo/workflow/.github/workflows/neovim-plugin-ci.yml@main
+    with:
+      test_neovim_version: '["nightly", "v0.12.0"]'
