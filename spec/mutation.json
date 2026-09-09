@@ -213,6 +213,16 @@
       "rationale": "a spec file's chunk returns nothing, so on success pcall's second value is nil and load_error stays unset either way"
     },
     {
+      "path": "lua/ntf/core/tree.lua",
+      "col": 10,
+      "operator": "drop-return-value",
+      "original": "(joined:gsub(\"[\\n\\r\\v\\f]\", LINE_BREAKS))",
+      "replacement": "nil",
+      "line": "  return (joined:gsub(\"[\\n\\r\\v\\f]\", LINE_BREAKS))",
+      "rationale": "the worker names the test that detected a mutant with this very function, and ntf runs its own specs, so under this mutant a trial's failure comes back unnamed and reads as a pass",
+      "invariant_spec": "ntf.core.worker.mutants.run takes a kill from the first trial that fails on the mutant, naming that test"
+    },
+    {
       "path": "lua/ntf/core/mutation/coverage_map.lua",
       "col": 12,
       "operator": "force-branch",
