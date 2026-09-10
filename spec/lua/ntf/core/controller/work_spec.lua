@@ -122,6 +122,25 @@ end)
     assert.same({}, load_errors)
     assert.same({ broken_describe }, planned_ids(items))
   end)
+
+  it("keeps a describe whose body errored under a filter its name does not match", function()
+    local file = helper.write_spec([[
+local ntf = require("ntf")
+local describe, it = ntf.describe, ntf.it
+
+describe("group", function()
+  it("selected broken", function() end)
+  error("describe body blew up")
+end)
+
+it("selected good", function() end)
+]])
+
+    local items = work.plan({ file }, "selected")
+
+    local broken_describe, selected_good = "1", "2"
+    assert.same({ broken_describe, selected_good }, planned_ids(items))
+  end)
 end)
 
 describe("ntf.core.controller.work.plan duplicate names", function()

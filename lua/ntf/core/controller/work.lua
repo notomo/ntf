@@ -30,6 +30,17 @@ local function shared_name_message(shared)
   )
 end
 
+--- @param leaf NtfNode
+--- @param names string[] its describe/it name chain
+--- @param filter string|nil Lua pattern over the full name
+--- @return boolean # true when the run takes this leaf: a test whose full name matches, or a describe whose body errored, which no filter leaves out since the tests it would have declared are what the filter cannot see
+local function planned(leaf, names, filter)
+  if leaf.load_error then
+    return true
+  end
+  return not filter or tree.full_name(names):find(filter) ~= nil
+end
+
 --- @param files string[]
 --- @param filter string|nil Lua pattern; keep only leaves whose full name matches
 --- @return NtfWorkItem[] items, NtfLoadError[] load_errors
@@ -48,7 +59,7 @@ function M.plan(files, filter)
       else
         local leaves_count = tree.leaf_count(root)
         for leaf, names in tree.iter_leaves(root) do
-          if not filter or tree.full_name(names):find(filter) ~= nil then
+          if planned(leaf, names, filter) then
             table.insert(items, {
               file = file,
               node_id = leaf.id,
