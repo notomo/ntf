@@ -53,6 +53,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
     }
 
@@ -78,6 +79,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
     }
 
@@ -101,6 +103,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
     }
 
@@ -124,6 +127,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
     }
 
@@ -147,6 +151,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
     }
 
@@ -175,6 +180,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 50,
     }
@@ -206,6 +212,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
     }
@@ -231,6 +238,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 0,
     }
@@ -258,6 +266,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 0,
     }
@@ -299,6 +308,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 0,
     }
@@ -331,6 +341,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       lost = {
@@ -369,6 +380,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       lost = {},
@@ -410,6 +422,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 1,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
     }
@@ -435,6 +448,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 7,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
     }
@@ -460,6 +474,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       lost = {},
@@ -486,6 +501,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       lost = {},
@@ -513,6 +529,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       lost = {},
@@ -552,6 +569,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       uncovered = {
@@ -586,6 +604,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = 100,
       covered = {
@@ -621,6 +640,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 1,
+        baseline_not_applied = 0,
       },
       score = 100,
     }
@@ -630,6 +650,32 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
     assert.match("1 baseline killable", text)
     assert.match("BASELINE KILLABLE lua/a%.lua:2:1:swap%-relational < %-> <=", text)
+  end)
+
+  it("lists a baseline entry whose mutant never landed apart from the score", function()
+    local summary = {
+      records = { record(abs("lua/a.lua"), 1, "killed"), record(abs("lua/a.lua"), 2, "baseline_not_applied") },
+      reused = 0,
+      counts = {
+        killed = 1,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 0,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+        baseline_not_applied = 1,
+      },
+      score = 100,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("Mutation: 100%.0%% %(1/1 mutants detected%)", text)
+    assert.match("1 baseline not applied", text)
+    assert.match("BASELINE NOT APPLIED lua/a%.lua:2:1:swap%-relational < %-> <=", text)
   end)
 
   it("names the test that killed a baseline entry, since every covering trial ran", function()
@@ -648,6 +694,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 1,
+        baseline_not_applied = 0,
       },
       verified = 1,
       baseline_uncovered = 0,
@@ -679,6 +726,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 1,
+        baseline_not_applied = 0,
       },
       verified = 2,
       baseline_uncovered = 0,
@@ -690,6 +738,35 @@ describe("ntf.core.mutation.report.summary", function()
     assert.match("BASELINE KILLABLE lua/a%.lua:3:1:swap%-relational < %-> <=", text)
     local score_line = "Mutation:"
     assert.no.match(score_line, text)
+  end)
+
+  it("counts an entry whose mutant never landed among the entries, since verify re-ran it", function()
+    local summary = {
+      records = {
+        record(abs("lua/a.lua"), 1, "equivalent"),
+        record(abs("lua/a.lua"), 2, "baseline_not_applied"),
+      },
+      reused = 0,
+      counts = {
+        killed = 0,
+        timeout = 0,
+        survived = 0,
+        no_coverage = 0,
+        not_applied = 0,
+        equivalent = 1,
+        excluded = 0,
+        unadopted = 0,
+        baseline_killable = 0,
+        baseline_not_applied = 1,
+      },
+      verified = 2,
+      baseline_uncovered = 0,
+    }
+
+    local text = report.summary(summary, root, { color = false, elapsed = 0 })
+
+    assert.match("Baseline: 2/2 entries re%-run", text)
+    assert.match("BASELINE NOT APPLIED lua/a%.lua:2:1:swap%-relational < %-> <=", text)
   end)
 
   it("counts the entries it stood behind apart from the ones it re-ran", function()
@@ -709,6 +786,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       verified = 1,
       baseline_uncovered = 1,
@@ -733,6 +811,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = nil,
     }
@@ -757,6 +836,7 @@ describe("ntf.core.mutation.report.summary", function()
         excluded = 0,
         unadopted = 0,
         baseline_killable = 0,
+        baseline_not_applied = 0,
       },
       score = nil,
     }

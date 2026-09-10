@@ -219,6 +219,14 @@ function M.mutate(opts, ctx)
     )
     code = 1
   end
+  local not_applied = summary.counts.baseline_not_applied
+  if not_applied > 0 then
+    io.stdout:flush()
+    io.stderr:write(
+      ("mutation gate failed: %d baseline entr%s not applied\n"):format(not_applied, not_applied == 1 and "y" or "ies")
+    )
+    code = 1
+  end
   if opts.mutation_strict then
     local parts = {}
     for _, status in ipairs(require("ntf.core.controller.args").strict_categories) do

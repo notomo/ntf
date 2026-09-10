@@ -4,7 +4,7 @@ local M = {}
 
 local VERSION = 1
 
---- @alias NtfMutationStatus "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable" what a mutant came to, over every verdict a run files
+--- @alias NtfMutationStatus "killed"|"timeout"|"survived"|"no_coverage"|"not_applied"|"equivalent"|"baseline_killable"|"baseline_not_applied" what a mutant came to, over every verdict a run files
 
 --- @class NtfMutationResults
 --- @field version integer

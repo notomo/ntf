@@ -529,6 +529,7 @@ local report_labels = enumeration({
     { label = "NO COVERAGE", description = "no test reaches the line, so it was never run" },
     { label = "NOT APPLIED", description = "the file was not `require`d, so nothing changed" },
     { label = "BASELINE KILLABLE", description = "a baseline entry a test kills, named with the test" },
+    { label = "BASELINE NOT APPLIED", description = "a baseline entry verify could not land, left unchecked" },
     { label = "LOST BASELINE", description = "a baseline entry whose `line` is no longer there" },
     { label = "AMBIGUOUS BASELINE", description = "its content names two mutants and it carries no `row`" },
     { label = "UNPINNED BASELINE", description = "its `invariant_spec` names no test that passed" },
@@ -555,6 +556,7 @@ local count_labels = enumeration({
     { label = "excluded", description = "an `exclude` entry's operator, out of the score" },
     { label = "unadopted", description = "an operator `operators` does not take" },
     { label = "baseline killable", description = "a `baseline` entry a test killed" },
+    { label = "baseline not applied", description = "a `baseline` entry whose mutant never landed" },
   },
 })
 
@@ -924,7 +926,10 @@ results file, which is what you want right after editing the baseline:]],
 Verify fails the same way when it re-ran none of the entries its config lists,
 so a run scoped past all of them is answered rather than passing as `0/0`. A
 kill has to repeat before it counts, so a test that fails for reasons of its own
-does not condemn an entry.
+does not condemn an entry. An entry whose mutant never lands — its file read
+through `dofile` rather than `require`d — is reported BASELINE NOT APPLIED and
+fails too: the trial said nothing about the claim, which is not the same as
+confirming it.
 
 `--verify-baseline` asks the same question of a scoring run, verifying the
 entries in the same pass that scores the rest, so a gate that wants both answers

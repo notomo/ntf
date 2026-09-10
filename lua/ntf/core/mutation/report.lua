@@ -14,6 +14,7 @@ M.listed = {
   no_coverage = { label = "NO COVERAGE", color = "yellow" },
   not_applied = { label = "NOT APPLIED", color = "yellow" },
   baseline_killable = { label = "BASELINE KILLABLE", color = "red" },
+  baseline_not_applied = { label = "BASELINE NOT APPLIED", color = "red" },
 }
 
 --- @type table<string, string> the lines a run reports under that judge something other than a mutant: a config entry it cannot stand behind, or a test it took a kill back from
@@ -39,6 +40,7 @@ M.count_labels = {
   { status = "excluded", label = "excluded", color = "green" },
   { status = "unadopted", label = "unadopted", color = "green" },
   { status = "baseline_killable", label = "baseline killable", color = "red" },
+  { status = "baseline_not_applied", label = "baseline not applied", color = "red" },
 }
 
 --- @param summary NtfMutationSummary
@@ -59,7 +61,7 @@ function M.summary(summary, cwd, opts)
       lines,
       ("Baseline: %d/%d entries re-run%s"):format(
         summary.verified,
-        counts.equivalent + counts.baseline_killable,
+        counts.equivalent + counts.baseline_killable + counts.baseline_not_applied,
         uncovered
       )
     )

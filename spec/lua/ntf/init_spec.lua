@@ -1502,6 +1502,75 @@ describe("ntf mutation", function()
     assert.equal(1, #killable)
   end)
 
+  it("fails baseline verify on an entry whose mutant no spec ever loaded, instead of standing behind it", function()
+    local root = mutation_project()
+    helper.test_data:create_file("spec/mod_spec.lua", MUTATION_DOFILE_SPEC)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "unverifiable: the spec loads the module through dofile",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({ "mutation", "baseline", "verify", "--config=mutation.json", "spec" }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("Baseline: 1/1 entries re%-run", obj.stdout)
+    assert.match("BASELINE NOT APPLIED lua/mod%.lua:3:12:swap%-relational > %-> >=", obj.stdout)
+    assert.match("mutation gate failed: 1 baseline entry not applied", obj.stderr)
+  end)
+
+  it("reports an entry --verify-baseline could not apply alongside the mutants it could not", function()
+    local root, results_file = mutation_project()
+    helper.test_data:create_file("spec/mod_spec.lua", MUTATION_DOFILE_SPEC)
+    helper.test_data:create_file(
+      "mutation.json",
+      vim.json.encode({
+        version = 1,
+        operators = "all",
+        baseline = {
+          {
+            path = "lua/mod.lua",
+            col = 12,
+            operator = "swap-relational",
+            original = ">",
+            replacement = ">=",
+            line = "  return n > 0",
+            rationale = "unverifiable: the spec loads the module through dofile",
+          },
+        },
+      })
+    )
+
+    local obj = helper.run_cli({
+      "mutation",
+      "--config=mutation.json",
+      "--verify-baseline",
+      "--results=" .. results_file,
+      "spec",
+    }, root)
+
+    assert.equal(1, obj.code)
+    assert.match("7 not applied  1 baseline not applied", obj.stdout)
+    assert.match("BASELINE NOT APPLIED lua/mod%.lua:3:12:swap%-relational > %-> >=", obj.stdout)
+    assert.match("mutation gate failed: 1 baseline entry not applied", obj.stderr)
+
+    local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+    assert.equal(1, results.counts.baseline_not_applied)
+  end)
+
   it("holds a baseline entry a trial killed only once, re-running that trial", function()
     local root = helper.test_data.full_path
     helper.test_data:create_file("lua/mod.lua", MUTATION_MODULE)

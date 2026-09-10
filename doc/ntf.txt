@@ -577,7 +577,10 @@ results file, which is what you want right after editing the baseline:
 Verify fails the same way when it re-ran none of the entries its config lists,
 so a run scoped past all of them is answered rather than passing as `0/0`. A
 kill has to repeat before it counts, so a test that fails for reasons of its own
-does not condemn an entry.
+does not condemn an entry. An entry whose mutant never lands — its file read
+through `dofile` rather than `require`d — is reported BASELINE NOT APPLIED and
+fails too: the trial said nothing about the claim, which is not the same as
+confirming it.
 
 `--verify-baseline` asks the same question of a scoring run, verifying the
 entries in the same pass that scores the rest, so a gate that wants both answers
@@ -666,32 +669,34 @@ MUTATION REPORT                                          *ntf-MUTATION-REPORT*
 A mutation run prints one line per judgement it wants answered, each naming the
 mutant as `PATH:ROW:COL:OPERATOR` or the config entry as its path:
 >
-  TIMEOUT              a hung test detected it, which a busy machine can fake
-  RETRIED KILL         a kill the test did not make a second time, taken back
-  SURVIVED             no test noticed the change
-  NO COVERAGE          no test reaches the line, so it was never run
-  NOT APPLIED          the file was not `require`d, so nothing changed
-  BASELINE KILLABLE    a baseline entry a test kills, named with the test
-  LOST BASELINE        a baseline entry whose `line` is no longer there
-  AMBIGUOUS BASELINE   its content names two mutants and it carries no `row`
-  UNPINNED BASELINE    its `invariant_spec` names no test that passed
-  UNCOVERED BASELINE   no test reaches it and it carries no `uncovered`
-  COVERED BASELINE     it carries `uncovered`, but a test reaches it
-  UNUSED EXCLUDE       an `exclude` entry covering no measurable file
-  UNUSED EXCLUDE SPEC  an `exclude_spec` entry covering no spec file
+  TIMEOUT               a hung test detected it, which a busy machine can fake
+  RETRIED KILL          a kill the test did not make a second time, taken back
+  SURVIVED              no test noticed the change
+  NO COVERAGE           no test reaches the line, so it was never run
+  NOT APPLIED           the file was not `require`d, so nothing changed
+  BASELINE KILLABLE     a baseline entry a test kills, named with the test
+  BASELINE NOT APPLIED  a baseline entry verify could not land, left unchecked
+  LOST BASELINE         a baseline entry whose `line` is no longer there
+  AMBIGUOUS BASELINE    its content names two mutants and it carries no `row`
+  UNPINNED BASELINE     its `invariant_spec` names no test that passed
+  UNCOVERED BASELINE    no test reaches it and it carries no `uncovered`
+  COVERED BASELINE      it carries `uncovered`, but a test reaches it
+  UNUSED EXCLUDE        an `exclude` entry covering no measurable file
+  UNUSED EXCLUDE SPEC   an `exclude_spec` entry covering no spec file
 <
 The count line above them tallies every mutant, including the ones that leave
 the score:
 >
-  killed             detected: a test failed on the mutant
-  timeout            detected: a test hung and its worker was killed
-  survived           undetected: the tests stayed green
-  no coverage        undetected: no test reached the line
-  not applied        the mutant never landed, so it says nothing
-  equivalent         a `baseline` entry, left out of the score
-  excluded           an `exclude` entry's operator, out of the score
-  unadopted          an operator `operators` does not take
-  baseline killable  a `baseline` entry a test killed
+  killed                detected: a test failed on the mutant
+  timeout               detected: a test hung and its worker was killed
+  survived              undetected: the tests stayed green
+  no coverage           undetected: no test reached the line
+  not applied           the mutant never landed, so it says nothing
+  equivalent            a `baseline` entry, left out of the score
+  excluded              an `exclude` entry's operator, out of the score
+  unadopted             an operator `operators` does not take
+  baseline killable     a `baseline` entry a test killed
+  baseline not applied  a `baseline` entry whose mutant never landed
 <
 `--strict` gates on the three undetected statuses: survived, no coverage and
 not applied. A run that scored no mutant at all says so — `Mutation: n/a (no

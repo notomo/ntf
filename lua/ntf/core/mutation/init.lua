@@ -287,6 +287,8 @@ function M.run(opts, ctx)
       if outcome.status == "killed" and not outcome.died then
         record.status = "baseline_killable"
         record.killed_by = outcome.killed_by
+      elseif outcome.status == "not_applied" then
+        record.status = "baseline_not_applied"
       end
     else
       record.status = outcome.status
@@ -304,6 +306,7 @@ function M.run(opts, ctx)
     excluded = excluded,
     unadopted = unadopted,
     baseline_killable = 0,
+    baseline_not_applied = 0,
   }
   for _, record in ipairs(records) do
     counts[record.status] = counts[record.status] + 1
