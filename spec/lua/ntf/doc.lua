@@ -14,7 +14,20 @@ local usage = args.usage("run")
 
 local ntf_script = vim.fs.joinpath(vim.fn.getcwd(), "bin/ntf")
 
-local cache_home = vim.fn.tempname()
+-- WHY: windows hands back a temp path spelled in 8.3 short names
+-- (`C:/Users/RUNNER~1/...`), and Neovim 0.12.0's globbing matches no path
+-- holding a `~` component: a sample project under one has no spec to discover
+-- and no runtimepath entry `:runtime!` can reach.
+-- NOT: taking tempname as it comes, which every machine but a windows one with
+-- a short-named TEMP -- the github runner -- runs these samples through.
+--- @return string # a new directory, named as the filesystem itself spells it
+local function temp_dir()
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, "p")
+  return assert(vim.uv.fs_realpath(dir))
+end
+
+local cache_home = temp_dir()
 
 --- @param cli_args string[]
 --- @param opts { env: table<string,string>?, cwd: string? }? env is merged into the inherited one
@@ -48,15 +61,7 @@ run_ntf({ "--global-hook=" .. global_hook_path, example_spec })
 local global_hook_command = "ntf --global-hook=./" .. vim.fs.basename(global_hook_path)
 
 local dependency_hook_path = doc_dir .. "/dependency_hook.lua"
-local dependency_dir = vim.fn.tempname()
-vim.fn.mkdir(dependency_dir, "p")
--- WHY: windows hands back a temp path spelled in 8.3 short names
--- (`C:/Users/RUNNER~1/...`), and Neovim 0.12.0 matches no runtimepath entry
--- holding a `~` component, so the hook's `:runtime!` finds the dependency's
--- plugin file only under the long name.
--- NOT: taking tempname as it comes, which every machine but a windows one with
--- a short-named TEMP -- the github runner -- runs the sample through.
-dependency_dir = assert(vim.uv.fs_realpath(dependency_dir))
+local dependency_dir = temp_dir()
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "deps/dependency/lua"), "p")
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "deps/dependency/plugin"), "p")
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "spec"), "p")
@@ -81,8 +86,7 @@ run_ntf({
 local dependency_hook_command = "ntf --process-hook=./" .. vim.fs.basename(dependency_hook_path)
 
 local debug_hook_path = doc_dir .. "/debug.lua"
-local stub_dir = vim.fn.tempname()
-vim.fn.mkdir(stub_dir, "p")
+local stub_dir = temp_dir()
 local stub = assert(io.open(stub_dir .. "/lldebugger.lua", "w"))
 stub:write("return { start = function() end }\n")
 stub:close()
@@ -96,7 +100,7 @@ local debug_command = ("ntf --test-hook=./%s --jobs=1 --filter='the test name'")
   vim.fs.basename(debug_hook_path)
 )
 
-local project_dir = vim.fn.tempname()
+local project_dir = temp_dir()
 vim.fn.mkdir(vim.fs.joinpath(project_dir, "lua"), "p")
 vim.fn.mkdir(vim.fs.joinpath(project_dir, "spec"), "p")
 vim.fn.writefile({
