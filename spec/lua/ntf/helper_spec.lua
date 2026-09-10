@@ -21,7 +21,7 @@ describe("ntf.helper.find_plugin_root", function()
       vim.opt.runtimepath:remove(plugin_root)
     end)
 
-    assert.equal(plugin_root, plugin_helper.find_plugin_root(plugin_name))
+    assert.equal(vim.fs.normalize(plugin_root), vim.fs.normalize(plugin_helper.find_plugin_root(plugin_name)))
   end)
 
   it("takes a first runtime file nvim returns the same whether or not all matches are asked for", function()
