@@ -49,6 +49,14 @@ local global_hook_command = "ntf --global-hook=./" .. vim.fs.basename(global_hoo
 
 local dependency_hook_path = doc_dir .. "/dependency_hook.lua"
 local dependency_dir = vim.fn.tempname()
+vim.fn.mkdir(dependency_dir, "p")
+-- WHY: windows hands back a temp path spelled in 8.3 short names
+-- (`C:/Users/RUNNER~1/...`), and Neovim 0.12.0 matches no runtimepath entry
+-- holding a `~` component, so the hook's `:runtime!` finds the dependency's
+-- plugin file only under the long name.
+-- NOT: taking tempname as it comes, which every machine but a windows one with
+-- a short-named TEMP -- the github runner -- runs the sample through.
+dependency_dir = assert(vim.uv.fs_realpath(dependency_dir))
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "deps/dependency/lua"), "p")
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "deps/dependency/plugin"), "p")
 vim.fn.mkdir(vim.fs.joinpath(dependency_dir, "spec"), "p")
