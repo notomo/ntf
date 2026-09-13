@@ -33,6 +33,7 @@ Commands:
   run (default)  run the tests and report the results
   list           list the tests without running them
   mutation       mutation-test the covered code
+  cache          work on the cache files under stdpath("cache")/ntf
 
 Options:
   --filter=PATTERN     run only tests whose full name matches the Lua pattern

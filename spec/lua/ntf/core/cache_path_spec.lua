@@ -15,6 +15,24 @@ local function escaped_cwd()
 end
 
 describe("ntf.core.cache_path", function()
+  it("files everything under one directory of the cache", function()
+    assert.equal(vim.fs.joinpath(vim.fn.stdpath("cache"), "ntf"), cache_path.root())
+  end)
+
+  it("names the path a cache file was named for, back through the escaping", function()
+    local source = vim.fs.joinpath(vim.fn.getcwd(), "lua", "mod.lua")
+
+    assert.equal(absolute(vim.fn.getcwd()), cache_path.named_for(cache_path.schedule()))
+    assert.equal(absolute(source), cache_path.named_for(cache_path.instrumented(source)))
+  end)
+
+  it("gives a drive letter its colon back, which was escaped like the separator after it", function()
+    assert.equal(
+      "C:/Users/me/mod.lua",
+      cache_path.named_for("/cache/ntf/instrumented/C%%Users%me%mod.lua.instrumented")
+    )
+  end)
+
   it("files the schedule cache under the cache directory, named for the working directory", function()
     local path = cache_path.schedule()
 

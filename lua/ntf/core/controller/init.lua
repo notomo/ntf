@@ -272,6 +272,12 @@ function M.run(root)
     io.stdout:write(args.usage(opts.command) .. "\n")
     os.exit(0)
   end
+  if opts.command == "cache.clean" then
+    local cache = require("ntf.core.cache")
+    local cache_root = require("ntf.core.cache_path").root()
+    io.stdout:write(cache.report(cache_root, cache.clean(cache_root)))
+    os.exit(0)
+  end
   local mode = MODES[opts.command]
 
   local ok_process, process_result = xpcall(function()

@@ -2,6 +2,8 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, finally, assert =
   ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.finally, ntf.assert
 local driver = require("ntf.core.worker.driver")
+local protocol = require("ntf.core.worker.protocol")
+local cache_path = require("ntf.core.cache_path")
 local watchdog = require("ntf.core.worker.watchdog")
 local work = require("ntf.core.controller.work")
 local helper = require("ntf.test.helper")
@@ -506,6 +508,24 @@ describe("ntf.core.worker.driver.launch_mutants", function()
 
     assert.is_nil(exit.pending)
     assert.match("the process hook raised", exit.message)
+  end)
+
+  it("removes the payload a worker never took, which is what one that got no further than starting leaves", function()
+    local root = helper.test_data.full_path
+    helper.test_data:create_file("lua/ntf/core/worker/init.lua", "vim.cmd.cquit()")
+    local nonce = protocol.nonce()
+    local nonce_of = protocol.nonce
+    --- @diagnostic disable-next-line: duplicate-set-field
+    protocol.nonce = function()
+      return nonce
+    end
+    finally(function()
+      protocol.nonce = nonce_of
+    end)
+
+    launch_mutants({ { index = 1, mutation = mutation_of(0), trials = trials_of(DETECTS, 30000) } }, { root = root })
+
+    assert.equal(0, vim.fn.filereadable(cache_path.payload(nonce)))
   end)
 
   it("holds a worker of its own until it exits, so kill_all reaches it", function()

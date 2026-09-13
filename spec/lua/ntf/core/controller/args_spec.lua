@@ -90,6 +90,13 @@ describe("ntf.core.controller.args.parse", function()
 
       assert.match("unexpected argument: spec", err)
     end)
+
+    it("cleans the cache under cache, its default, which discovers no spec and takes no flag for one", function()
+      assert.equal("cache.clean", args.parse({ "cache" }).command)
+      assert.equal("cache.clean", args.parse({ "cache", "clean" }).command)
+      assert.match("unexpected argument: spec", args.parse({ "cache", "clean", "spec" }))
+      assert.match("unknown option: %-%-filter", args.parse({ "cache", "--filter=x" }))
+    end)
   end)
 
   it("parses --filter into opts.filter", function()
@@ -742,6 +749,7 @@ describe("ntf.core.controller.args.usage", function()
     assert.match("^Usage: ntf mutation %[run%] %[options%]", args.usage("mutation.run"))
     assert.match("^Usage: ntf mutation list %[options%]", args.usage("mutation.list"))
     assert.match("^Usage: ntf mutation baseline %[verify%] %[options%]", args.usage("mutation.baseline.verify"))
+    assert.match("^Usage: ntf cache %[clean%] %[options%]\n", args.usage("cache.clean"))
   end)
 
   it("spells out the positional arguments a command takes", function()

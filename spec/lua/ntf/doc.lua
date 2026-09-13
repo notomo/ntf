@@ -152,6 +152,7 @@ local list_command = "ntf list"
 local mutation_command = "ntf mutation"
 local mutation_strict_command = "ntf mutation --strict"
 local mutation_list_command = "ntf mutation list"
+local cache_clean_command = "ntf cache clean"
 
 local mutation_config_path = doc_dir .. "/mutation_config.json"
 local mutation_operators_path = doc_dir .. "/mutation_operators.json"
@@ -229,6 +230,7 @@ for _, command in ipairs({
   mutation_baseline_add_command,
   mutation_verify_baseline_command,
   mutation_verify_baseline_with_score_command,
+  cache_clean_command,
 }) do
   local words = vim.split(command, " ", { plain = true })
   local chain = args.resolve(vim.list_slice(words, 2))
@@ -1057,6 +1059,38 @@ as usual. A failure from before anything loaded the mutated source is passed
 over, since the mutant was never what the test met. A test that hangs takes
 its worker with it, which the run kills and starts another for the mutants
 that are left.]],
+        }, "\n")
+      end,
+    },
+    {
+      name = "CACHE",
+      body = function()
+        return table.concat({
+          [[
+Everything a run keeps between runs lives under `stdpath("cache")/ntf/`, in a
+directory per kind. A file named for a path carries that path in its name,
+so no two working directories or sources share one:
+
+- `schedule/`: how long each test took, which orders the next run's tests
+  slowest first
+- `mutation/`: the results of the last mutation run, which
+  |ntf.mutation.decorate()| reads and the next run takes its kills from
+- `coverage/`: the stats of the last `--coverage` run, which
+  |ntf.coverage.decorate()| reads
+- `instrumented/`: the counting copy of every source coverage has read, made
+  again once the source, ntf's transform or the Neovim changes
+- `payload/`: what a mutation run hands each of its workers, which the worker
+  removes as it starts and the run removes for one that never got that far
+
+None of it is read by another machine or another user, and a run makes what it
+is missing, so removing the directory only costs the next run its shortcuts.
+To remove just what nothing reads any more — the files named for a working
+directory or a source that is gone, and the payloads left by workers a run
+lost — without touching the rest:]],
+          util.help_code_block(cache_clean_command, { language = "sh" }),
+          [[
+It says what it removed of what it found, per kind. Run it while no ntf run is
+going, since a payload is only ever there for a worker about to take it.]],
         }, "\n")
       end,
     },

@@ -6,7 +6,7 @@ local M = {}
 M.strict_categories = { "survived", "no_coverage", "not_applied" }
 
 --- @class NtfOptions
---- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify or mutation.baseline.add
+--- @field command string the resolved command: run, list, mutation.run, mutation.list, mutation.baseline.verify, mutation.baseline.add or cache.clean
 --- @field paths string[] spec files or directories
 --- @field timeout integer default per-worker timeout in ms (0 disables)
 --- @field filter string? Lua pattern; keep only matching leaves
@@ -428,11 +428,27 @@ local mutation_command = {
   subcommands = { mutation_run_command, mutation_list_command, mutation_baseline_command },
 }
 
+--- @type NtfCommand
+local cache_clean_command = {
+  name = "clean",
+  description = "remove the cache files nothing reads any more: those named for a path that is gone, and the payloads workers never took",
+  id = "cache.clean",
+  flags = command_flags({}),
+}
+
+--- @type NtfCommand
+local cache_command = {
+  name = "cache",
+  description = 'work on the cache files under stdpath("cache")/ntf',
+  default = "clean",
+  subcommands = { cache_clean_command },
+}
+
 --- @type NtfCommand the command tree: a flag exists only under the commands that can act on it
 M.root = {
   name = "ntf",
   default = "run",
-  subcommands = { run_command, list_command, mutation_command },
+  subcommands = { run_command, list_command, mutation_command, cache_command },
 }
 
 --- @param command NtfCommand

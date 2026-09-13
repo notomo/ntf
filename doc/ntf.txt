@@ -14,6 +14,7 @@ rejects the rest.
     run (default)  run the tests and report the results
     list           list the tests without running them
     mutation       mutation-test the covered code
+    cache          work on the cache files under stdpath("cache")/ntf
 
   Options:
     --filter=PATTERN     run only tests whose full name matches the Lua pattern
@@ -717,6 +718,35 @@ as usual. A failure from before anything loaded the mutated source is passed
 over, since the mutant was never what the test met. A test that hangs takes
 its worker with it, which the run kills and starts another for the mutants
 that are left.
+
+==============================================================================
+CACHE                                                              *ntf-CACHE*
+
+Everything a run keeps between runs lives under `stdpath("cache")/ntf/`, in a
+directory per kind. A file named for a path carries that path in its name,
+so no two working directories or sources share one:
+
+- `schedule/`: how long each test took, which orders the next run's tests
+  slowest first
+- `mutation/`: the results of the last mutation run, which
+  |ntf.mutation.decorate()| reads and the next run takes its kills from
+- `coverage/`: the stats of the last `--coverage` run, which
+  |ntf.coverage.decorate()| reads
+- `instrumented/`: the counting copy of every source coverage has read, made
+  again once the source, ntf's transform or the Neovim changes
+- `payload/`: what a mutation run hands each of its workers, which the worker
+  removes as it starts and the run removes for one that never got that far
+
+None of it is read by another machine or another user, and a run makes what it
+is missing, so removing the directory only costs the next run its shortcuts.
+To remove just what nothing reads any more — the files named for a working
+directory or a source that is gone, and the payloads left by workers a run
+lost — without touching the rest:
+>sh
+  ntf cache clean
+<
+It says what it removed of what it found, per kind. Run it while no ntf run is
+going, since a payload is only ever there for a worker about to take it.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                        *ntf-HIGHLIGHT-GROUPS*

@@ -2760,3 +2760,41 @@ describe("ntf list", function()
     assert.no.match("LOST BASELINE", obj.stdout)
   end)
 end)
+
+describe("ntf cache clean", function()
+  before_each(helper.before_each)
+  after_each(helper.after_each)
+
+  --- @param path string an absolute path
+  --- @return string # the name a cache file for it is filed under, before the extension
+  local function escaped(path)
+    return (vim.fs.normalize(path):gsub("[/\\:]", "%%"))
+  end
+
+  it("removes what nothing reads any more under the cache directory and says so", function()
+    local standing = helper.test_data:create_file("lua/mod.lua", "return 1")
+    local gone = helper.test_data:path("lua/gone.lua")
+    local kept =
+      helper.test_data:create_file("xdg_cache/nvim/ntf/instrumented/" .. escaped(standing) .. ".instrumented", "")
+    local removed =
+      helper.test_data:create_file("xdg_cache/nvim/ntf/instrumented/" .. escaped(gone) .. ".instrumented", "")
+    local payload = helper.test_data:create_file("xdg_cache/nvim/ntf/payload/" .. ("a"):rep(32) .. ".json", "{}")
+
+    local obj = helper.run_cli({ "cache", "clean" }, helper.test_data.full_path)
+
+    assert.equal(0, obj.code)
+    assert.equal(1, vim.fn.filereadable(kept))
+    assert.equal(0, vim.fn.filereadable(removed))
+    assert.equal(0, vim.fn.filereadable(payload))
+    assert.match("^[^\n]*xdg_cache[/\\]nvim[/\\]ntf\n", obj.stdout)
+    assert.match("\n  instrumented: removed 1 of 2 %(copies of sources that are gone%)\n", obj.stdout)
+    assert.match("\n  payload: removed 1 of 1 %(", obj.stdout)
+  end)
+
+  it("takes the cache as it is on the first run of a machine, with nothing in it", function()
+    local obj = helper.run_cli({ "cache" }, helper.test_data.full_path)
+
+    assert.equal(0, obj.code)
+    assert.match("\n  schedule: removed 0 of 0 %(", obj.stdout)
+  end)
+end)

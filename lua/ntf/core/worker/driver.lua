@@ -208,7 +208,8 @@ function M.launch_mutants(jobs, opts, handlers)
   -- far past the 32767 characters Windows caps a process environment block at.
   -- NOT: the environment a worker given one leaf is passed through, which spawns
   -- nothing at all (E2BIG) once the chunk is wide enough to be worth taking.
-  local env = protocol.env(payload, cache_path.payload(nonce))
+  local payload_file = cache_path.payload(nonce)
+  local env = protocol.env(payload, payload_file)
 
   local budgets = {}
   for _, job in ipairs(jobs) do
@@ -243,6 +244,7 @@ function M.launch_mutants(jobs, opts, handlers)
   proc = vim.system(command(opts.root), { cwd = opts.cwd, env = env, stdout = on_stdout }, function(obj)
     running[proc.pid] = nil
     timer:close()
+    os.remove(payload_file)
     handlers.on_exit({
       pending = pending,
       timed_out = timed_out,
