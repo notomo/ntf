@@ -18,7 +18,9 @@ end
 
 --- Define a test case. The body runs at execution time, in its own fresh Neovim
 --- process. This is not configurable: state never leaks between tests, because
---- no two tests ever share a process.
+--- no two tests of a normal run ever share a process. A mutation run is the
+--- exception — its trials share a worker, so a test has to leave the editor as
+--- it found it there: |ntf-MUTATION-TESTING|.
 --- Its full name has to be its own within the file: |ntf-WRITING-SPECS|.
 --- @param name string: test name
 --- @param fn fun() test body
