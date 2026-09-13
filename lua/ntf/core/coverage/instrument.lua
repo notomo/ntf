@@ -9,9 +9,10 @@ local M = {}
 local MARKER = "\n--ntf:"
 
 --- @param path string absolute file path
+--- @param mode "r"|"rb" how to open it: as text, or byte for byte
 --- @return string? # its content
-local function read_file(path)
-  local file = io.open(path, "r")
+local function read_file(path, mode)
+  local file = io.open(path, mode)
   if not file then
     return nil
   end
@@ -38,9 +39,9 @@ function M.transform(src)
 end
 
 --- @param fn function
---- @return string # the source of the file it was loaded from
+--- @return string # the file it was loaded from, byte for byte, so that the line endings of a checkout are part of what it names
 local function source_of(fn)
-  return assert(read_file(debug.getinfo(fn, "S").source:sub(2)))
+  return assert(read_file(debug.getinfo(fn, "S").source:sub(2), "rb"))
 end
 
 --- @type string what tells a copy this transform made from one another made: the source of this module and of the one finding the statements, and the runtime whose parser they read with
@@ -50,7 +51,7 @@ M.transform_id = vim.fn.sha256(table.concat({ source_of(M.transform), source_of(
 --- @param suffix string what the copy of the source as it is now ends with
 --- @return string? # the instrumented copy an earlier run left, nil when it is of another version of the source or of another transform
 local function cached(path, suffix)
-  local content = read_file(cache_path.instrumented(path))
+  local content = read_file(cache_path.instrumented(path), "r")
   if content and content:sub(-#suffix) == suffix then
     return content
   end
@@ -60,7 +61,7 @@ end
 --- @param path string normalized absolute file path
 --- @return function? # the chunk taking the table to count into and returning the module's own body, nil when the file is not one this can instrument
 function M.chunk(path)
-  local src = read_file(path)
+  local src = read_file(path, "r")
   if not src then
     return nil
   end

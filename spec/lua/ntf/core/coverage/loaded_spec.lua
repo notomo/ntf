@@ -42,8 +42,8 @@ describe("ntf.core.coverage.loaded.runtime_file", function()
       vim.opt.runtimepath:remove(helper.test_data.full_path)
     end)
 
-    assert.equal(file, loaded.runtime_file("ntf_loaded_file"))
-    assert.equal(init, loaded.runtime_file("ntf_loaded_dir"))
+    assert.equal(normalize(file), normalize(assert(loaded.runtime_file("ntf_loaded_file"))))
+    assert.equal(normalize(init), normalize(assert(loaded.runtime_file("ntf_loaded_dir"))))
   end)
 
   it("names nothing for a module in no lua/ directory of the runtimepath", function()
