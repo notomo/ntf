@@ -2,6 +2,7 @@ local ntf = require("ntf")
 local describe, before_each, after_each, it, assert = ntf.describe, ntf.before_each, ntf.after_each, ntf.it, ntf.assert
 local previous = require("ntf.core.mutation.previous")
 local helper = require("ntf.test.helper")
+local version = require("ntf.core.version")
 
 local SOURCE = "return true\n"
 
@@ -33,9 +34,10 @@ end
 
 --- @param file string
 --- @param name string full name of the one test the trial runs
+--- @param loaded string[]? the files the test loaded in the baseline run (default: none)
 --- @return NtfMutantTrial[] # one trial over that spec file
-local function trials(file, name)
-  return { { item = { file = file, node_id = "1.1", names = { name } }, baseline_ms = 0 } }
+local function trials(file, name, loaded)
+  return { { item = { file = file, node_id = "1.1", names = { name } }, baseline_ms = 0, loaded = loaded or {} } }
 end
 
 describe("ntf.core.mutation.previous", function()
@@ -52,6 +54,7 @@ describe("ntf.core.mutation.previous", function()
       [spec] = vim.fn.sha256(SOURCE),
     }
     return vim.tbl_extend("force", {
+      runtime = version.runtime(),
       files = { [source] = { record(3, "killed it") } },
       digests = digests,
     }, over or {}),
@@ -110,6 +113,27 @@ describe("ntf.core.mutation.previous", function()
     assert.is_nil(settled)
   end)
 
+  it("settles a mutant while every file its covering test loaded is what the run before read", function()
+    local filed, source, spec = filed_run()
+    local util = helper.test_data:create_file("lua/util.lua", SOURCE)
+    filed.digests[util] = vim.fn.sha256(SOURCE)
+
+    local settled = previous.new(filed, true).settled(mutant(source, 3), trials(spec, "killed it", { util }))
+
+    assert.equal("killed it", settled)
+  end)
+
+  it("settles nothing once a file its covering test loaded has changed, though the spec has not", function()
+    local filed, source, spec = filed_run()
+    local util = helper.test_data:create_file("lua/util.lua", SOURCE)
+    filed.digests[util] = vim.fn.sha256(SOURCE)
+    helper.test_data:create_file("lua/util.lua", "return false\n")
+
+    local settled = previous.new(filed, true).settled(mutant(source, 3), trials(spec, "killed it", { util }))
+
+    assert.is_nil(settled)
+  end)
+
   it("settles nothing where the test that killed it is no test of this run", function()
     local filed, source, spec = filed_run()
 
@@ -121,6 +145,23 @@ describe("ntf.core.mutation.previous", function()
   it("settles nothing for a mutant the run before did not kill", function()
     local filed, source, spec = filed_run({ files = {} })
     filed.files[source] = { record(3, nil) }
+
+    local settled = previous.new(filed, true).settled(mutant(source, 3), trials(spec, "killed it"))
+
+    assert.is_nil(settled)
+  end)
+
+  it("settles nothing filed under another Neovim, whose tests may judge a mutant otherwise", function()
+    local filed, source, spec = filed_run({ runtime = "0.0.0" })
+
+    local settled = previous.new(filed, true).settled(mutant(source, 3), trials(spec, "killed it"))
+
+    assert.is_nil(settled)
+  end)
+
+  it("settles nothing filed by a run that named no Neovim", function()
+    local filed, source, spec = filed_run()
+    filed.runtime = nil
 
     local settled = previous.new(filed, true).settled(mutant(source, 3), trials(spec, "killed it"))
 
@@ -140,8 +181,10 @@ describe("ntf.core.mutation.previous", function()
     helper.test_data:create_file("lua/mod.lua", "return false\n")
     local other = helper.test_data:create_file("other_spec.lua", SOURCE)
 
+    local util = helper.test_data:create_file("lua/util.lua", SOURCE)
+
     local read = previous.new(filed, true)
-    read.settled(mutant(source, 3), vim.list_extend(trials(spec, "killed it"), trials(other, "another test")))
+    read.settled(mutant(source, 3), vim.list_extend(trials(spec, "killed it", { util }), trials(other, "another test")))
 
     local kept = {}
     for path, digest in pairs(read.digests()) do
@@ -152,6 +195,7 @@ describe("ntf.core.mutation.previous", function()
       [source] = vim.fn.sha256("return false\n"),
       [spec] = vim.fn.sha256(SOURCE),
       [other] = vim.fn.sha256(SOURCE),
+      [util] = vim.fn.sha256(SOURCE),
     }, kept)
   end)
 

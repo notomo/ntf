@@ -359,8 +359,12 @@ end)
     run(items, {
       root = helper.root,
       coverage = true,
-      on_item_coverage = function(item_index, coverage)
-        table.insert(calls, { item_index = item_index, measured = coverage ~= nil })
+      on_item_coverage = function(item_index, coverage, loaded)
+        table.insert(calls, {
+          item_index = item_index,
+          measured = coverage ~= nil,
+          loaded_spec = vim.tbl_contains(loaded, vim.fs.normalize(file)),
+        })
       end,
     })
     table.sort(calls, function(a, b)
@@ -368,8 +372,8 @@ end)
     end)
 
     assert.same({
-      { item_index = 1, measured = true },
-      { item_index = 2, measured = true },
+      { item_index = 1, measured = true, loaded_spec = true },
+      { item_index = 2, measured = true, loaded_spec = true },
     }, calls)
   end)
 

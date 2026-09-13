@@ -11,6 +11,8 @@ local payload = protocol.payload()
 require("ntf.core.worker.watchdog").start(payload.watchdog_ms)
 
 local function main()
+  local loaded = payload.coverage and require("ntf.core.coverage.loaded").start(payload.cwd) or nil
+
   local process_hook_error = require("ntf.core.runtime").setup(payload.process_hook)
   if process_hook_error then
     error(process_hook_error, 0)
@@ -104,6 +106,7 @@ local function main()
   protocol.emit({
     results = results,
     coverage = coverage,
+    loaded = loaded and loaded.paths() or nil,
     mutation_applied = mutation_applied,
   }, payload.nonce)
 

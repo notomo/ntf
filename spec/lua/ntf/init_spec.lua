@@ -1207,6 +1207,37 @@ describe("ntf mutation", function()
     assert.equal(7, results.counts.killed)
   end)
 
+  it("takes the kills of the run before where nothing they are judged by has changed", function()
+    local root, results_file = mutation_project()
+    helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
+
+    local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
+
+    assert.equal(0, obj.code)
+    assert.match("7 taken from the last run", obj.stdout)
+  end)
+
+  it(
+    "scores a mutant again once a file its killing test loaded has changed, the mutated file and the spec as they were",
+    function()
+      local root, results_file = mutation_project()
+      helper.test_data:create_file("lua/util.lua", "return { one = 1 }")
+      helper.test_data:create_file(
+        "spec/mod_spec.lua",
+        (MUTATION_SPEC:gsub('local mod = require%("mod"%)', 'require("util") %0'))
+      )
+      helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
+      helper.test_data:create_file("lua/util.lua", "return { one = 1, two = 2 }")
+
+      local obj = helper.run_cli({ "mutation", "--results=" .. results_file, "spec" }, root)
+
+      assert.equal(0, obj.code)
+      assert.no.match("taken from the last run", obj.stdout)
+      local results = vim.json.decode(table.concat(vim.fn.readfile(results_file), "\n"))
+      assert.equal(7, results.counts.killed)
+    end
+  )
+
   it("writes the results to the cache file for the working directory without --results", function()
     local root = mutation_project()
 

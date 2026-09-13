@@ -798,10 +798,12 @@ in the tests, and is reported with the change it got away with:]],
   buffer with no path to configure. `--results=FILE` writes it where you name
   instead.
 - The next run reads that file back and takes a mutant it killed as killed
-  again, running no test for it, as long as the mutated file and every spec
-  file covering it are byte for byte what they were. A change to a module
-  neither of those is is not seen, so the count line says how many verdicts a
-  run took rather than made, and `--no-cache` scores every mutant again.
+  again, running no test for it, as long as it runs under the same Neovim and
+  the mutated file and every file of the project the covering tests loaded —
+  the spec, the hooks, and every module they `require`d — are byte for byte
+  what they were. A file outside the project (a plugin the tests depend on, say)
+  is not seen, so the count line says how many verdicts a run took rather than
+  made, and `--no-cache` scores every mutant again.
 - A mutant is spliced in when the module is `require`d, so a file the specs
   load through `dofile`/`loadfile` keeps its original source and is reported
   NOT APPLIED — never as a survivor. It leaves the score instead of passing it,

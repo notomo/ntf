@@ -1,8 +1,9 @@
 local M = {}
 
 --- @class NtfMutationCoverageMap
---- @field add fun(item_index: integer, coverage: table?) record one worker's line hits
+--- @field add fun(item_index: integer, coverage: table?, loaded: string[]?) record one worker's line hits and the files it loaded
 --- @field item_indexes fun(path: string, rows: integer[]): integer[] items that hit any of the rows
+--- @field loaded_files fun(item_index: integer): string[] the files the item's worker loaded, which its verdict on a mutant depends on
 
 --- @param opts { ignore_items: table<integer, true>? }? item indexes whose coverage the map drops, so their tests are never picked as trials
 --- @return NtfMutationCoverageMap which tests reach which lines, so a mutant is only run against the tests that can possibly detect it
@@ -11,11 +12,14 @@ function M.new(opts)
 
   --- @type table<string, table<integer, table<integer, true>>>
   local by_path = {}
+  --- @type table<integer, string[]>
+  local loaded_by_item = {}
 
-  local function add(item_index, coverage)
+  local function add(item_index, coverage, loaded)
     if ignore_items[item_index] then
       return
     end
+    loaded_by_item[item_index] = loaded or {}
     for path, entry in pairs(coverage or {}) do
       local lines = by_path[path]
       if not lines then
@@ -54,7 +58,11 @@ function M.new(opts)
     return indexes
   end
 
-  return { add = add, item_indexes = item_indexes }
+  local function loaded_files(item_index)
+    return loaded_by_item[item_index] or {}
+  end
+
+  return { add = add, item_indexes = item_indexes, loaded_files = loaded_files }
 end
 
 return M

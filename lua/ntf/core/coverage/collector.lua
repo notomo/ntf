@@ -2,6 +2,7 @@ local is_hidden = require("ntf.core.path").is_hidden
 local absolute = require("ntf.core.path").absolute
 local walk = require("ntf.core.walk")
 local instrument = require("ntf.core.coverage.instrument")
+local loaded = require("ntf.core.coverage.loaded")
 
 local M = {}
 
@@ -109,23 +110,11 @@ local function make_measure(cwd, excludes, data)
   end
 end
 
---- @param name string a module name
---- @return boolean # whether Neovim's own loader finds it in a `lua/` directory of the runtimepath, where it reads the file with the `loadfile` a measurement replaces
-local function in_runtimepath(name)
-  local relative = (name:gsub("%.", "/"))
-  for _, pattern in ipairs({ ("lua/%s.lua"):format(relative), ("lua/%s/init.lua"):format(relative) }) do
-    if vim.api.nvim_get_runtime_file(pattern, false)[1] then
-      return true
-    end
-  end
-  return false
-end
-
 --- @param measure fun(path: string): function?
---- @return function # a `package.loaders` entry for the modules Lua loads itself, which no replaced `loadfile` reaches
+--- @return function # a `package.loaders` entry for the modules Lua loads itself, which no replaced `loadfile` reaches; a runtimepath module is left to Neovim's loader, which reads it with the `loadfile` a measurement replaces
 local function make_loader(measure)
   return function(name)
-    if in_runtimepath(name) then
+    if loaded.runtime_file(name) then
       return nil
     end
     local path = package.searchpath(name, package.path)

@@ -124,7 +124,7 @@ local function task_of(source, spec_name)
   local mutant = vim.tbl_extend("force", operators.enumerate(MODULE)[1], { path = vim.fs.normalize(path) })
   local spec = helper.test_data:create_file(spec_name or "temp_spec.lua", source)
   local trials = vim.tbl_map(function(item)
-    return { item = item, baseline_ms = 0 }
+    return { item = item, baseline_ms = 0, loaded = {} }
   end, work.plan({ spec }))
   return { mutant = mutant, trials = trials }, assert(vim.fs.relpath(helper.root, path))
 end

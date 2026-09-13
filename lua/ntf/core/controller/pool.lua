@@ -16,7 +16,7 @@ local M = {}
 --- @field workers integer how many workers that was, each of which reported exactly one result
 
 --- @param items NtfWorkItem[]
---- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_ignore_items?: table<integer, true>, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?), on_output?: fun(out: NtfWorkerOutput) }
+--- @param opts { root: string, jobs?: integer, timeout?: integer, budget?: integer, test_hook?: string, process_hook?: string, coverage?: boolean, coverage_ignore_items?: table<integer, true>, coverage_excludes?: string[], on_item?: fun(item: NtfWorkItem, results: NtfResult[]), on_item_coverage?: fun(item_index: integer, coverage: table?, loaded: string[]?), on_output?: fun(out: NtfWorkerOutput) }
 --- @return NtfResult[] results
 --- @return NtfCoverageMerged coverage
 --- @return NtfRunTiming timing
@@ -79,7 +79,7 @@ function M.run(items, opts)
         if measures_coverage then
           collector.merge(merged_coverage, outcome.coverage)
           if opts.on_item_coverage then
-            opts.on_item_coverage(item_index, outcome.coverage)
+            opts.on_item_coverage(item_index, outcome.coverage, outcome.loaded)
           end
         end
         if opts.on_output and outcome.output then

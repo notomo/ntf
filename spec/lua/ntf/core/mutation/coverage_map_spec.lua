@@ -51,6 +51,28 @@ describe("ntf.core.mutation.coverage_map", function()
     assert.same({ 2 }, map.item_indexes("/x.lua", { 2 }))
   end)
 
+  it("hands back the files an item's worker loaded", function()
+    local map = coverage_map.new()
+    map.add(1, {}, { "/spec/helper.lua", "/x_spec.lua" })
+
+    assert.same({ "/spec/helper.lua", "/x_spec.lua" }, map.loaded_files(1))
+  end)
+
+  it("hands back no file for an item that reported none, or one it never saw", function()
+    local map = coverage_map.new()
+    map.add(1, {}, nil)
+
+    assert.same({}, map.loaded_files(1))
+    assert.same({}, map.loaded_files(2))
+  end)
+
+  it("drops the files of an ignored item along with its coverage", function()
+    local map = coverage_map.new({ ignore_items = { [1] = true } })
+    map.add(1, {}, { "/x_spec.lua" })
+
+    assert.same({}, map.loaded_files(1))
+  end)
+
   it("keeps every item when no ignored index is given", function()
     local map = coverage_map.new({})
     map.add(1, { ["/x.lua"] = { max = 1, lines = { ["1"] = 1 } } })

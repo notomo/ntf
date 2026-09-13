@@ -1,4 +1,5 @@
 local write = require("ntf.core.write")
+local version = require("ntf.core.version")
 
 local M = {}
 
@@ -8,6 +9,7 @@ local VERSION = 1
 
 --- @class NtfMutationResults
 --- @field version integer
+--- @field runtime string? the Neovim the run was under, which the next run reuses a verdict only under; absent from a file a run before this field wrote
 --- @field score number? percent detected; absent when nothing was scoreable
 --- @field counts table<string, integer>
 --- @field files table<string, NtfMutationResultRecord[]> normalized absolute path -> records
@@ -61,6 +63,7 @@ function M.write(path, summary)
     path,
     vim.json.encode({
       version = VERSION,
+      runtime = version.runtime(),
       score = summary.score,
       counts = summary.counts,
       files = next(files) and files or vim.empty_dict(),

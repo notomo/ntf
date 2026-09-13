@@ -116,6 +116,19 @@ describe("ntf.core.mutation.results", function()
     assert.same({ ["/x.lua"] = "abc" }, assert(results.read(out)).digests)
   end)
 
+  it("files the Neovim the run was under, for the next run to tell another by", function()
+    local out = helper.test_data:path("ntf-mutation.json")
+
+    results.write(out, {
+      records = {},
+      counts = { killed = 0, timeout = 0, survived = 0, no_coverage = 0, not_applied = 0 },
+      digests = {},
+      score = nil,
+    })
+
+    assert.equal(require("ntf.core.version").runtime(), assert(results.read(out)).runtime)
+  end)
+
   it("writes an empty digest set as a JSON object, which an empty Lua table would encode as `[]` instead", function()
     local out = helper.test_data:path("ntf-mutation.json")
 

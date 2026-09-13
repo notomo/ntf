@@ -13,6 +13,10 @@ local function parsed(str)
 end
 
 describe("ntf.core.version", function()
+  it("names the runtime as it spells itself, build and all", function()
+    assert.equal(tostring(vim.version()), version.runtime())
+  end)
+
   it("takes 0.12.0 and everything after it", function()
     assert.is_nil(version.unsupported(parsed("0.12.0")))
     assert.is_nil(version.unsupported(parsed("0.12.1")))

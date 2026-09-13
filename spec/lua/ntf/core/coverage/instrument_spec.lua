@@ -102,6 +102,19 @@ describe("ntf.core.coverage.instrument.transform", function()
   end)
 end)
 
+describe("ntf.core.coverage.instrument.transform_id", function()
+  it("names the transform by the sources it is made of and the runtime whose parser they read with", function()
+    local sources = {}
+    for _, name in ipairs({ "instrument", "lines" }) do
+      local lines = vim.fn.readfile(vim.fs.joinpath(helper.root, "lua/ntf/core/coverage", name .. ".lua"), "b")
+      table.insert(sources, table.concat(lines, "\n"))
+    end
+    table.insert(sources, tostring(vim.version()))
+
+    assert.equal(vim.fn.sha256(table.concat(sources)), instrument.transform_id)
+  end)
+end)
+
 describe("ntf.core.coverage.instrument.chunk", function()
   before_each(helper.before_each)
   after_each(helper.after_each)
@@ -165,6 +178,23 @@ describe("ntf.core.coverage.instrument.chunk", function()
     assert(instrument.chunk(path))(counts)()
 
     assert.same({ [7] = 1 }, counts)
+  end)
+
+  it("makes a copy of its own once the copy left is of another transform", function()
+    local path = source_file("subject.lua", "return 1")
+    instrument.chunk(path)
+    local copy = cache_path.instrumented(path)
+    local reader = assert(io.open(copy, "r"))
+    local left = reader:read("*a")
+    reader:close()
+    local writer = assert(io.open(copy, "w"))
+    writer:write((left:gsub("__ntf_counts%[1%]", "__ntf_counts[7]"):gsub(instrument.transform_id .. "$", "other")))
+    writer:close()
+
+    local counts = {}
+    assert(instrument.chunk(path))(counts)()
+
+    assert.same({ [1] = 1 }, counts)
   end)
 
   it("makes a copy of its own once the source has changed", function()

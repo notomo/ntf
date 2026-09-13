@@ -161,7 +161,11 @@ end
 local function covering_trials(ctx, durations, killer, mutant)
   local trials = vim.tbl_map(function(item_index)
     local item = ctx.items[item_index]
-    return { item = item, baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0 }
+    return {
+      item = item,
+      baseline_ms = durations[item.file .. "\0" .. item.node_id] or 0,
+      loaded = ctx.coverage_map.loaded_files(item_index),
+    }
   end, ctx.coverage_map.item_indexes(mutant.path, rows_of(mutant)))
 
   local killed_it = killer(mutant)

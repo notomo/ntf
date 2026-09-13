@@ -16,6 +16,7 @@ local M = {}
 --- @class NtfMutantTrial one test to run against one mutant
 --- @field item NtfWorkItem the covering test
 --- @field baseline_ms number how long the test took in the baseline run
+--- @field loaded string[] the project's files the test loaded in the baseline run, which its verdict depends on
 
 --- @class NtfMutantTask one mutant and the tests that can detect it
 --- @field mutant NtfMutant

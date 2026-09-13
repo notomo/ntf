@@ -165,6 +165,20 @@ end)
     local outcome = launch(item_of(ONE_TEST))
 
     assert.is_nil(outcome.coverage)
+    assert.is_nil(outcome.loaded)
+  end)
+
+  it("hands back the project's files the worker loaded, what the hooks require before the spec included", function()
+    local shared = helper.test_data:create_file("lua/ntf_driver_spec_shared.lua", "return {}")
+    local hook = helper.test_data:create_file(
+      "test_hook.lua",
+      [[require("ntf_driver_spec_shared") return { setup = function() end, teardown = function() end }]]
+    )
+    local item = item_of(ONE_TEST)
+
+    local outcome = launch(item, { coverage = true, test_hook = hook })
+
+    assert.same({ vim.fs.normalize(shared), vim.fs.normalize(item.file), vim.fs.normalize(hook) }, outcome.loaded)
   end)
 
   it("hands back a printing worker's output under the test's full name", function()

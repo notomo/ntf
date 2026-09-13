@@ -284,16 +284,6 @@
     },
     {
       "path": "lua/ntf/core/coverage/collector.lua",
-      "col": 47,
-      "operator": "swap-boolean",
-      "original": "false",
-      "replacement": "true",
-      "line": "    if vim.api.nvim_get_runtime_file(pattern, false)[1] then",
-      "rationale": "the call reads the first match only, which is the one it is handed either way",
-      "invariant_spec": "nvim_get_runtime_file names the same first file whether it is asked for one match or for all of them"
-    },
-    {
-      "path": "lua/ntf/core/coverage/collector.lua",
       "col": 33,
       "operator": "perturb-number",
       "original": "2",
@@ -571,6 +561,16 @@
       "replacement": "do end",
       "line": "    table.sort(unknown)",
       "rationale": "the unknown keys come out of a Lua table's key iteration, an order the runtime leaves undefined and does not repeat between processes, so a dropped sort hands back the very message the test asserts whenever a process happens to iterate them in order; the sort only settles what the message already names"
+    },
+    {
+      "path": "lua/ntf/core/coverage/loaded.lua",
+      "col": 58,
+      "operator": "swap-boolean",
+      "original": "false",
+      "replacement": "true",
+      "line": "    local found = vim.api.nvim_get_runtime_file(pattern, false)[1]",
+      "rationale": "the call reads the first match only, which is the one it is handed either way",
+      "invariant_spec": "nvim_get_runtime_file names the same first file whether it is asked for one match or for all of them"
     }
   ],
   "exclude": [

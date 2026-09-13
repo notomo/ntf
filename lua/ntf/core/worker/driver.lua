@@ -16,6 +16,7 @@ local running = {}
 --- @class NtfWorkerOutcome
 --- @field results NtfResult[]
 --- @field coverage table? per-file line hit counts (when coverage was measured)
+--- @field loaded string[]? the project's files the worker loaded, hooks and spec included (when coverage was measured)
 --- @field output NtfWorkerOutput? captured user output, when there was any
 --- @field timed_out boolean? the worker was killed for exceeding its timeout
 --- @field mutation_applied boolean? the mutated module was loaded (mutation runs only)
@@ -165,6 +166,7 @@ function M.launch(item, opts, on_done)
     local outcome = {
       results = results_of(item, obj, decoded, timed_out and timeout or nil),
       coverage = decoded and decoded.coverage or nil,
+      loaded = decoded and decoded.loaded or nil,
       timed_out = timed_out or nil,
       mutation_applied = decoded and decoded.mutation_applied,
     }

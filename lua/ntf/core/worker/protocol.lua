@@ -34,6 +34,7 @@ local M = {}
 --- @class NtfWorkerResult the block a worker emits as its last stdout write
 --- @field results NtfResult[]? per-leaf results (absent when the spec failed to load)
 --- @field coverage table? per-file line hit counts (when coverage was measured)
+--- @field loaded string[]? the project's files the process loaded, hooks and spec included (when coverage was measured)
 --- @field mutation_applied boolean? whether the mutated module was actually loaded (mutation runs only)
 --- @field load_error string? load failure message
 --- @field file string? spec file path (set alongside load_error)

@@ -8,6 +8,11 @@ function M.required_text()
   return table.concat(M.required, ".")
 end
 
+--- @return string # what tells this Neovim from another, build and all, which is what a run under another one is told apart by
+function M.runtime()
+  return tostring(vim.version())
+end
+
 --- @param current vim.Version what this Neovim reports
 --- @return string? # why it cannot run ntf, nil when it can
 function M.unsupported(current)

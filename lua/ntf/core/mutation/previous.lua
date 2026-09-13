@@ -1,4 +1,5 @@
 local tree = require("ntf.core.tree")
+local version = require("ntf.core.version")
 
 local M = {}
 
@@ -23,7 +24,7 @@ end
 
 --- @class NtfMutationPrevious what the run before this one filed, read back
 --- @field killer fun(mutant: NtfMutant): string? full name of the test that killed that mutant then, nil for one no run has killed
---- @field settled fun(mutant: NtfMutant, trials: NtfMutantTrial[]): string? that same test, for a mutant no file it is judged by has changed since; nil for every mutant this run has to score itself
+--- @field settled fun(mutant: NtfMutant, trials: NtfMutantTrial[]): string? that same test, for a mutant no file it is judged by — its own, and every one the covering tests loaded — has changed since, under the Neovim that judged it; nil for every mutant this run has to score itself
 --- @field digests fun(): table<string, string> what this run read of the files a verdict depends on, which is what the next run tells a change by
 
 --- @param filed NtfMutationResults? what the run before this one filed, nil where no run has filed any
@@ -31,6 +32,7 @@ end
 --- @return NtfMutationPrevious
 function M.new(filed, reuse)
   local before = filed and filed.digests or {}
+  local reusable = reuse and filed ~= nil and filed.runtime == version.runtime()
 
   local killed_by = {} --- @type table<string, string>
   for path, records in pairs(filed and filed.files or {}) do
@@ -72,8 +74,11 @@ function M.new(filed, reuse)
       -- NOT: leaving the loop at the first change, which files no digest for the
       -- spec files after it and leaves the next run judging them changed.
       same = unchanged(trial.item.file) and same
+      for _, path in ipairs(trial.loaded) do
+        same = unchanged(path) and same
+      end
     end
-    if not (reuse and same) then
+    if not (reusable and same) then
       return nil
     end
 
