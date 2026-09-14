@@ -1146,9 +1146,6 @@ local gen_readme = function()
   local content = ([[
 # %s
 
-> [!WARNING]
-> WIP
-
 ntf (neovim test framework) is a dependency-free test runner for Neovim plugins.
 It runs busted-style `*_spec.lua` files, executing each `it` in its own fresh
 Neovim process so state never leaks between tests.
