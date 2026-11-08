@@ -42,6 +42,7 @@ Options:
   --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
   --coverage[=FILE]    measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary
   --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
+  --json[=FILE]        write one JSON document instead of the text report (default: stdout)
   -h, --help           show this help
 
 With no paths, the *_spec.lua files under ./spec are used.

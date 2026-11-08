@@ -1120,6 +1120,76 @@ end)
     assert.equal(0, obj.code)
     assert.match("4 passed", obj.stdout)
   end)
+
+  it("writes one JSON document instead of the text report with --json", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "--json" })
+
+    local doc = vim.json.decode(obj.stdout)
+    local by_name = {}
+    for _, entry in ipairs(doc.results) do
+      by_name[entry.full_name] = entry
+    end
+
+    assert.equal(0, obj.code)
+    assert.equal(2, #doc.results)
+    assert.equal("passed", by_name["group adds"].status)
+    assert.same({ "group", "adds" }, by_name["group adds"].names)
+    assert.match("pass_spec%.lua$", by_name["group adds"].file)
+    assert.is_true(by_name["group adds"].row > 0)
+    assert.is_true(doc.timing.jobs >= 1)
+    assert.same({}, doc.load_errors)
+    assert.no.match("2 passed", obj.stdout)
+  end)
+
+  it("spells a failing test with what it raised, still exiting 1 with --json", function()
+    local path = spec("fail_spec.lua", FAILING)
+    local obj = run({ path }, { "--json" })
+
+    local doc = vim.json.decode(obj.stdout)
+
+    assert.equal(1, obj.code)
+    assert.equal("failed", doc.results[1].status)
+    assert.match("boom", doc.results[1].message)
+    assert.no.match("FAIL group explodes", obj.stdout)
+  end)
+
+  it("attaches what a test printed to its result with --json", function()
+    local path = spec("noisy_spec.lua", NOISY)
+    local obj = run({ path }, { "--json" })
+
+    local doc = vim.json.decode(obj.stdout)
+
+    assert.equal(0, obj.code)
+    assert.match("from print", doc.results[1].output)
+    assert.match("from native write", doc.results[1].output)
+    assert.no.match("OUTPUT", obj.stdout)
+  end)
+
+  it("keeps the --coverage summary off the JSON document", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local stats_file = vim.fs.joinpath(helper.test_data.full_path, "cov.stats.out")
+    local obj = run({ path }, { "--json", "--coverage=" .. stats_file })
+
+    local doc = vim.json.decode(obj.stdout)
+
+    assert.equal(0, obj.code)
+    assert.equal("passed", doc.results[1].status)
+    assert.match("Coverage:", obj.stderr)
+    assert.no.match("Coverage:", obj.stdout)
+  end)
+
+  it("writes the JSON document to the file --json names, leaving stdout to itself", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local document = vim.fs.joinpath(helper.test_data.full_path, "report.json")
+    local obj = run({ path }, { "--json=" .. document })
+
+    local doc = vim.json.decode(table.concat(vim.fn.readfile(document), "\n"))
+
+    assert.equal(0, obj.code)
+    assert.equal("", obj.stdout)
+    assert.equal(2, #doc.results)
+  end)
 end)
 
 local MUTATION_MODULE = table.concat({
@@ -2560,6 +2630,48 @@ describe("ntf list", function()
     assert.no.match("drop me", obj.stdout)
   end)
 
+  it("lists every test as one JSON document with --json", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local obj = run({ path }, { "list", "--json" })
+
+    local doc = vim.json.decode(obj.stdout)
+    local names = vim.tbl_map(function(entry)
+      return entry.full_name
+    end, doc.tests)
+
+    assert.equal(0, obj.code)
+    assert.same({ "group adds", "group also passes" }, names)
+    assert.same({ "group", "adds" }, doc.tests[1].names)
+    assert.match("pass_spec%.lua$", doc.tests[1].file)
+    assert.is_true(doc.tests[1].row > 0)
+    assert.same({}, doc.load_errors)
+    assert.no.match("%.lua:%d+ group", obj.stdout)
+  end)
+
+  it("keeps only the tests --filter matches in the --json listing", function()
+    local path = spec("filter_spec.lua", FILTERABLE)
+    local obj = run({ path }, { "list", "--json", "--filter=keep me" })
+
+    local doc = vim.json.decode(obj.stdout)
+
+    assert.equal(1, #doc.tests)
+    assert.equal("group keep me", doc.tests[1].full_name)
+  end)
+
+  it("spells a LOAD ERROR of a --json listing in the document, still exiting 1", function()
+    spec("broken_spec.lua", LOAD_ERROR)
+    spec("pass_spec.lua", PASSING)
+    local obj = run({ helper.test_data.full_path }, { "list", "--json" })
+
+    local doc = vim.json.decode(obj.stdout)
+
+    assert.equal(1, obj.code)
+    assert.match("top%-level boom", doc.load_errors[1].message)
+    assert.match("broken_spec%.lua$", doc.load_errors[1].file)
+    assert.equal(2, #doc.tests)
+    assert.no.match("LOAD ERROR", obj.stderr)
+  end)
+
   it("reports a LOAD ERROR on stderr and exits 1, still listing the loadable tests", function()
     spec("broken_spec.lua", LOAD_ERROR)
     spec("pass_spec.lua", PASSING)
@@ -2758,6 +2870,18 @@ describe("ntf list", function()
 
     assert.equal(0, obj.code)
     assert.no.match("LOST BASELINE", obj.stdout)
+  end)
+
+  it("writes a --json listing to the file it names, leaving stdout to itself", function()
+    local path = spec("pass_spec.lua", PASSING)
+    local document = vim.fs.joinpath(helper.test_data.full_path, "listing.json")
+    local obj = run({ path }, { "list", "--json=" .. document })
+
+    local doc = vim.json.decode(table.concat(vim.fn.readfile(document), "\n"))
+
+    assert.equal(0, obj.code)
+    assert.equal("", obj.stdout)
+    assert.equal(2, #doc.tests)
   end)
 end)
 

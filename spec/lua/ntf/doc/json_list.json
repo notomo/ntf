@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "file": "spec/x_spec.lua",
+      "row": 12,
+      "names": ["group", "adds"],
+      "full_name": "group adds"
+    }
+  ],
+  "load_errors": [
+    {
+      "file": "spec/broken_spec.lua",
+      "message": "top-level boom"
+    }
+  ]
+}

@@ -70,6 +70,11 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("unknown option: %-%-coverage", err)
     end)
 
+    it("rejects --json on a command that writes a report of its own", function()
+      assert.match("unknown option: %-%-json", args.parse({ "mutation", "list", "--json", "spec" }))
+      assert.match("unknown option: %-%-json", args.parse({ "mutation", "--json", "spec" }))
+    end)
+
     it("rejects a mutation flag outside the mutation commands", function()
       assert.match("unknown option: %-%-strict", args.parse({ "--strict", "spec" }))
       assert.match("unknown option: %-%-target", args.parse({ "list", "--target=lua", "spec" }))
@@ -97,6 +102,27 @@ describe("ntf.core.controller.args.parse", function()
       assert.match("unexpected argument: spec", args.parse({ "cache", "clean", "spec" }))
       assert.match("unknown option: %-%-filter", args.parse({ "cache", "--filter=x" }))
     end)
+  end)
+
+  it("parses --json into opts.json, for the commands that write a report", function()
+    assert.is_true(args.parse({ "--json", "spec" }).json)
+    assert.is_true(args.parse({ "run", "--json", "spec" }).json)
+    assert.is_true(args.parse({ "list", "--json", "spec" }).json)
+  end)
+
+  it("leaves opts.json nil when --json is absent", function()
+    assert.is_nil(args.parse({ "spec" }).json)
+  end)
+
+  it("parses --json=FILE into opts.json_file", function()
+    local opts = args.parse({ "--json=out.json", "spec" })
+
+    assert.is_true(opts.json)
+    assert.equal("out.json", opts.json_file)
+  end)
+
+  it("leaves opts.json_file nil for a bare --json, which writes to stdout", function()
+    assert.is_nil(args.parse({ "--json", "spec" }).json_file)
   end)
 
   it("parses --filter into opts.filter", function()

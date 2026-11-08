@@ -26,6 +26,7 @@ rejects the rest.
     --test-hook=FILE     run a Lua module providing setup/teardown around each test, in its worker
     --coverage[=FILE]    measure line coverage; write the luacov.stats.out format to FILE (default: a cache file named for the working directory) and print a summary
     --exclude-code=PATH  leave a file or directory out of the code that is measured and mutated (repeatable)
+    --json[=FILE]        write one JSON document instead of the text report (default: stdout)
     -h, --help           show this help
 
   With no paths, the *_spec.lua files under ./spec are used.
@@ -37,7 +38,84 @@ rejects the rest.
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
   instead. It has to be Neovim 0.12.0 or later.
-- |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.
+- |ntf-JSON-OUTPUT|, |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING|
+  cover the rest.
+
+==============================================================================
+JSON OUTPUT                                                  *ntf-JSON-OUTPUT*
+
+`--json` writes one JSON document where `run` and `list` write their report:
+stdout, or the file `--json=FILE` names. Everything else a run writes — what a
+test printed, the progress line, the `--coverage` summary — goes to stderr, so
+stdout holds the document alone. A command that cannot act on the flag rejects
+it.
+
+A listing spells the tests it found and the specs that failed to load. A `file`
+is relative to the working directory, `row` is the 1-based line the test was
+declared on, `names` keeps the chain as the spec declared it, and `full_name` is
+the name `--filter` matches:
+>json
+  {
+    "tests": [
+      {
+        "file": "spec/x_spec.lua",
+        "row": 12,
+        "names": ["group", "adds"],
+        "full_name": "group adds"
+      }
+    ],
+    "load_errors": [
+      {
+        "file": "spec/broken_spec.lua",
+        "message": "top-level boom"
+      }
+    ]
+  }
+<
+A run spells each result the same way, with the `status` the count line tallies
+(`passed`, `failed`, `error` or `pending`), what a failed or errored one raised,
+its `duration` in seconds and, where it printed anything, its `output`. What a
+worker printed for a test no result answered for is left in `outputs`; `timing`
+carries what the text report prints under its count line, and `gave_up` names
+the budget a run that spent it was waiting on:
+>json
+  {
+    "results": [
+      {
+        "file": "spec/x_spec.lua",
+        "row": 12,
+        "names": ["group", "adds"],
+        "full_name": "group adds",
+        "status": "passed",
+        "duration": 0.01
+      },
+      {
+        "file": "spec/x_spec.lua",
+        "row": 16,
+        "names": ["group", "fails"],
+        "full_name": "group fails",
+        "status": "failed",
+        "message": "1 ~= 2",
+        "duration": 0.02,
+        "output": "from print\n"
+      }
+    ],
+    "load_errors": [],
+    "timing": {
+      "elapsed": 0.3,
+      "worker": 0.5,
+      "killed": { "seconds": 0, "workers": 0 },
+      "jobs": 2
+    },
+    "outputs": [
+      {
+        "file": "spec/y_spec.lua",
+        "name": "group dies",
+        "output": "noise\n"
+      }
+    ]
+  }
+<
 
 ==============================================================================
 WRITING SPECS                                              *ntf-WRITING-SPECS*

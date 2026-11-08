@@ -1,0 +1,36 @@
+{
+  "results": [
+    {
+      "file": "spec/x_spec.lua",
+      "row": 12,
+      "names": ["group", "adds"],
+      "full_name": "group adds",
+      "status": "passed",
+      "duration": 0.01
+    },
+    {
+      "file": "spec/x_spec.lua",
+      "row": 16,
+      "names": ["group", "fails"],
+      "full_name": "group fails",
+      "status": "failed",
+      "message": "1 ~= 2",
+      "duration": 0.02,
+      "output": "from print\n"
+    }
+  ],
+  "load_errors": [],
+  "timing": {
+    "elapsed": 0.3,
+    "worker": 0.5,
+    "killed": { "seconds": 0, "workers": 0 },
+    "jobs": 2
+  },
+  "outputs": [
+    {
+      "file": "spec/y_spec.lua",
+      "name": "group dies",
+      "output": "noise\n"
+    }
+  ]
+}
