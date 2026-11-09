@@ -568,6 +568,61 @@ if vim.fn.exepath("ntf") == "" then
   error("setup snippet did not put ntf on PATH: " .. setup_path)
 end
 
+local json_output = require("ntf.core.controller.json")
+
+--- @param path string
+--- @return table
+local function json_doc(path)
+  return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+end
+
+--- @param path string the file whose document the chapter shows
+--- @param actual string the document ntf writes for the values that file spells
+local function assert_json_doc(path, actual)
+  if not vim.deep_equal(json_doc(path), vim.json.decode(actual)) then
+    error(("the JSON %s spells is not the one ntf writes for the same run"):format(path))
+  end
+end
+
+local json_list_items = {
+  {
+    file = "spec/x_spec.lua",
+    node_id = "1",
+    names = { "group", "adds" },
+    trace = { source = "spec/x_spec.lua", line = 12 },
+    leaves_count = 1,
+  },
+}
+local json_list_load_errors = { { file = "spec/broken_spec.lua", message = "top-level boom" } }
+
+--- @type NtfRunTiming
+local json_run_timing = { elapsed = 0.3, worker = 0.5, killed = { seconds = 0, workers = 0 }, jobs = 2 }
+local json_run_results = {
+  {
+    id = "1",
+    name = "adds",
+    names = { "group", "adds" },
+    trace = { source = "spec/x_spec.lua", line = 12 },
+    status = "passed",
+    duration = 0.01,
+    file = "spec/x_spec.lua",
+  },
+  {
+    id = "2",
+    name = "fails",
+    names = { "group", "fails" },
+    trace = { source = "spec/x_spec.lua", line = 16 },
+    status = "failed",
+    message = "1 ~= 2",
+    duration = 0.02,
+    file = "spec/x_spec.lua",
+  },
+}
+local json_run_outputs = {
+  { file = "spec/x_spec.lua", name = "group fails", output = "from print\n" },
+  { file = "spec/y_spec.lua", name = "group dies", output = "noise\n" },
+}
+
 local doc_config = vim.json.decode(table.concat(vim.fn.readfile(vim.env.DOC_CONFIG), "\n"))
 
 require("genvdoc").generate(plugin_name, {
@@ -591,7 +646,44 @@ rejects the rest.]],
 - `bin/ntf` (and `bin/ntf.bat` on Windows) launches the `nvim` found on `$PATH`.
   Set `$NTF_NVIM` to a binary to run the launcher and its workers with that one
   instead. It has to be Neovim %s or later.
-- |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING| cover the rest.]]):format(required_nvim),
+- |ntf-JSON-OUTPUT|, |ntf-HOOKS|, |ntf-COVERAGE| and |ntf-MUTATION-TESTING|
+  cover the rest.]]):format(required_nvim),
+        }, "\n")
+      end,
+    },
+    {
+      name = "JSON OUTPUT",
+      body = function()
+        assert_json_doc(doc_dir .. "/json_list.json", json_output.list(json_list_items, json_list_load_errors))
+        assert_json_doc(
+          doc_dir .. "/json_run.json",
+          json_output.run(json_run_results, {}, json_run_timing, { outputs = json_run_outputs })
+        )
+        return table.concat({
+          [[
+`--json` writes one JSON document where `run` and `list` write their report:
+stdout, or the file `--json=FILE` names. Everything else a run writes — what a
+test printed, the progress line, the `--coverage` summary — goes to stderr, so
+stdout holds the document alone. A command that cannot act on the flag rejects
+it.
+
+A listing spells the tests it found and the specs that failed to load. A `file`
+is relative to the working directory, `row` is the 1-based line the test was
+declared on, `names` keeps the chain as the spec declared it, and `full_name` is
+the name `--filter` matches:]] .. "\n" .. util.help_code_block_from_file(doc_dir .. "/json_list.json", {
+            language = "json",
+          }),
+          [[
+A run spells each result the same way, with the `status` the count line tallies
+(`passed`, `failed`, `error` or `pending`), what a failed or errored one raised,
+its `duration` in seconds and, where it printed anything, its `output`. What a
+worker printed for a test no result answered for is left in `outputs`; `timing`
+carries what the text report prints under its count line, and `gave_up` names
+the budget a run that spent it was waiting on:]]
+            .. "\n"
+            .. util.help_code_block_from_file(doc_dir .. "/json_run.json", {
+              language = "json",
+            }),
         }, "\n")
       end,
     },

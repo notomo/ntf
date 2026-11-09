@@ -253,6 +253,16 @@ local function teardown_error(teardown)
   return err
 end
 
+--- @param opts NtfOptions
+--- @param document string
+local function write_json(opts, document)
+  if opts.json_file then
+    require("ntf.core.write").file(opts.json_file, document)
+    return
+  end
+  io.stdout:write(document)
+end
+
 --- @param root string ntf repository root (used to locate the worker script)
 function M.run(root)
   local unsupported = require("ntf.core.version").unsupported(vim.version())
@@ -367,9 +377,13 @@ function M.run(root)
     end
 
     if mode.list and not mode.mutation then
-      local list = require("ntf.core.controller.list")
-      io.stdout:write(list.tests(items))
-      io.stderr:write(list.load_errors(load_errors))
+      if opts.json then
+        write_json(opts, require("ntf.core.controller.json").list(items, load_errors))
+      else
+        local list = require("ntf.core.controller.list")
+        io.stdout:write(list.tests(items))
+        io.stderr:write(list.load_errors(load_errors))
+      end
 
       return #load_errors > 0 and 1 or 0
     end
@@ -407,6 +421,8 @@ function M.run(root)
     --- @type table<integer, true> the items whose coverage nothing reads, so their workers measure none; a run reporting coverage of its own reads every item's
     local unread_coverage_items = opts.coverage and {} or ignore_items
 
+    --- @type NtfWorkerOutput[] what the workers printed, which a JSON document carries per result instead of writing it out as each one arrives
+    local outputs = {}
     local results, coverage, timing, gave_up = require("ntf.core.controller.pool").run(items, {
       root = root,
       jobs = opts.jobs,
@@ -422,8 +438,12 @@ function M.run(root)
         if prog then
           prog.newline()
         end
-        run_stream:write(report.output_block(out, color))
-        run_stream:flush()
+        if opts.json then
+          table.insert(outputs, out)
+        else
+          run_stream:write(report.output_block(out, color))
+          run_stream:flush()
+        end
       end,
     })
     if prog then
@@ -433,7 +453,15 @@ function M.run(root)
     schedule.save(schedule_cache_path, results, cwd, whole_suite and not gave_up)
 
     local text, code = report.build(results, load_errors, { color = color, gave_up = gave_up })
-    if not mode.list then
+    if opts.json then
+      write_json(
+        opts,
+        require("ntf.core.controller.json").run(results, load_errors, timing, {
+          gave_up = gave_up,
+          outputs = outputs,
+        })
+      )
+    elseif not mode.list then
       run_stream:write(text)
       run_stream:write("\n" .. report.timing(results, timing))
     end
@@ -441,7 +469,8 @@ function M.run(root)
     if opts.coverage then
       require("ntf.core.coverage.stats").write(opts.coverage_file, coverage)
       local summary, measured = require("ntf.core.coverage.report").summary(coverage, cwd)
-      io.stdout:write("\n" .. summary)
+      local summary_stream = opts.json and io.stderr or io.stdout
+      summary_stream:write("\n" .. summary)
       if code == 0 and not measured then
         code = no_measured_line(cwd)
       end

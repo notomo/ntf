@@ -18,6 +18,8 @@ M.strict_categories = { "survived", "no_coverage", "not_applied" }
 --- @field exclude_spec string[] spec files or directories to skip during discovery
 --- @field coverage boolean measure line coverage of the code under test
 --- @field coverage_file string stats output path (luacov.stats.out format)
+--- @field json boolean write one JSON document to stdout instead of the text report
+--- @field json_file string? the file --json writes the document to; nil writes it to stdout
 --- @field mutation_target string? restrict the mutated files to this file or directory
 --- @field mutation_strict table<string, true>? mutant statuses that fail the run (survived/no_coverage/not_applied); nil disables the gate
 --- @field mutation_config string? mutation policy file (JSON): the known-equivalent mutants and the unmutated paths
@@ -300,6 +302,18 @@ local uncovered = {
 }
 
 --- @type NtfFlag
+local json = {
+  name = "--json",
+  value = "FILE",
+  optional = true,
+  description = "write one JSON document instead of the text report (default: stdout)",
+  set = function(opts, value)
+    opts.json = true
+    opts.json_file = value
+  end,
+}
+
+--- @type NtfFlag
 local help = {
   name = "--help",
   aliases = { "-h" },
@@ -338,7 +352,7 @@ local run_command = {
   description = "run the tests and report the results",
   id = "run",
   positional = SPEC_PATHS,
-  flags = command_flags(discovery_flags, worker_flags, { coverage, exclude_code }),
+  flags = command_flags(discovery_flags, worker_flags, { coverage, exclude_code, json }),
   validate = function(opts)
     if #opts.exclude_code > 0 and not opts.coverage then
       return "--exclude-code requires --coverage"
@@ -352,7 +366,7 @@ local list_command = {
   description = "list the tests without running them",
   id = "list",
   positional = SPEC_PATHS,
-  flags = command_flags(discovery_flags),
+  flags = command_flags(discovery_flags, { json }),
 }
 
 --- @type NtfCommand
